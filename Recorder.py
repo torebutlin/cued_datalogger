@@ -30,30 +30,6 @@ class Recorder():
     def set_filename(self,filename):
         self.filename = filename
         
-    # Play back a recording    
-    def play_recording(self,filename = None):
-        if filename == None:
-            filename = self.filename
-        
-        if filename != None:
-            wf = wave.open(filename,'rb')
-
-            output_stream = self.p.open(format = self.p.get_format_from_width(wf.getsampwidth()),
-                            channels = wf.getnchannels(),
-                            rate = wf.getframerate(),
-                            output = True)
-            
-            data = wf.readframes(self.frames_per_buffer)
-            print('PLAYBACK...')
-            while len(data)>0:
-                output_stream.write(data)
-                data = wf.readframes(self.frames_per_buffer)
-            print('PLAYBACK STOP')
-            
-            wf.close()
-            output_stream.stop_stream()
-            output_stream.close()
-                               
     def set_device_index(self,index):
        # TODO: Add check for invalid index input
         self.device_index = index;
@@ -102,34 +78,76 @@ class Recorder():
     def record_callback(self,in_data,frame_count,time_info,status_flag):
         #TODO: insert code to record data
         return(data,pyaudio.paContinue)
-    
-    #TODO: Live oscilloscope here?
-    def show_recording(self, duration):
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+    # Play back a recording    
+    def play_recording(self,filename = None):
+        if filename == None:
+            filename = self.filename
         
+        if filename != None:
+            wf = wave.open(filename,'rb')
+
+            output_stream = self.p.open(format = self.p.get_format_from_width(wf.getsampwidth()),
+                            channels = wf.getnchannels(),
+                            rate = wf.getframerate(),
+                            output = True)
+            
+            data = wf.readframes(self.frames_per_buffer)
+            print('PLAYBACK...')
+            while len(data)>0:
+                output_stream.write(data)
+                data = wf.readframes(self.frames_per_buffer)
+            print('PLAYBACK STOP')
+            
+            wf.close()
+            output_stream.stop_stream()
+            output_stream.close()
+                               
+    #TODO: Live oscilloscope here?
+    def stream_audio(self, duration, draw = True, playback = False):
         input_stream = self.p.open(channels = self.channels,
                          rate = self.rate,
                          format = self.format,
                          input = True,
+                         frames_per_buffer = self.frames_per_buffer,
+                         input_device_index = self.device_index)
+        
+        if playback:
+            output_stream = self.p.open(channels = self.channels,
+                         rate = self.rate,
+                         format = self.format,
+                         output = True,
                          frames_per_buffer = self.frames_per_buffer)
-        print('LISTENING...')
-        data = np.array(np.fromstring( input_stream.read(self.frames_per_buffer),
+        
+        if draw: 
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            data = np.array(np.fromstring(input_stream.read(self.frames_per_buffer),
                               dtype = np.int16))
         
-        line = ax.plot(np.array(range(len(data)))/self.rate,data)[0]
-        ax.set_ylim(-10000,10000)
-        fig.show()
+            line = ax.plot(np.array(range(len(data)))/self.rate,data)[0]
+            ax.set_ylim(-5e4,5e4)
+            fig.show()
+        
+       
+        print('STREAMING...')
         for _ in range(int(self.rate/self.frames_per_buffer * duration)):
-            data = np.array(np.fromstring( input_stream.read(self.frames_per_buffer),
-                              dtype = np.int16))
-            line.set_ydata(data)
+            data = input_stream.read(self.frames_per_buffer)
+            line.set_ydata(np.array(np.fromstring(data, dtype = np.int16)))
             fig.canvas.draw()
-
-        print('LISTENING END')
-        plt.close(fig)
+            fig.canvas.flush_events()
+                
+            if playback:
+                output_stream.write(data,self.frames_per_buffer)
+                
+        print('STREAMING END')
+        
         input_stream.stop_stream()
         input_stream.close()
+        if draw:
+            plt.close(fig)
+        if playback:
+            output_stream.stop_stream()
+            output_stream.close()
 
         
     def close(self):
