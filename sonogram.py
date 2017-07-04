@@ -6,78 +6,74 @@ Author: Theo Brown (tab53)
 from numpy import fft
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from scipy import signal
+
+# Function source
+def function_generator(t, w=50*2*np.pi, x=5):
+    return np.real(np.exp((1j*w - x) * t))
+    #return np.sin(50.0 * 2.0*np.pi*t) + 0.5*np.sin(80.0 * 2.0*np.pi*t)
 
 # Sampling information:
-# Number of samples
-sample_N = 4096
 # Sampling frequency
-sample_freq = 4096
-sample_w = sample_freq * 2*np.pi
-# Time interval between samples
-dw = sample_w/sample_N
+f_s = 4096
+# Sampling interval
+dt_s = 1/f_s
 
-# Time series information:
-# Length of time series
-time_length = 1
+## Create time series
 # Number of points
-time_N = 1e3
-# Time interval between points
-dt = time_length / time_N
-
-
-# Function generator
-def source_function(t, w=200*2*np.pi, x=5):
-    return np.real(np.exp((1j*w - x) * t))
-
-
-# Create time range
-t = np.arange(0.0, time_length, dt)
+N_t = 1e3
+# Interval between points
+dt_t = 1e-3
+# Create time vector
+t = np.arange(0.0, N_t*dt_t, dt_t)
 # Create data
-y = source_function(t)
+y = function_generator(t)
 
 # Plot data
 fig_y = plt.figure()
 plt.plot(t, y)
 
-
+## Fourier Transform
 # Take FFT of data
 sp = fft.fft(y)
 # Find associated frequencies
-f = fft.fftfreq(t.size, 1/sample_freq)
-# f = np.linspace(0, sample_w * (sample_N - 1)/sample_N, sample_N)
+f = fft.fftfreq(y.size, dt_s)
 
 # Plot FFT
 fig_sp = plt.figure()
-plt.plot(f, 20*np.log10(np.abs(sp)))
+#plt.plot(f, 20*np.log10(np.abs(sp)))
+plt.plot(f, np.abs(sp))
 
 ##################
 # SONOGRAM       #
 ##################
 # Set up variables for window of fft
-window_size = 256
-window_step = 64
-window_N = int(y.size/window_step)
+width_W = 256
+step_W = 64
+N_W = int(y.size/step_W)
 
 # Create data structure to store spectrogram in
 sp = np.zeros((t.size, t.size))
-f = fft.fftfreq(t.size, 1/sample_freq)
+f = fft.fftfreq(t.size, 1/f_s)
 
 i = 0
-lower = 0
-upper = lower + window_size
+lower_W = 0
+upper_W = lower_W + width_W
 
 # Take FFT of sliding window
 # Repeat until number of spectra reached
-while i < window_N:
+while i < N_W:
     print("Taking fft of window {}".format(i))
     # Take FFT of window
-    sp[i] = fft.fft(y[lower:upper], n=t.size)
+    sp[i] = fft.fft(y[lower_W:upper_W], n=sp[i].size)
     # Next spectrum
     i += 1
     # Increment lower bound of window
-    lower += window_step
+    lower_W += step_W
     # Increment uppper bound of window
-    upper += window_step
+    upper_W += step_W
 
 
 # Create grid of data points
@@ -87,5 +83,21 @@ F, T = np.meshgrid(f, t)
 fig_sonogram_cont = plt.figure()
 contours = plt.contour(F, T, sp)
 
+fig_sonogram_surf = plt.figure()
+ax = fig_sonogram_surf.gca(projection='3d')
+surf = ax.plot_surface(F, T, sp, linewidth=0, cmap=cm.coolwarm)
+
+fig_sonogram_color = plt.figure()
+plt.pcolormesh(t, f, sp)
+
+"""
+# Built in functions:
+fig_spectrogram = plt.figure()
+f, t, Sxx = signal.spectrogram(y, f_s)
+plt.pcolormesh(t, f, Sxx)
+plt.ylabel('Frequency [Hz]')
+plt.xlabel('Time [sec]')
+plt.show()
+"""
 # Display graphs
 plt.show()
