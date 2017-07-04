@@ -7,26 +7,29 @@ import wave
 """
 Recorder class:
 - Allow recording and configurations of recording device
-- Return recording as numpy array
+- Live stream audio for a limited time period
 """
 
 class Recorder():
-    def __init__(self,channels,rate,frames_per_buffer,audio_format):
+    # TODO: Account for different audio format during plotting
+    def __init__(self,channels,rate,frames_per_buffer,device_name = 'Speaker'):
         self.channels = channels
         self.rate = rate
         self.frames_per_buffer = frames_per_buffer
-        self.format = audio_format
-        self.p = pyaudio.PyAudio()
-        self.device_index = 0;
+        self.format = pyaudio.paInt16
         self.filename = None
-    
-
-    # TODO: Define function to initialise a PyAudio object
-    def open(self):
+        self.p = None
+        self.device_index = 0;
+        self.signal_data = np.array([0] * frames_per_buffer)
+        
+        self.open_recorder()
+        self.set_device_by_name(device_name)
+        
+    def open_recorder(self):
         if self.p == None:
             self.p = pyaudio.PyAudio()
     
-    # Originally setting file name for the wave file    
+    # Originally setting file name   
     def set_filename(self,filename):
         self.filename = filename
         
@@ -37,14 +40,23 @@ class Recorder():
         
     def current_device_info(self):
         print(self.p.get_device_info_by_index(self.device_index))
+    
+    # Set the recording audio device by name, revert to default if no such device    
+    def set_device_by_name(self, name):
+        try:
+            self.set_device_index(self.available_devices().index(name))
+        except ValueError:
+            try:
+                print('Device not found, reverting to default')
+                default = self.p.get_default_input_device_info()
+                self.set_device_index(default['index'])
+            except IOError:
+                print('No default device!')
         
-    # Get recording device info 
+    # Get audio device names 
     def available_devices(self):
-        for i in range(self.p.get_device_count()):
-            print("%i) %s" % (i,self.p.get_device_info_by_index(i)['name']))
-            
-    #TODO: Add function(s) to configure recording device
-            # Like changing recording device
+        return ([ self.p.get_device_info_by_index(i)['name'] 
+                  for i in range(self.p.get_device_count())] )
             
     # May want to change to a callback method for responsive recording
     # Currently it is using blocking method
@@ -78,6 +90,7 @@ class Recorder():
     def record_callback(self,in_data,frame_count,time_info,status_flag):
         #TODO: insert code to record data
         return(data,pyaudio.paContinue)
+    
     # Play back a recording    
     def play_recording(self,filename = None):
         if filename == None:
@@ -101,54 +114,50 @@ class Recorder():
             wf.close()
             output_stream.stop_stream()
             output_stream.close()
+            
+    # Callback function for audio streaming
+    def stream_audio_callback(self,in_data, frame_count, time_info, status):
+        self.signal_data = np.array(np.fromstring(in_data, dtype = np.int16))
+        return(self.signal_data,pyaudio.paContinue)
+    
                                
-    #TODO: Live oscilloscope here?
+    # TODO: Live oscilloscope here?
+    # TODO: Learn Python GUI and implement a button to stop and start recording
+    # Function for audio streaming for a limited time
     def stream_audio(self, duration, draw = True, playback = False):
-        input_stream = self.p.open(channels = self.channels,
+        stream = self.p.open(channels = self.channels,
                          rate = self.rate,
                          format = self.format,
                          input = True,
+                         output = playback,
                          frames_per_buffer = self.frames_per_buffer,
-                         input_device_index = self.device_index)
-        
-        if playback:
-            output_stream = self.p.open(channels = self.channels,
-                         rate = self.rate,
-                         format = self.format,
-                         output = True,
-                         frames_per_buffer = self.frames_per_buffer)
+                         input_device_index = self.device_index,
+                         stream_callback = self.stream_audio_callback)
         
         if draw: 
             fig = plt.figure()
             ax = fig.add_subplot(111)
-            data = np.array(np.fromstring(input_stream.read(self.frames_per_buffer),
-                              dtype = np.int16))
-        
-            line = ax.plot(np.array(range(len(data)))/self.rate,data)[0]
             ax.set_ylim(-5e4,5e4)
             fig.show()
         
+        stream.start_stream()
        
         print('STREAMING...')
-        for _ in range(int(self.rate/self.frames_per_buffer * duration)):
-            data = input_stream.read(self.frames_per_buffer)
-            line.set_ydata(np.array(np.fromstring(data, dtype = np.int16)))
+        print(len(self.signal_data)) 
+        line = ax.plot(np.array(range(len(self.signal_data)))/self.rate,
+                       self.signal_data)[0]
+           
+        for i in range(duration*100):               
+            line.set_ydata(self.signal_data)
             fig.canvas.draw()
             fig.canvas.flush_events()
                 
-            if playback:
-                output_stream.write(data,self.frames_per_buffer)
-                
         print('STREAMING END')
         
-        input_stream.stop_stream()
-        input_stream.close()
+        stream.stop_stream()
+        stream.close()
         if draw:
             plt.close(fig)
-        if playback:
-            output_stream.stop_stream()
-            output_stream.close()
-
         
     def close(self):
         self.p.terminate()
