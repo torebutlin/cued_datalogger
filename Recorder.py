@@ -136,7 +136,10 @@ class Recorder():
                              frames_per_buffer = self.frames_per_buffer,
                              input_device_index = self.device_index,
                              stream_callback = self.stream_audio_callback)
-            
+            print('Input latency: %.3e' % self.audio_stream.get_input_latency())
+            print('Output latency: %.3e' % self.audio_stream.get_output_latency())
+            print('Read Available: %i' % self.audio_stream.get_read_available())
+            print('Write Available: %i' % self.audio_stream.get_write_available())
             self.audio_stream.start_stream()
             
     # TODO: Live oscilloscope here?
