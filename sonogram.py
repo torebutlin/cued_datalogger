@@ -86,8 +86,8 @@ step_W = 32
 N_W = int(y.size/step_W)
 
 # Create data structure to store spectrogram in
-sp = np.zeros((t.size, t.size))
-f = fft.fftfreq(t.size, dt_s) * dt_s * 1e3
+sp = np.zeros((t.size, width_W))
+f = fft.fftfreq(width_W, dt_s) * dt_s * 1e3
 
 i = 0
 lower_W = 0
@@ -98,7 +98,7 @@ upper_W = lower_W + width_W
 while i < N_W:
     print("Taking fft of window {}".format(i))
     # Take FFT of window
-    sp[i] = fft.fft(y[lower_W:upper_W], n=sp[i].size)
+    sp[lower_W] = fft.fft(y[lower_W:upper_W], n=sp[lower_W].size)
     # Next spectrum
     i += 1
     # Increment lower bound of window
@@ -108,7 +108,7 @@ while i < N_W:
 
 
 # Take only positive part of FFT (?)
-sp = sp[:, :len(sp)/2]
+sp = sp[:, :sp.shape[1]/2]
 f = f[:len(f)/2]
 
 # Create grid of data points
@@ -127,13 +127,13 @@ surf = ax.plot_surface(F, T, sp, linewidth=0, cmap=cm.coolwarm)
 fig_sonogram_color = plt.figure()
 plt.pcolormesh(t, f, sp)
 """
-"""
+
 # Built in functions:
 fig_spectrogram = plt.figure()
 f, t, Sxx = signal.spectrogram(y, f_s)
 plt.pcolormesh(t, f, Sxx)
 plt.ylabel('Frequency [Hz]')
 plt.xlabel('Time [sec]')
-"""
+
 # Display graphs
 plt.show()
