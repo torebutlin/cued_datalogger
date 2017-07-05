@@ -5,15 +5,14 @@ Created on Wed Jul  5 13:12:34 2017
 @author: eyt21
 """
 import sys
-from PyQt5.QtWidgets import (QWidget, QToolTip,QVBoxLayout,
+from PyQt5.QtWidgets import (QWidget, QToolTip,QVBoxLayout,QMainWindow,
     QPushButton, QApplication, QMessageBox, QDesktopWidget,QSizePolicy)
 from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import QCoreApplication,QTimer
 
-import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.animation as animation
+import numpy as np
 
 from Recorder import *
 
@@ -37,7 +36,7 @@ class MyMplCanvas(FigureCanvas):
     def compute_initial_figure(self):
         pass
 
-class Example(QWidget):
+class Example(QMainWindow):
     def __init__(self):
         super().__init__()
         
@@ -48,16 +47,21 @@ class Example(QWidget):
         QToolTip.setFont(QFont('SansSerif', 10))
         self.setGeometry(500,500,500,500)
         self.setWindowTitle('LiveStreamPlot')
-        self.setWindowIcon(QIcon('purewave.jpg'))
+        #self.setWindowIcon(QIcon('purewave.jpg'))
         
-        vbox = QVBoxLayout()
-        self.canvas = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.main_widget = QWidget(self)
+        
+        vbox = QVBoxLayout(self.main_widget)
+        self.canvas = MyMplCanvas(self.main_widget, width=5, height=4, dpi=100)
         vbox.addWidget(self.canvas)
         
-        self.btn = QPushButton('Switch',self)
-        self.btn.resize(self.btn.sizeHint())
-        self.btn.pressed.connect(self.modify_rec)
-        vbox.addWidget(self.btn)
+        btn = QPushButton('Switch',self.main_widget)
+        btn.resize(btn.sizeHint())
+        btn.pressed.connect(self.modify_rec)
+        #btn.move(250, 450)
+        vbox.addWidget(btn)
+        #self.main_widget.setFocus()
+        self.setCentralWidget(self.main_widget)
         
         self.rec = Recorder(1,44100,1024,'Line (U24XL with SPDIF I/O)')
         self.rec.stream_init(playback = True)
@@ -70,9 +74,9 @@ class Example(QWidget):
         timer = QTimer(self)
         timer.timeout.connect(self.update_line)
         timer.start(0.1)
-        
-        
+
         self.center()
+        self.setFocus()
         self.show()
         
     def update_line(self):
