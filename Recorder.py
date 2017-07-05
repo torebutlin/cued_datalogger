@@ -13,6 +13,7 @@ import wave
 import pprint as pp
 
 class Recorder():
+#---------------- INITIALISATION METHODS -----------------------------------
     # TODO: Account for different audio format during plotting
     def __init__(self,channels,rate,frames_per_buffer,device_name = None):
         self.channels = channels
@@ -26,28 +27,16 @@ class Recorder():
         self.audio_stream = None
         
         self.open_recorder()
-        
-        # TODO: Allow setting by both index and name
         if device_name != None:
             self.set_device_by_name(str(device_name))
         
     def open_recorder(self):
         if self.p == None:
             self.p = pyaudio.PyAudio()
-    
-    # Originally setting file name   
-    def set_filename(self,filename):
-        self.filename = filename
-        
-    def set_device_by_index(self,index):
-       # TODO: Add check for invalid index input
-        self.device_index = index;
-        print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
-        
-    def current_device_info(self):
-        pp.pprint(self.p.get_device_info_by_index(self.device_index))
-    
-    # Set the recording audio device by name, revert to default if no such device    
+            
+#---------------- DEVICE SETTING METHODS -----------------------------------            
+     # Set the recording audio device by name, 
+     # revert to default if no such device found
     def set_device_by_name(self, name):
         try:
             self.set_device_by_index(self.available_devices().index(name))
@@ -55,15 +44,26 @@ class Recorder():
             try:
                 print('Device not found, reverting to default')
                 default = self.p.get_default_input_device_info()
-                self.set_device_index(default['index'])
+                self.set_device_by_index(default['index'])
             except IOError:
                 print('No default device!')
-        
     # Get audio device names 
     def available_devices(self):
         return ([ self.p.get_device_info_by_index(i)['name'] 
                   for i in range(self.p.get_device_count())] )
+    def set_device_by_index(self,index):
+       # TODO: Add check for invalid index input
+        self.device_index = index;
+        print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
             
+    # Originally setting file name   
+    def set_filename(self,filename):
+        self.filename = filename
+        
+    def current_device_info(self):
+        pp.pprint(self.p.get_device_info_by_index(self.device_index))
+
+#---------------- RECORDING METHODS -----------------------------------            
     # Currently it is using blocking method
     def record(self,duration):
         rc = wave.open(self.filename,'wb')
@@ -120,6 +120,7 @@ class Recorder():
             output_stream.stop_stream()
             output_stream.close()
             
+#---------------- STREAMING METHODS -----------------------------------             
     # Callback function for audio streaming
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
         self.signal_data = np.array(np.fromstring(in_data, dtype = np.int16))
