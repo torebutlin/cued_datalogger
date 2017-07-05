@@ -176,6 +176,8 @@ class Recorder():
     def stream_stop(self):  
         self.audio_stream.stop_stream()
         self.audio_stream.close()
+        self.audio_stream = None
+        self.signal_data = np.array([0] * self.frames_per_buffer)
         '''if draw:
             plt.close(fig)'''
         

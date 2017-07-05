@@ -12,6 +12,7 @@ try:
     rec.stream_init(playback = True)
 except:
     quit()
+rec.current_device_info()
 
 line = ax.plot(range(len(rec.signal_data)),
                        rec.signal_data)[0]
@@ -22,7 +23,7 @@ try:
         line.set_ydata(rec.signal_data)
         fig.canvas.draw()
         fig.canvas.flush_events()
-except:
+except KeyboardInterrupt:
     print('Some error happened!')
 finally:
     rec.stream_stop()
