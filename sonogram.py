@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from scipy import signal
-
+from time import sleep
 
 # Function source
 def func_1(t, w, x):
@@ -25,11 +25,11 @@ def function_generator(t):
     Creates a test function with echoes
     """
     f1 = func_1(t, 50*2*np.pi, 5)
-    f2 = func_1(t, 243*2*np.pi, 3)
-    result = f1 + f2
-    echo1 = 0.5*(f1[:f1.size/2] + f2[:f2.size/2])
+    #f2 = func_1(t, 243*2*np.pi, 3)
+    result = f1# + f2
+    echo1 = 0.5*(f1[:f1.size/2])# + f2[:f2.size/2])
     result[result.size/2:] += echo1
-    echo2 = 0.3*(f1[:f1.size/4] + f2[:f2.size/4])
+    echo2 = 0.3*(f1[:f1.size/4])# + f2[:f2.size/4])
     result[result.size*3/4:] += echo2
     return result
 
@@ -89,15 +89,19 @@ f = fft.fftfreq(width_W, dt_s) * dt_s / dt_t
 # Set window properties
 lower_W = 0
 upper_W = lower_W + width_W
+shape_W = np.hanning(width_W)
 
 i = 0
 
 # Take FFT of sliding window
 # Repeat until number of spectra reached
-while i < N_W:
+#while i < N_W:
+while upper_W < y.size:
     print("Taking fft of window {}".format(i))
+    # Scale window by Hanning
+    window = np.multiply(y[lower_W:upper_W], shape_W)
     # Take FFT of window
-    sp[i] = fft.fft(y[lower_W:upper_W], n=sp[i].size)
+    sp[i] = fft.fft(window, n=sp[i].size)
     # Next spectrum
     i += 1
     # Increment lower bound of window
@@ -114,7 +118,7 @@ f = f[:len(f)/2]
 F, T = np.meshgrid(f, t)
 
 # Find magnitude of freqency components
-sp = np.abs(sp)
+sp = 20*np.log10(np.abs(sp))
 
 # Plot sonogram
 # Contours:
