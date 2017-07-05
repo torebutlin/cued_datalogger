@@ -1,18 +1,20 @@
-# Add codes to install pyaudio if pyaudio is not installed
-import pyaudio
-import numpy as np
-import matplotlib.pyplot as plt
-import wave
-
 """
 Recorder class:
 - Allow recording and configurations of recording device
-- Live stream audio for a limited time period
+- Allow audio stream
+- Store data as numpy arrays for both recording and audio stream
+    which can be accessed for plotting
 """
+
+# Add codes to install pyaudio if pyaudio is not installed
+import pyaudio
+import numpy as np
+import wave
+import pprint as pp
 
 class Recorder():
     # TODO: Account for different audio format during plotting
-    def __init__(self,channels,rate,frames_per_buffer,device_name = 'Speaker'):
+    def __init__(self,channels,rate,frames_per_buffer,device_name = None):
         self.channels = channels
         self.rate = rate
         self.frames_per_buffer = frames_per_buffer
@@ -21,9 +23,13 @@ class Recorder():
         self.p = None
         self.device_index = 0;
         self.signal_data = np.array([0] * frames_per_buffer)
+        self.audio_stream = None
         
         self.open_recorder()
-        self.set_device_by_name(device_name)
+        
+        # TODO: Allow setting by both index and name
+        if device_name != None:
+            self.set_device_by_name(str(device_name))
         
     def open_recorder(self):
         if self.p == None:
@@ -33,18 +39,18 @@ class Recorder():
     def set_filename(self,filename):
         self.filename = filename
         
-    def set_device_index(self,index):
+    def set_device_by_index(self,index):
        # TODO: Add check for invalid index input
         self.device_index = index;
         print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
         
     def current_device_info(self):
-        print(self.p.get_device_info_by_index(self.device_index))
+        pp.pprint(self.p.get_device_info_by_index(self.device_index))
     
     # Set the recording audio device by name, revert to default if no such device    
     def set_device_by_name(self, name):
         try:
-            self.set_device_index(self.available_devices().index(name))
+            self.set_device_by_index(self.available_devices().index(name))
         except ValueError:
             try:
                 print('Device not found, reverting to default')
@@ -58,7 +64,6 @@ class Recorder():
         return ([ self.p.get_device_info_by_index(i)['name'] 
                   for i in range(self.p.get_device_count())] )
             
-    # May want to change to a callback method for responsive recording
     # Currently it is using blocking method
     def record(self,duration):
         rc = wave.open(self.filename,'wb')
@@ -86,7 +91,7 @@ class Recorder():
 
         return np.hstack(data_array)
 
-    #TODO: Complete callback function for non-blocking method
+    #TODO: Complete callback function for non-blocking method?????
     def record_callback(self,in_data,frame_count,time_info,status_flag):
         #TODO: insert code to record data
         return(data,pyaudio.paContinue)
@@ -120,27 +125,41 @@ class Recorder():
         self.signal_data = np.array(np.fromstring(in_data, dtype = np.int16))
         return(self.signal_data,pyaudio.paContinue)
     
-                               
+    def stream_init(self, playback):
+        if self.audio_stream == None:
+            self.audio_stream = self.p.open(channels = self.channels,
+                             rate = self.rate,
+                             format = self.format,
+                             input = True,
+                             output = playback,
+                             frames_per_buffer = self.frames_per_buffer,
+                             input_device_index = self.device_index,
+                             stream_callback = self.stream_audio_callback)
+            
+            self.audio_stream.start_stream()
+            
     # TODO: Live oscilloscope here?
     # TODO: Learn Python GUI and implement a button to stop and start recording
     # Function for audio streaming for a limited time
-    def stream_audio(self, duration, draw = True, playback = False):
-        stream = self.p.open(channels = self.channels,
+    def stream_audio(self):
+        return (self.signal_data)
+        '''stream = self.p.open(channels = self.channels,
                          rate = self.rate,
                          format = self.format,
                          input = True,
                          output = playback,
                          frames_per_buffer = self.frames_per_buffer,
                          input_device_index = self.device_index,
-                         stream_callback = self.stream_audio_callback)
+                         stream_callback = self.stream_audio_callback)'''
         
-        if draw: 
+                                
+        '''if draw: 
             fig = plt.figure()
             ax = fig.add_subplot(111)
             ax.set_ylim(-5e4,5e4)
             fig.show()
         
-        stream.start_stream()
+        self.audio_stream.start_stream()
        
         print('STREAMING...')
         print(len(self.signal_data)) 
@@ -152,12 +171,13 @@ class Recorder():
             fig.canvas.draw()
             fig.canvas.flush_events()
                 
-        print('STREAMING END')
+        print('STREAMING END')'''
         
-        stream.stop_stream()
-        stream.close()
-        if draw:
-            plt.close(fig)
+    def stream_stop(self):  
+        self.audio_stream.stop_stream()
+        self.audio_stream.close()
+        '''if draw:
+            plt.close(fig)'''
         
     def close(self):
         self.p.terminate()

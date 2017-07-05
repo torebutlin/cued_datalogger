@@ -1,17 +1,30 @@
 from Recorder import *
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+DURATION = 30
 
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.set_ylim(-5e4,5e4)
+fig.show()
 
-rec = Recorder(1,44100,1024,'Line (U24XL with SPDIF I/O)')
-#rec.current_device_info()
-#audio_data = rec.record(3)
-#rec.play_recording()
 try:
-    rec.stream_audio(20,playback = True)
+    rec = Recorder(1,44100,1024,'Line (U24XL with SPDIF I/O)')
+    rec.stream_init(playback = True)
 except:
+    quit()
+
+line = ax.plot(range(len(rec.signal_data)),
+                       rec.signal_data)[0]
+
+try:
+    while True:
+    #for _ in range(DURATION * 100):
+        line.set_ydata(rec.signal_data)
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+except:
+    print('Some error happened!')
+finally:
+    rec.stream_stop()
     rec.close()
-
-#plt.plot(np.array(range(len(audio_data)))/44100,audio_data)
-#plt.show()
-
-
+    plt.close(fig)
