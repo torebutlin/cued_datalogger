@@ -7,14 +7,14 @@ Created on Wed Jul  5 13:12:34 2017
 import sys
 from PyQt5.QtWidgets import (QWidget, QToolTip,QVBoxLayout,QMainWindow,
     QPushButton, QApplication, QMessageBox, QDesktopWidget,QSizePolicy)
-from PyQt5.QtGui import QIcon,QFont
+#from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import QCoreApplication,QTimer
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import numpy as np
+#import numpy as np
 
-from Recorder import *
+import Recorder as rcd
 
 class MyMplCanvas(FigureCanvas):
     """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
@@ -23,7 +23,6 @@ class MyMplCanvas(FigureCanvas):
         self.axes = fig.add_subplot(111)
 
         self.compute_initial_figure()
-
         #
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
@@ -40,17 +39,14 @@ class Example(QMainWindow):
     def __init__(self):
         super().__init__()
         
+        self.setGeometry(500,500,500,500)
+        self.setWindowTitle('LiveStreamPlot')
+                
         self.initUI()
         
     def initUI(self):
         
-        QToolTip.setFont(QFont('SansSerif', 10))
-        self.setGeometry(500,500,500,500)
-        self.setWindowTitle('LiveStreamPlot')
-        #self.setWindowIcon(QIcon('purewave.jpg'))
-        
         self.main_widget = QWidget(self)
-        
         vbox = QVBoxLayout(self.main_widget)
         self.canvas = MyMplCanvas(self.main_widget, width=5, height=4, dpi=100)
         vbox.addWidget(self.canvas)
@@ -58,12 +54,11 @@ class Example(QMainWindow):
         btn = QPushButton('Switch',self.main_widget)
         btn.resize(btn.sizeHint())
         btn.pressed.connect(self.modify_rec)
-        #btn.move(250, 450)
         vbox.addWidget(btn)
-        #self.main_widget.setFocus()
+        self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
         
-        self.rec = Recorder(1,44100,1024,'Line (U24XL with SPDIF I/O)')
+        self.rec = rcd.Recorder(1,44100,1024,'Line (U24XL with SPDIF I/O)')
         self.rec.stream_init(playback = True)
         self.playing = True
         
@@ -92,10 +87,9 @@ class Example(QMainWindow):
     def modify_rec(self):
         if self.playing:
             self.rec.stream_stop()
-            self.playing = False
         else:
             self.rec.stream_init(playback = True)
-            self.playing = True
+        self.playing = not self.playing
         
     def closeEvent(self,event):
         reply = QMessageBox.question(self,'Message',
