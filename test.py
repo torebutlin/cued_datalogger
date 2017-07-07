@@ -7,20 +7,21 @@ Date: July 2017
 from numpy import fft
 import numpy as np
 import matplotlib.pyplot as plt
+from time import sleep
 
 
 def plot_test(x, y):
-    plt.figure()
     plt.plot(x, y)
-    plt.show()
+    plt.draw()
+    sleep(0.01)
 
 def function_generator(t):
     """
     Creates a test function
     """
     result = np.sin(1000*2*np.pi*t)
-    result[:t.shape[0]/4] *= 0
-    result[t.shape[0]*3/4:] *= 0
+    result[:int(t.shape[0]/4)] *= 0
+    result[int(t.shape[0]*3/4):] *= 0
     return result
 
 
@@ -43,7 +44,7 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
     """
     ## Extend signal so that first time bin for FFT can be taken at t=0
     # This extends the signal so it has width/2 zeros before the signal and the same after the signal
-    signal_extended = np.concatenate((np.zeros(window_width/2), signal, np.zeros(window_width/2)))
+    signal_extended = np.concatenate((np.zeros(int(window_width/2)), signal, np.zeros(int(window_width/2))))
     """
     plt.figure("Signal_extended")
     plt.plot(np.linspace(0, len(signal_extended), len(signal_extended)), signal_extended)
@@ -58,15 +59,14 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
     window_upper = window_lower + window_width
 
     ## Set up FT
-    FT = np.zeros((signal.size / window_width, window_width/2 + 1))
+    FT = np.zeros((int(signal.size / window_width), int(window_width/2) + 1))
 
     ## Find associated frequencies of the FT
     freqs = fft.fftfreq(window_width, (t[1] - t[0]) / fft_sample_freq)
     # Take only positive freqs
-    freqs = freqs[:len(freqs)/2 + 1]
+    freqs = freqs[:int(len(freqs)/2) + 1]
 
     ## Find associated time bins of the FT
-
     FT_t = np.linspace(0, t[-1], num=FT.shape[0])
 
     ## Slide the window along and take FFTs
@@ -75,7 +75,7 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
         print("FFTing " + str(i))
         print("t=" + str(FT_t[i]))
         #plot_test(np.linspace(0, len(signal_extended), len(signal_extended)), signal_extended)
-        if(FT_t[i] > 0.5):
+        if(FT_t[i] > 0.5 and FT_t[i] < 1.5):
             print(window_lower)
             print(window_upper)
             print(signal[window_lower:window_upper])
@@ -98,6 +98,9 @@ dt = 1e-4
 t = np.arange(0.0, duration, dt)
 # Create data
 y = function_generator(t)
+plt.figure()
+plt.ion()
+plt.show()
 """
 plt.figure()
 plt.plot(t,y)

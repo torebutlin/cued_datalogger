@@ -33,9 +33,9 @@ def function_generator(t):
     echo2 = 0.3*(f1[:f1.size/4])# + f2[:f2.size/4])
     result[result.size*3/4:] += echo2
     """
-    result = np.sin(1000*2*np.pi*t)
-    result[:len(t)/4] *= 0
-    result[len(t)*3/4:] *= 0
+    result = np.sin(500*2*np.pi*t)
+    result[:int(len(t)/4)] *= 0
+    result[int(len(t)*3/4):] *= 0
     return result
 
 
@@ -95,32 +95,12 @@ len_t = 2
 # Number of points
 # N_t = 4e3
 # Interval between points
-dt_t = 1e-4
+dt_t = 2e-5
 # Create time vector
 t = np.arange(0.0, len_t, dt_t)
 # Create data
 y = function_generator(t)
-"""
-# Plot data
-fig_y = plt.figure()
-plt.plot(t, y)
 
-
-## Fourier Transform
-# Take FFT of data
-sp = fft.rfft(y)
-# Find associated frequencies
-f = fft.fftfreq(y.size, dt_s) * dt_s * 1e3
-# Take only positive part of FFT (?)
-sp = sp[:sp.size/2]
-f = f[:f.size/2]
-
-# Plot FFT
-fig_sp = plt.figure()
-plt.plot(f, np.abs(sp))
-plt.xlabel('Freq (Hz)')
-plt.ylabel('Amplitude')
-"""
 
 ##################
 # SONOGRAM       #
@@ -131,9 +111,9 @@ step_W = 32
 N_W = int(y.size/step_W)
 
 # Create data structure to store spectrogram in
-t_spectrogram = np.linspace(t[width_W/2], t[-(width_W/2)], N_W)
+t_spectrogram = np.linspace(t[int(width_W/2)], t[int(-(width_W/2))], N_W)
 f = fft.fftfreq(width_W, dt_s) * dt_s / dt_t
-sp = np.zeros((t_spectrogram.size, width_W/2 + 1))
+sp = np.zeros((t_spectrogram.size, int(width_W/2) + 1))
 
 
 # Set window properties
@@ -160,28 +140,9 @@ while upper_W < y.size:
     lower_W += step_W
     # Increment uppper bound of window
     upper_W += step_W
-"""
-lower_W = 6400 
-upper_W = 6656
-for i in np.arange(200, 300):
-    print("Taking fft of window {}".format(i))
-    # Scale window by Hanning
-    window = np.multiply(y[lower_W:upper_W], np.hanning(width_W))
-    # Take FFT of window
-    sp[i] = fft.rfft(window, n=sp[i].size)
 
-    if i == 221:
-        window_221 = window
-        sp_221 = sp[i]
-    # Next spectrum
-    i += 1
-    # Increment lower bound of window
-    lower_W += step_W
-    # Increment uppper bound of window
-    upper_W += step_W
-"""
 # Take only positive frequencies
-f = f[:len(f)/2 + 1]
+f = f[:int(len(f)/2) + 1]
 
 # Create grid of data points
 F, T = np.meshgrid(f, t_spectrogram)
@@ -208,21 +169,44 @@ while i < N_W:
     plt.pause(0.01)
     i+=1
 """ 
-"""
+
+## Trying to find the frequency of modulation
+# Amplitude-time plot at freq=500Hz:
+plt.figure()
+freq_500 = sp[:, 13]
+plt.plot(t_spectrogram, freq_500)
+plt.xlabel('Time (s)')
+plt.ylabel('Amplitude') 
+
+# Take FFT of slice at 500Hz
+plt.figure()
+FFT_500 = fft.rfft(freq_500)
+FFT_freqs_500 = fft.fftfreq(len(freq_500), 1/4096)
+plt.plot(FFT_freqs_500[:int(len(FFT_freqs_500)/2) + 1], FFT_500)
+plt.xlabel('Freq of modulation (Hz)')
+plt.ylabel('Amplitude')
+plt.xlim(0)
+plt.ylim(0)
+
+#"""
 # Plot sonogram
+"""
 # Contours:
 fig_sonogram_cont = plt.figure()
 contours = plt.contour(F, T, sp)
 plt.xlabel('Freq (Hz)')
-plt.xlim(0, 1000)
+#plt.xlim(800, 1200)
+plt.xlim(300,700)
+plt.ylim(1,1.25)
 plt.ylabel('Time (s)')
-
+"""
+"""
 # Surface:
 fig_sonogram_surf = plt.figure()
 ax_s = fig_sonogram_surf.gca(projection='3d')
 surf = ax_s.plot_surface(F, T, sp, linewidth=0, cmap=cm.jet)
 ax_s.set_xlabel('Freq (Hz)')
-ax_s.set_xlim(0, 1000)
+ax_s.set_xlim(500, 1500)
 ax_s.set_ylabel('Time (s)')
 ax_s.set_zlabel('Amplitude')
 
@@ -230,10 +214,10 @@ ax_s.set_zlabel('Amplitude')
 fig_sonogram_color = plt.figure()
 plt.pcolormesh(F, T, sp)
 plt.xlabel('Freq (Hz)')
-plt.xlim(0, 1000)
+plt.xlim(500, 1500)
 plt.ylabel('Time (s)')
 """
-
+#"""
 # Window 221
 # This is an example of a window that didn't work in the FFT window-sliding loop (sp = 0) - yet when recalculated worked fine
 fig_221_sig = plt.figure()
@@ -249,6 +233,8 @@ sp_221_calc = fft.rfft(window_221, n=width_W)
 plt.plot(f, np.abs(sp_221_calc))
 plt.xlim(0)
 plt.legend(['Spectrum', 'Recalculated Spectrum'])
+#"""
+
 # Display graphs
 plt.show()
 
