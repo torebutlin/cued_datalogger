@@ -23,6 +23,7 @@ def function_generator(t):
     """
     Creates a test function
     """
+    """
     f1 = func_1(t, 1000*2*np.pi, 5)
     #f2 = func_1(t, 4000*2*np.pi, 3)
     result = f1# + f2
@@ -31,10 +32,9 @@ def function_generator(t):
     #echo2 = 0.3*(f1[:int(f1.size/4)] + f2[:int(f2.size/4)])
     #result[int(result.size*3/4):] += echo2
     """
-    result = np.sin(500*2*np.pi*t)
+    result = np.sin(1000*2*np.pi*t)
     #result[:int(len(t)/4)] *= 0
     #result[int(len(t)*3/4):] *= 0
-    """
     return result
 
 
@@ -106,7 +106,7 @@ y = function_generator(t)
 # SONOGRAM       #
 ##################
 ## Calculate sonogram
-freqs, FT_t, FT = sliding_window_fft(t, y, fft_sample_freq=sample_freq, window_increment=64)
+freqs, FT_t, FT = sliding_window_fft(t, y, fft_sample_freq=sample_freq, window_increment=32)
 
 # Create grid of data points
 FREQS, FT_T = np.meshgrid(freqs, FT_t)
@@ -122,39 +122,18 @@ fig = plt.figure()
 plt.ion()
 plt.show()
 ax = fig.add_subplot(111)
-ax.set_xlim(0,500)
-ax.set_ylim(0,100)
-line1, = ax.plot(f, sp[0]) # Returns a tuple of line objects, thus the comma
+line1, = ax.plot(freqs, FT[0]) # Returns a tuple of line objects, thus the comma
 i=0
-while i < N_W:
+while i < len(FT):
     print("Window: " + str(i))
-    line1.set_ydata(sp[i])
+    line1.set_ydata(FT[i])
     plt.draw()
     plt.pause(0.01)
     i+=1
-""" 
 """
-## Trying to find the frequency of modulation
-# Amplitude-time plot at freq=500Hz:
-plt.figure()
-freq_500 = sp[:, 13]
-plt.plot(t_spectrogram, freq_500)
-plt.xlabel('Time (s)')
-plt.ylabel('Amplitude') 
-
-# Take FFT of slice at 500Hz
-plt.figure()
-FFT_500 = fft.rfft(freq_500)
-FFT_freqs_500 = fft.fftfreq(len(freq_500), 1/4096)
-plt.plot(FFT_freqs_500[:int(len(FFT_freqs_500)/2) + 1], FFT_500)
-plt.xlabel('Freq of modulation (Hz)')
-plt.ylabel('Amplitude')
-plt.xlim(0)
-plt.ylim(0)
-"""
-
 # Plot sonogram
 # Contours:
+"""
 fig_sonogram_cont = plt.figure()
 contours = plt.contour(FREQS, FT_T, FT)
 plt.xlabel('Freq (Hz)')
@@ -163,8 +142,9 @@ plt.xlabel('Freq (Hz)')
 #plt.ylim(1,1.25)
 plt.ylabel('Time (s)')
 
-"""
+
 # Surface:
+
 fig_sonogram_surf = plt.figure()
 ax_s = fig_sonogram_surf.gca(projection='3d')
 surf = ax_s.plot_surface(FREQS, FT_T, FT, linewidth=0, cmap=cm.jet)
@@ -172,7 +152,7 @@ ax_s.set_xlabel('Freq (Hz)')
 #ax_s.set_xlim(500, 1500)
 ax_s.set_ylabel('Time (s)')
 ax_s.set_zlabel('Amplitude')
-"""
+#"""
 """
 # Colourmap:
 fig_sonogram_color = plt.figure()
@@ -198,6 +178,26 @@ plt.xlim(0)
 plt.legend(['Spectrum', 'Recalculated Spectrum'])
 fact = np.abs(sp_221_calc)/np.abs(sp_221)
 """
+
+# 63 and 62 correspond to 992 and 1008 Hz
+fig = plt.figure()
+plt.ion()
+plt.show()
+ax = fig.add_subplot(111)
+line1, = ax.plot(FT_t, FT[:, 62])
+line2, = ax.plot(FT_t, FT[:, 63])
+
+i = 0
+while i < 19:
+    fs = 2 ** i
+    print("Freq: " + str(fs))
+    freqs, FT_t, FT = sliding_window_fft(t, y, fft_sample_freq=fs, window_increment=32)
+    FT = np.abs(FT)
+    line1.set_ydata(FT[:, 62])
+    line1.set_ydata(FT[:, 63])
+    plt.draw()
+    plt.pause(1)
+    i+=1
 
 # Display graphs
 plt.show()
