@@ -15,7 +15,7 @@ import pprint as pp
 class Recorder():
 #---------------- INITIALISATION METHODS -----------------------------------
     # TODO: Account for different audio format during plotting
-    def __init__(self,channels,rate,frames_per_buffer,device_name = None):
+    def __init__(self,channels = 1,rate = 44100,frames_per_buffer = 1024,device_name = None):
         self.channels = channels
         self.rate = rate
         self.frames_per_buffer = frames_per_buffer
@@ -65,6 +65,7 @@ class Recorder():
 
 #---------------- RECORDING METHODS -----------------------------------            
     # Currently it is using blocking method
+    # Will remove wave recording in the future. or make it an option???
     def record(self,duration):
         rc = wave.open(self.filename,'wb')
         rc.setnchannels(self.channels)
@@ -91,7 +92,7 @@ class Recorder():
 
         return np.hstack(data_array)
 
-    #TODO: Complete callback function for non-blocking method?????
+    # May consider the recording method to be non-blocking
     def record_callback(self,in_data,frame_count,time_info,status_flag):
         #TODO: insert code to record data
         return(data,pyaudio.paContinue)
@@ -140,52 +141,31 @@ class Recorder():
             print('Output latency: %.3e' % self.audio_stream.get_output_latency())
             print('Read Available: %i' % self.audio_stream.get_read_available())
             print('Write Available: %i' % self.audio_stream.get_write_available())
+            
+            self.stream_start()
+            
+    def stream_start(self):
             self.audio_stream.start_stream()
             
-    # TODO: Live oscilloscope here?
-    # TODO: Learn Python GUI and implement a button to stop and start recording
-    # Function for audio streaming for a limited time
-    def stream_audio(self):
-        return (self.signal_data)
-        '''stream = self.p.open(channels = self.channels,
-                         rate = self.rate,
-                         format = self.format,
-                         input = True,
-                         output = playback,
-                         frames_per_buffer = self.frames_per_buffer,
-                         input_device_index = self.device_index,
-                         stream_callback = self.stream_audio_callback)'''
-        
-                                
-        '''if draw: 
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.set_ylim(-5e4,5e4)
-            fig.show()
-        
-        self.audio_stream.start_stream()
-       
-        print('STREAMING...')
-        print(len(self.signal_data)) 
-        line = ax.plot(np.array(range(len(self.signal_data)))/self.rate,
-                       self.signal_data)[0]
-           
-        for i in range(duration*100):               
-            line.set_ydata(self.signal_data)
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-                
-        print('STREAMING END')'''
-        
-    def stream_stop(self):  
+    #def stream_audio(self):
+    #    return (self.signal_data)
+
+    def stream_stop(self):
+        self.signal_data *= 0 #np.array([0] * self.frames_per_buffer)
         self.audio_stream.stop_stream()
-        self.audio_stream.close()
-        self.audio_stream = None
-        self.signal_data = np.array([0] * self.frames_per_buffer)
+    
+    def stream_close(self):
+        if self.audio_stream.is_active():
+            if not self.audio_stream.is_stopped():
+                self.stream_stop()
+            self.audio_stream.close()
+            self.audio_stream = None
+            
         '''if draw:
             plt.close(fig)'''
-        
+#---------------- DESTRUCTOR??? METHODS -----------------------------------         
     def close(self):
+        self.stream_close()
         self.p.terminate()
         self.p = None
 
