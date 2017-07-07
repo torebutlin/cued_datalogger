@@ -12,16 +12,15 @@ from time import sleep
 
 def plot_test(x, y):
     plt.plot(x, y)
-    plt.draw()
-    sleep(0.01)
+    plt.show()
 
 def function_generator(t):
     """
     Creates a test function
     """
-    result = np.sin(1000*2*np.pi*t)
-    result[:int(t.shape[0]/4)] *= 0
-    result[int(t.shape[0]*3/4):] *= 0
+    result = np.sin(1000*2*np.pi*t) + np.sin(50*2*np.pi*t)
+    #result[:int(t.shape[0]/4)] *= 0
+    #result[int(t.shape[0]*3/4):] *= 0
     return result
 
 
@@ -30,31 +29,27 @@ def fft_of_window(signal, window_lower, window_upper, window_shape):
     Takes the Fourier Transform of a window of values in a signal
     """
     window_width = window_upper - window_lower
-    # plot_test(np.linspace(0, window_width, window_width), signal[window_lower:window_upper])
     # Scale window by window shape
     window_values = np.multiply(signal[window_lower:window_upper], window_shape)
-    # plot_test(np.linspace(0, len(window_values), len(window_values)), window_values)
     # Take FFT of scaled window
     return fft.rfft(window_values, n=window_width)
 
 
-def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window_increment=32, window_shape=-1):
+def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window_increment=32, window_shape='hanning'):
     """
     Takes successive Fourier Transforms of a window as it is slid across a 1D signal
     """
     ## Extend signal so that first time bin for FFT can be taken at t=0
     # This extends the signal so it has width/2 zeros before the signal and the same after the signal
-    signal_extended = np.concatenate((np.zeros(int(window_width/2)), signal, np.zeros(int(window_width/2))))
-    """
-    plt.figure("Signal_extended")
-    plt.plot(np.linspace(0, len(signal_extended), len(signal_extended)), signal_extended)
-    plt.show()
-    """
+    signal_extended = np.append(np.zeros(int(window_width/2)), signal)
+    signal_extended = np.append(signal_extended, np.zeros(int(window_width/2)))
 
     ## Set up window
     # Default: Hanning
-    #if window_shape == -1:
-    window_shape = np.hanning(window_width)
+    if window_shape == 'hanning':
+        window_shape = np.hanning(window_width)
+    else:
+        raise ValueError("Unrecognised window shape.")
     window_lower = 0
     window_upper = window_lower + window_width
 
@@ -62,9 +57,9 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
     FT = np.zeros((int(signal.size / window_width), int(window_width/2) + 1))
 
     ## Find associated frequencies of the FT
-    freqs = fft.fftfreq(window_width, (t[1] - t[0]) / fft_sample_freq)
+    freqs = fft.fftfreq(window_width, 1/fft_sample_freq) * 1/(fft_sample_freq *(t[1]-t[0]))
     # Take only positive freqs
-    freqs = freqs[:int(len(freqs)/2) + 1]
+    freqs = abs(freqs[:int(len(freqs)/2) + 1])
 
     ## Find associated time bins of the FT
     FT_t = np.linspace(0, t[-1], num=FT.shape[0])
@@ -72,17 +67,7 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
     ## Slide the window along and take FFTs
     for i in np.arange(FT.shape[0]):
         # Take FFT of window
-        print("FFTing " + str(i))
-        print("t=" + str(FT_t[i]))
-        #plot_test(np.linspace(0, len(signal_extended), len(signal_extended)), signal_extended)
-        if(FT_t[i] > 0.5 and FT_t[i] < 1.5):
-            print(window_lower)
-            print(window_upper)
-            print(signal[window_lower:window_upper])
-            plot_test(np.linspace(0, len(signal_extended), len(signal_extended)), signal_extended)
-            # plot_test(np.linspace(0, window_width, window_width), signal[window_lower:window_upper])
         FT[i] = fft_of_window(signal_extended, window_lower, window_upper, window_shape)
-        #print(FT[i])
         # Increment window
         window_lower += window_increment
         window_upper += window_increment
@@ -98,15 +83,8 @@ dt = 1e-4
 t = np.arange(0.0, duration, dt)
 # Create data
 y = function_generator(t)
-plt.figure()
-plt.ion()
-plt.show()
-"""
-plt.figure()
-plt.plot(t,y)
-plt.show()
-"""
 
+## Calculate sonogram
 freqs, FT_t, FT = sliding_window_fft(t, y)
 
 # Create grid of data points
@@ -120,7 +98,7 @@ FT = np.abs(FT)
 fig_sonogram_cont = plt.figure()
 contours = plt.contour(FREQS, FT_T, FT)
 plt.xlabel('Freq (Hz)')
-plt.xlim(0, 1000)
+#plt.xlim(0, 1000)
 plt.ylabel('Time (s)')
 
 

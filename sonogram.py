@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
-from scipy import signal
 from time import sleep
 
 # Function source
@@ -24,18 +23,18 @@ def function_generator(t):
     """
     Creates a test function
     """
-    """
-    f1 = func_1(t, 50*2*np.pi, 5)
-    #f2 = func_1(t, 243*2*np.pi, 3)
+    f1 = func_1(t, 1300*2*np.pi, 5)
+    #f2 = func_1(t, 4000*2*np.pi, 3)
     result = f1# + f2
-    echo1 = 0.5*(f1[:f1.size/2])# + f2[:f2.size/2])
-    result[result.size/2:] += echo1
-    echo2 = 0.3*(f1[:f1.size/4])# + f2[:f2.size/4])
-    result[result.size*3/4:] += echo2
+    echo1 = f1[:int(f1.size/2)] #+ f2[:int(f2.size/2)]
+    result[int(result.size/2):] += echo1
+    #echo2 = 0.3*(f1[:int(f1.size/4)] + f2[:int(f2.size/4)])
+    #result[int(result.size*3/4):] += echo2
     """
     result = np.sin(500*2*np.pi*t)
-    result[:int(len(t)/4)] *= 0
-    result[int(len(t)*3/4):] *= 0
+    #result[:int(len(t)/4)] *= 0
+    #result[int(len(t)*3/4):] *= 0
+    """
     return result
 
 
@@ -50,105 +49,72 @@ def fft_of_window(signal, window_lower, window_upper, window_shape):
     return fft.rfft(window_values, n=window_width)
 
 
-def sliding_window_fft(signal, signal_dt, fft_sample_freq, window_width, window_increment, window_shape=-1):
+def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window_increment=32, window_shape='hanning'):
     """
     Takes successive Fourier Transforms of a window as it is slid across a 1D signal
     """
     ## Extend signal so that first time bin for FFT can be taken at t=0
     # This extends the signal so it has width/2 zeros before the signal and the same after the signal
-    signal_extended = np.concatenate((np.zeros(window_width/2), signal, np.zeros(window_width/2)))
+    signal_extended = np.append(np.zeros(int(window_width/2)), signal)
+    signal_extended = np.append(signal_extended, np.zeros(int(window_width/2)))
 
     ## Set up window
     # Default: Hanning
-    if window_shape == -1:
+    if window_shape == 'hanning':
         window_shape = np.hanning(window_width)
+    else:
+        raise ValueError("Unrecognised window shape.")
     window_lower = 0
     window_upper = window_lower + window_width
 
-    ## Set up FFT
-    i = 0
-    FFT = np.zeros((np.floor(signal.size / window_width), window_width/2 + 1))
+    ## Set up FT
+    FT = np.zeros((int(signal.size / window_width), int(window_width/2) + 1))
+
+    ## Find associated frequencies of the FT
+    freqs = fft.fftfreq(window_width, 1/fft_sample_freq)
+    # Take only positive freqs
+    freqs = abs(freqs[:int(len(freqs)/2) + 1])
+
+    ## Find associated time bins of the FT
+    FT_t = np.linspace(0, t[-1], num=FT.shape[0])
 
     ## Slide the window along and take FFTs
-    for i in np.arange(FFT.shape[0]):
+    for i in np.arange(FT.shape[0]):
         # Take FFT of window
-        FFT[i] = fft_of_window(signal_extended, window_lower, window_upper, window_shape)
+        FT[i] = fft_of_window(signal_extended, window_lower, window_upper, window_shape)
         # Increment window
         window_lower += window_increment
         window_upper += window_increment
+        i+=1
 
-    ## Find associated frequencies of the FFT
-    freqs = fft.fftfreq(window_width, signal_dt * 1/fft_sample_freq)
-
-    return FFT, freqs
+    return freqs, FT_t, FT
 
 
-# Sampling information:
-# Sampling frequency
-f_s = 4096
-# Sampling interval
-dt_s = 1/f_s
-
+# Define sampling frequency
+sample_freq = 4096
 ## Create time series
 # Length of time series
-len_t = 2
-# Number of points
-# N_t = 4e3
+len_t = 10
 # Interval between points
-dt_t = 2e-5
+dt_t = 1/sample_freq
 # Create time vector
 t = np.arange(0.0, len_t, dt_t)
 # Create data
 y = function_generator(t)
-
+#plt.figure()
+#plt.plot(t, y)
 
 ##################
 # SONOGRAM       #
 ##################
-# Set up variables for window of fft
-width_W = 256
-step_W = 32
-N_W = int(y.size/step_W)
-
-# Create data structure to store spectrogram in
-t_spectrogram = np.linspace(t[int(width_W/2)], t[int(-(width_W/2))], N_W)
-f = fft.fftfreq(width_W, dt_s) * dt_s / dt_t
-sp = np.zeros((t_spectrogram.size, int(width_W/2) + 1))
-
-
-# Set window properties
-lower_W = 0
-upper_W = lower_W + width_W
-i = 0
-
-window_221 = 0
-sp_221 = 0
-
-# Take FFT of sliding window
-# Repeat until number of spectra reached
-#while i < N_W:
-
-while upper_W < y.size:
-    print("Taking fft of window {}".format(i))
-    sp[i] = fft_of_window(y, lower_W, upper_W, np.hanning(width_W))
-    if i == 221:
-        window_221 = np.multiply(y[lower_W:upper_W], np.hanning(width_W))
-        sp_221 = sp[i]
-    # Next spectrum
-    i += 1
-    # Increment lower bound of window
-    lower_W += step_W
-    # Increment uppper bound of window
-    upper_W += step_W
-
-# Take only positive frequencies
-f = f[:int(len(f)/2) + 1]
+## Calculate sonogram
+freqs, FT_t, FT = sliding_window_fft(t, y, fft_sample_freq=sample_freq, window_increment=64)
 
 # Create grid of data points
-F, T = np.meshgrid(f, t_spectrogram)
+FREQS, FT_T = np.meshgrid(freqs, FT_t)
 
 # Find magnitude of freqency components
-sp = np.abs(sp)
+FT = np.abs(FT)
 
 """
 Test
@@ -169,7 +135,7 @@ while i < N_W:
     plt.pause(0.01)
     i+=1
 """ 
-
+"""
 ## Trying to find the frequency of modulation
 # Amplitude-time plot at freq=500Hz:
 plt.figure()
@@ -187,37 +153,36 @@ plt.xlabel('Freq of modulation (Hz)')
 plt.ylabel('Amplitude')
 plt.xlim(0)
 plt.ylim(0)
-
-#"""
-# Plot sonogram
 """
+
+# Plot sonogram
 # Contours:
 fig_sonogram_cont = plt.figure()
-contours = plt.contour(F, T, sp)
+contours = plt.contour(FREQS, FT_T, FT)
 plt.xlabel('Freq (Hz)')
 #plt.xlim(800, 1200)
-plt.xlim(300,700)
-plt.ylim(1,1.25)
+#plt.xlim(300,700)
+#plt.ylim(1,1.25)
 plt.ylabel('Time (s)')
-"""
+
 """
 # Surface:
 fig_sonogram_surf = plt.figure()
 ax_s = fig_sonogram_surf.gca(projection='3d')
-surf = ax_s.plot_surface(F, T, sp, linewidth=0, cmap=cm.jet)
+surf = ax_s.plot_surface(FREQS, FT_T, FT, linewidth=0, cmap=cm.jet)
 ax_s.set_xlabel('Freq (Hz)')
-ax_s.set_xlim(500, 1500)
+#ax_s.set_xlim(500, 1500)
 ax_s.set_ylabel('Time (s)')
 ax_s.set_zlabel('Amplitude')
-
+"""
+"""
 # Colourmap:
 fig_sonogram_color = plt.figure()
-plt.pcolormesh(F, T, sp)
+plt.pcolormesh(FREQS, FT_T, FT)
 plt.xlabel('Freq (Hz)')
 plt.xlim(500, 1500)
 plt.ylabel('Time (s)')
-"""
-#"""
+
 # Window 221
 # This is an example of a window that didn't work in the FFT window-sliding loop (sp = 0) - yet when recalculated worked fine
 fig_221_sig = plt.figure()
@@ -233,7 +198,8 @@ sp_221_calc = fft.rfft(window_221, n=width_W)
 plt.plot(f, np.abs(sp_221_calc))
 plt.xlim(0)
 plt.legend(['Spectrum', 'Recalculated Spectrum'])
-#"""
+fact = np.abs(sp_221_calc)/np.abs(sp_221)
+"""
 
 # Display graphs
 plt.show()
