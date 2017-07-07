@@ -23,7 +23,7 @@ def function_generator(t):
     """
     Creates a test function
     """
-    f1 = func_1(t, 1300*2*np.pi, 5)
+    f1 = func_1(t, 1000*2*np.pi, 5)
     #f2 = func_1(t, 4000*2*np.pi, 3)
     result = f1# + f2
     echo1 = f1[:int(f1.size/2)] #+ f2[:int(f2.size/2)]
@@ -71,9 +71,7 @@ def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window
     FT = np.zeros((int(signal.size / window_width), int(window_width/2) + 1))
 
     ## Find associated frequencies of the FT
-    freqs = fft.fftfreq(window_width, 1/fft_sample_freq)
-    # Take only positive freqs
-    freqs = abs(freqs[:int(len(freqs)/2) + 1])
+    freqs = fft.rfftfreq(window_width, 1./fft_sample_freq)
 
     ## Find associated time bins of the FT
     FT_t = np.linspace(0, t[-1], num=FT.shape[0])
