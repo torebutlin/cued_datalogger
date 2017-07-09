@@ -10,7 +10,7 @@ matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 
-import Recorder as rcd
+import myRecorder as rcd
 import tkinter as tk
 from tkinter import messagebox
 
@@ -52,7 +52,7 @@ class MyApp(tk.Tk):
         f = Figure(figsize=(5, 4), dpi=100)
         ax = f.add_subplot(111)
         ax.set_ylim(-5e4,5e4)
-        self.line = ax.plot(range(len(self.rec.signal_data)),self.rec.signal_data)[0]
+        self.line = ax.plot(range(len(self.rec.get_buffer())),self.rec.get_buffer())[0]
         
         self.canvas = FigureCanvasTkAgg(f, master=self.frame)
         self.canvas.show()
@@ -75,7 +75,7 @@ class MyApp(tk.Tk):
 
     #------------- UI callback methods--------------------------------    
     def update_line(self):
-        self.line.set_ydata(self.rec.signal_data)
+        self.line.set_ydata(self.rec.get_buffer())
         self.canvas.draw()
         self.after_id = self.after(1, self.update_line)
                             

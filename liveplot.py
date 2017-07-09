@@ -14,7 +14,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 #import numpy as np
 
-import Recorder as rcd
+import myRecorder as rcd
 
 #--------------------- Canvas Widget Class------------------------------------
 class MyMplCanvas(FigureCanvas):
@@ -65,7 +65,7 @@ class Example(QMainWindow):
         vbox.addWidget(self.canvas)
         self.canvas.axes.set_ylim(-5e4,5e4)
         self.line, = self.canvas.axes.plot(
-                range(len(self.rec.signal_data)),self.rec.signal_data)
+                range(len(self.rec.get_buffer())),self.rec.get_buffer())
         
         # Set up the button
         btn = QPushButton('Switch',self.main_widget)
@@ -95,7 +95,7 @@ class Example(QMainWindow):
         self.playing = not self.playing
         
     def update_line(self):
-        self.line.set_ydata(self.rec.signal_data)
+        self.line.set_ydata(self.rec.get_buffer())
         self.canvas.draw()
         
     #----------------Overrding methods------------------------------------
