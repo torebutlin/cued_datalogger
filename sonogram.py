@@ -49,7 +49,7 @@ def fft_of_window(signal, window_lower, window_upper, window_shape):
     return fft.rfft(window_values, n=window_width)
 
 
-def sliding_window_fft(t, signal, fft_sample_freq=4096, window_width=256, window_increment=32, window_shape='hanning'):
+def sliding_window_fft(t, signal, fft_sample_freq, window_width=256, window_increment=32, window_shape='hanning'):
     """
     Takes successive Fourier Transforms of a window as it is slid across a 1D signal
     """
@@ -99,8 +99,8 @@ dt_t = 1/sample_freq
 t = np.arange(0.0, len_t, dt_t)
 # Create data
 y = function_generator(t)
-#plt.figure()
-#plt.plot(t, y)
+plt.figure()
+plt.plot(t, y)
 
 ##################
 # SONOGRAM       #
@@ -181,24 +181,27 @@ fact = np.abs(sp_221_calc)/np.abs(sp_221)
 
 # 63 and 62 correspond to 992 and 1008 Hz
 fig = plt.figure()
-plt.ion()
-plt.show()
-ax = fig.add_subplot(111)
-line1, = ax.plot(FT_t, FT[:, 62])
-line2, = ax.plot(FT_t, FT[:, 63])
+ax1 = fig.add_subplot(221)
+line1, = ax1.plot(FT_t, FT[:, 62])
+line2, = ax1.plot(FT_t, FT[:, 63])
+ax2 = fig.add_subplot(222)
+line3 = ax2.contour(FREQS, FT_T, FT, linewidth=0, cmap=cm.jet)
 
-i = 0
-while i < 19:
+i = 10
+while i < 20:
     fs = 2 ** i
     print("Freq: " + str(fs))
     freqs, FT_t, FT = sliding_window_fft(t, y, fft_sample_freq=fs, window_increment=32)
-    FT = np.abs(FT)
-    line1.set_ydata(FT[:, 62])
-    line1.set_ydata(FT[:, 63])
-    plt.draw()
-    plt.pause(1)
+    FREQS, FT_T = np.meshgrid(freqs, FT_t)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221)
+    line1, = ax1.plot(FT_t, FT[:, 62])
+    line2, = ax1.plot(FT_t, FT[:, 63])
+    ax2 = fig.add_subplot(222)
+    line3 = ax2.contour(FREQS, FT_T, FT, linewidth=0, cmap=cm.jet)
+    plt.show()
     i+=1
 
 # Display graphs
-plt.show()
+#plt.show()
 
