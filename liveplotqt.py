@@ -17,25 +17,6 @@ import numpy as np
 import pyqtgraph as pg
 import myRecorder as rcd
 
-#--------------------- Canvas Widget Class------------------------------------
-class MyMplCanvas(FigureCanvas):
-    """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-
-        self.compute_initial_figure()
-        
-        FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
-        
-        FigureCanvas.setSizePolicy(self,
-                                   QSizePolicy.Expanding,
-                                   QSizePolicy.Expanding)
-        FigureCanvas.updateGeometry(self)
-
-    def compute_initial_figure(self):
-        pass
 #--------------------- The App Class------------------------------------
 class Example(QMainWindow):
     def __init__(self):
@@ -46,7 +27,7 @@ class Example(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = rcd.Recorder(num_chunk = 8,
+        self.rec = rcd.Recorder(num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         self.rec.stream_init(playback = True)
         self.playing = True
@@ -64,17 +45,24 @@ class Example(QMainWindow):
         self.main_widget = QWidget(self)
         vbox = QVBoxLayout(self.main_widget)
         
-        '''self.canvas = MyMplCanvas(self.main_widget, width=5, height=4, dpi=100)
-        vbox.addWidget(self.canvas)
-        self.canvas.axes.set_ylim(-5e4,5e4)
-        self.line, = self.canvas.axes.plot(
-                range(len(self.rec.get_buffer())),self.rec.get_buffer())'''
-        self.canvas = pg.GraphicsWindow()
-        vbox.addWidget(self.canvas)
-        self.canvasplot = self.canvas.addPlot(title="My Plot")
-        self.canvasplot.disableAutoRange(axis=None)
-        self.canvasplot.setRange(xRange = (0,1024*8),yRange = (-2**15, 2**15))
-        self.line = self.canvasplot.plot(pen='r')
+        # Set up time domain plot
+        self.timeplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
+        vbox.addWidget(self.timeplotcanvas)
+        self.timeplot = self.timeplotcanvas.getPlotItem()
+        self.timeplot.setLabels(title="Time Plot")
+        self.timeplot.disableAutoRange(axis=None)
+        self.timeplot.setRange(xRange = (0,1024*6),yRange = (-2**15, 2**15))
+        self.timeplotline = self.timeplot.plot(pen='g')
+        
+        # Set up PSD plot
+        self.fftplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
+        vbox.addWidget(self.fftplotcanvas)
+        self.fftplot = self.fftplotcanvas.getPlotItem()
+        self.fftplot.setLabels(title="PSD Plot")
+        self.fftplot.disableAutoRange(axis=None)
+        self.fftplot.setRange(xRange = (0,1024*6/2),yRange = (0, 2**15))
+        self.fftplotline = self.fftplot.plot(pen = 'y')
+        
         self.update_line()
         
         # Set up the button
@@ -106,7 +94,14 @@ class Example(QMainWindow):
         
     def update_line(self):
         data = self.rec.get_buffer()
-        self.line.setData(data.reshape((len(data),)))
+        data = data.reshape((len(data),))
+        window = np.hanning(data.shape[0])
+        fft_data = np.fft.rfft(window * data)
+        psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum()
+        #print(len(psd_data))
+        self.timeplotline.setData(y = data)
+        #self.fftplotline.setData(abs(fft_data))
+        self.fftplotline.setData(y = psd_data** 0.5)
         #self.canvas.draw()
         
     #----------------Overrding methods------------------------------------

@@ -174,7 +174,7 @@ class Recorder():
         self.audio_stream.start_stream()
 
     def stream_stop(self):
-        self.signal_data *= 0 #np.array([0] * self.chunk_size)
+        #self.signal_data *= 0 #np.array([0] * self.chunk_size)
         #self.buffer *= 0
         self.audio_stream.stop_stream()
     
