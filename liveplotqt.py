@@ -5,13 +5,13 @@ Created on Wed Jul  5 13:12:34 2017
 @author: eyt21
 """
 import sys
-from PyQt5.QtWidgets import (QWidget, QToolTip,QVBoxLayout,QMainWindow,
-    QPushButton, QApplication, QMessageBox, QDesktopWidget,QSizePolicy)
+from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QMainWindow,
+    QPushButton, QApplication, QMessageBox, QDesktopWidget)
 #from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import QCoreApplication,QTimer
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+#from matplotlib.figure import Figure
 import numpy as np
 
 import pyqtgraph as pg
@@ -31,7 +31,9 @@ class Example(QMainWindow):
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         self.rec.stream_init(playback = True)
         self.playing = True
-        
+        data = self.rec.get_buffer()
+        self.timedata = np.arange(data.shape[0]) /self.rec.rate #change to put sampling rate
+        self.freqdata = np.arange(round(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
         # Construct UI        
         self.initUI()
         
@@ -49,34 +51,37 @@ class Example(QMainWindow):
         self.timeplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
         vbox.addWidget(self.timeplotcanvas)
         self.timeplot = self.timeplotcanvas.getPlotItem()
-        self.timeplot.setLabels(title="Time Plot")
+        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
         self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setRange(xRange = (0,1024*6),yRange = (-2**15, 2**15))
+        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-2**7,2**7)) #change to put chunk size and all that
         self.timeplotline = self.timeplot.plot(pen='g')
+        #self.timeplotline.setData()
         
         # Set up PSD plot
         self.fftplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
         vbox.addWidget(self.fftplotcanvas)
         self.fftplot = self.fftplotcanvas.getPlotItem()
-        self.fftplot.setLabels(title="PSD Plot")
+        self.fftplot.setLabels(title="PSD Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
-        self.fftplot.setRange(xRange = (0,1024*6/2),yRange = (0, 2**15))
+        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8)) #change to put chunk size and all that
         self.fftplotline = self.fftplot.plot(pen = 'y')
+        print(type(self.fftplotline))
+        self.fftplotline.setDownsampling(auto = True) 
         
         self.update_line()
         
         # Set up the button
-        btn = QPushButton('Switch',self.main_widget)
-        btn.resize(btn.sizeHint())
-        btn.pressed.connect(self.toggle_rec)
-        vbox.addWidget(btn)
+        self.btn = QPushButton('Pause',self.main_widget)
+        self.btn.resize(self.btn.sizeHint())
+        self.btn.pressed.connect(self.toggle_rec)
+        vbox.addWidget(self.btn)
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
         timer = QTimer(self)
         timer.timeout.connect(self.update_line)
-        timer.start(0.023)
+        timer.start(23.2)
     
     def center(self):
         qr = self.frameGeometry()
@@ -88,8 +93,10 @@ class Example(QMainWindow):
     def toggle_rec(self):
         if self.playing:
             self.rec.stream_stop()
+            self.btn.setText('Resume')
         else:
             self.rec.stream_start()
+            self.btn.setText('Pause')
         self.playing = not self.playing
         
     def update_line(self):
@@ -98,10 +105,9 @@ class Example(QMainWindow):
         window = np.hanning(data.shape[0])
         fft_data = np.fft.rfft(window * data)
         psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum()
-        #print(len(psd_data))
-        self.timeplotline.setData(y = data)
+        self.timeplotline.setData(x = self.timedata, y = data)
         #self.fftplotline.setData(abs(fft_data))
-        self.fftplotline.setData(y = psd_data** 0.5)
+        self.fftplotline.setData(x = self.freqdata, y = psd_data** 0.5)
         #self.canvas.draw()
         
     #----------------Overrding methods------------------------------------

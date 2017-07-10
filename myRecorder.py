@@ -24,7 +24,7 @@ class Recorder():
         self.filename = None
         self.p = None
         self.device_index = 0;
-        self.signal_data = np.array([0] * self.chunk_size)
+        self.signal_data = np.array([0] * self.chunk_size) # 
         self.audio_stream = None
         self.num_chunk = num_chunk;
         
@@ -79,18 +79,22 @@ class Recorder():
     # Currently it is using blocking method
     # Will remove wave recording in the future. or make it an option???
     def record(self,duration):
+        # Open a wave file (May be removed)
         rc = wave.open(self.filename,'wb')
         rc.setnchannels(self.channels)
         rc.setsampwidth(self.p.get_sample_size(pyaudio.paInt16))
         rc.setframerate(self.rate)
         data_array = []
+        # TODO: Move this to a new method
         input_stream = self.p.open(channels = self.channels,
                          rate = self.rate,
                          format = self.format,
                          input = True,
                          chunk_size = self.chunk_size,
                          input_device_index = self.device_index)
-
+        # TODO: Store the current buffer to a new variable (may require copying)
+        
+        # TODO: Start the recording and append the data 
         print('RECORDING...')
         for _ in range(int(self.rate/self.chunk_size * duration)):
             data = input_stream.read(self.chunk_size)
@@ -99,9 +103,11 @@ class Recorder():
 
         print('RECORDING END')
         rc.close()
+        
+        # TODO: Move this to a new method
         input_stream.stop_stream()
         input_stream.close()
-
+        # Move this to a new method
         return np.hstack(data_array)
 
     # May consider the recording method to be non-blocking
@@ -144,7 +150,8 @@ class Recorder():
     def get_buffer(self):
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
-                           self.buffer.shape[2]))
+                           self.buffer.shape[2])) / 2**7
+                           
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
@@ -184,6 +191,7 @@ class Recorder():
                 self.stream_stop()
             self.audio_stream.close()
             self.audio_stream = None
+#----------------- DECORATOR METHODS --------------------------------------
             
 #---------------- DESTRUCTOR??? METHODS -----------------------------------         
     def close(self):
