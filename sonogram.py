@@ -90,7 +90,7 @@ def sonogram(signal, t):
 duration = 10.0
 t = np.arange(0.0, duration, 1/SAMPLE_FREQ)
 signal = function_generator(t)
-plt.figure()
+plt.figure("Signal")
 plt.plot(t, signal)
 
 sonogram(signal, t)
