@@ -14,16 +14,12 @@ WINDOW_INCREMENT = 32
 
 
 def func_1(t, w, x, k=0):
-    """
-    A simple decaying sine wave function
-    """
+    """A simple decaying sine wave function."""
     return np.exp((1j*w - x)*t)
 
 
 def function_generator(t):
-    """
-    A function with echoes
-    """
+    """A simple function generator with echoes."""
     f1 = func_1(t, 2000*2*np.pi, 2)
     f2 = func_1(t, 500*2*np.pi, 1)
     # Create an echo of one of the functions

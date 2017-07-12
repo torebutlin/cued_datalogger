@@ -4,12 +4,6 @@ Author: Theo Brown (tab53)
 Date: July 2017
 """
 
-"""
-Sonogram
-Author: Theo Brown (tab53)
-Date: July 2017
-"""
-
 from numpy.fft import rfft, rfftfreq
 import numpy as np
 import pyqtgraph as pg
@@ -33,9 +27,9 @@ def function_generator(t):
     f1 = func_1(t, 2000*2*np.pi, 2)
     f2 = func_1(t, 500*2*np.pi, 1)
     # Create an echo of one of the functions
-    f1[np.floor(f1.size/2):] += f1[:np.floor(f1.size/2)]
+    f1[f1.size//2:] += f1[:f1.size//2]
     result = f1 + f2
-    return result
+    return np.real(result)
 
 
 def window_fft(signal, window_lower, window_upper, window_shape):
@@ -51,18 +45,18 @@ def sliding_window_fft(signal, t, window_shape):
     """
     Takes the FT of a shaped window as it is incremented across a signal
     """
-    num_windows = np.floor(signal.size / WINDOW_INCREMENT)
+    num_windows = signal.size // WINDOW_INCREMENT
 
     # Create the array to store the FT results in
-    FT = np.zeros((num_windows, WINDOW_WIDTH/2 + 1))
+    FT = np.zeros((num_windows, WINDOW_WIDTH//2 + 1))
 
     # Find the associated time vector and frequencies for the FT
     times = np.linspace(0, t[-1], num=num_windows)
     freqs = rfftfreq(WINDOW_WIDTH, 1/SAMPLE_FREQ)
 
     # Extend the signal so that the window can be slid off the ends
-    signal_extended = np.append(np.zeros(int(WINDOW_WIDTH/2)), signal)
-    signal_extended = np.append(signal_extended, np.zeros(int(WINDOW_WIDTH/2)))
+    signal_extended = np.append(np.zeros(WINDOW_WIDTH//2), signal)
+    signal_extended = np.append(signal_extended, np.zeros(WINDOW_WIDTH//2))
 
     # Iterate through the signal taking FTs of each window
     for i in np.arange(num_windows):
@@ -87,19 +81,7 @@ def sonogram(signal, t):
     # Convert the time and freq to a mesh (for plotting in 3d)
     F_bins, T_bins = np.meshgrid(freqs, times)
 
-    sonogram_plotWidget = pg.plot(title="Sonogram")
-    sonogram_plotWidget.plot(F_bins, T_bins, FT)
     
-    return sonogram
-
-
-plotWidget = pg.plot(title="Three plot curves")
-for i in range(3):
-    plotWidget.plot(x, y[i], pen=(i,3))  ## setting pen=(i,3) automaticaly creates three different-colored pens
-
-
-
-
 # Create the input signal
 duration = 10.0
 t = np.arange(0.0, duration, 1/SAMPLE_FREQ)
