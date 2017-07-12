@@ -9,8 +9,7 @@ def window_fft(signal, window_lower, window_upper, window_shape):
     return np.abs(rfft(window))
 
 
-def sliding_window_fft(signal, t, window_shape, sample_freq, window_width, window_increment):
-    """Takes the FT of a shaped window as it is incremented across a signal."""
+def calculate_sonogram(signal, t, sample_freq, window_width, window_increment): 
     
     num_windows = signal.size // window_increment
 
@@ -20,6 +19,8 @@ def sliding_window_fft(signal, t, window_shape, sample_freq, window_width, windo
     # Find the associated time vector and frequencies for the FT
     times = np.linspace(0, t[-1], num=num_windows)
     freqs = rfftfreq(window_width, 1/sample_freq)
+    # Convert the time and freq to a mesh (for plotting in 3d)
+    F_bins, T_bins = np.meshgrid(freqs, times)
 
     # Extend the signal so that the window can be slid off the ends
     signal_extended = np.append(np.zeros(window_width//2), signal)
@@ -30,6 +31,10 @@ def sliding_window_fft(signal, t, window_shape, sample_freq, window_width, windo
         lower = i * window_increment
         upper = lower + window_width
 
-        FT[i] = window_fft(signal_extended, lower, upper, window_shape)
+        FT[i] = window_fft(signal_extended, lower, upper, np.hanning(window_width))
 
-    return freqs, times, FT
+    
+    return F_bins, T_bins, FT
+
+
+        
