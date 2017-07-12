@@ -9,26 +9,24 @@ Recorder class:
 # Add codes to install pyaudio if pyaudio is not installed
 import pyaudio
 import numpy as np
-import wave
 import pprint as pp
+import copy as cp
 
 class Recorder():
 #---------------- INITIALISATION METHODS -----------------------------------
-    # TODO: Account for different audio format during plotting
     def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
                  num_chunk = 4,device_name = None):
         self.channels = channels
         self.rate = rate
         self.chunk_size = chunk_size
         self.format = pyaudio.paInt16
-        self.filename = None
         self.p = None
         self.device_index = 0;
-        self.signal_data = np.array([0] * self.chunk_size) # 
         self.audio_stream = None
-        self.num_chunk = num_chunk;
+        self.num_chunk = num_chunk;        
         
         self.open_recorder()
+        
         if device_name != None:
             self.set_device_by_name(str(device_name))
             
@@ -37,7 +35,32 @@ class Recorder():
     def open_recorder(self):
         if self.p == None:
             self.p = pyaudio.PyAudio()
+        self.recording = False
+        self.recorded_data = []
+        
+        ''' Note to self:
+            Each data is int16, so it is 2 bytes per sample.
+            A 3 sec recording contains 132300 samples, but 
+            considering the chunk is only takes 1024 samples, 
+            the nearest possible samples to take is 132096,
+            so it would take up 264192 bytes(258kB)
             
+            A 1 min recording would take about 5MB, while
+            a 30 min recording would take about 151.4MB
+            
+            Supppose that an array can only contain 2GB (memory limit),
+            then the longest possible recording is 24347 secs, which is
+            406 mins, which is 6.76 hours.
+            
+            If instead a limit of 500MB is imposed, then
+            the longest recording time is 5944 secs, which is 99 mins.
+            
+            However, data being processed later on would probably be
+            int32 data type (default numpy array), hence the memory is doubled. 
+            Taking that into consideration, the longest possible recording time 
+            is then halved.''' 
+                     
+    # Set up the buffer         
     def allocate_buffer(self):
         self.buffer = np.zeros(shape = (self.num_chunk,
                                         self.chunk_size,
@@ -47,6 +70,8 @@ class Recorder():
 #---------------- DEVICE SETTING METHODS -----------------------------------            
      # Set the recording audio device by name, 
      # revert to default if no such device found
+     # TODO: Change to do Regular Expression???
+     # TODO: Pick a device that has input channels
     def set_device_by_name(self, name):
         try:
             self.set_device_by_index(self.available_devices().index(name))
@@ -63,11 +88,13 @@ class Recorder():
         return ([ self.p.get_device_info_by_index(i)['name'] 
                   for i in range(self.p.get_device_count())] )
     
+    # Set the selected device by index  
     def set_device_by_index(self,index):
        # TODO: Add check for invalid index input
         self.device_index = index;
         print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
-        
+    
+    # Display the current selected device info      
     def current_device_info(self):
         pp.pprint(self.p.get_device_info_by_index(self.device_index))
             
@@ -75,90 +102,45 @@ class Recorder():
     def set_filename(self,filename):
         self.filename = filename
         
-#---------------- RECORDING METHODS -----------------------------------            
-    # Currently it is using blocking method
-    # Will remove wave recording in the future. or make it an option???
-    def record(self,duration):
-        # Open a wave file (May be removed)
-        rc = wave.open(self.filename,'wb')
-        rc.setnchannels(self.channels)
-        rc.setsampwidth(self.p.get_sample_size(pyaudio.paInt16))
-        rc.setframerate(self.rate)
-        data_array = []
-        # TODO: Move this to a new method
-        input_stream = self.p.open(channels = self.channels,
-                         rate = self.rate,
-                         format = self.format,
-                         input = True,
-                         chunk_size = self.chunk_size,
-                         input_device_index = self.device_index)
-        # TODO: Store the current buffer to a new variable (may require copying)
-        
-        # TODO: Start the recording and append the data 
-        print('RECORDING...')
-        for _ in range(int(self.rate/self.chunk_size * duration)):
-            data = input_stream.read(self.chunk_size)
-            rc.writeframes(data)
-            data_array.append(np.fromstring(data,dtype = np.int16))
-
-        print('RECORDING END')
-        rc.close()
-        
-        # TODO: Move this to a new method
-        input_stream.stop_stream()
-        input_stream.close()
-        # Move this to a new method
-        return np.hstack(data_array)
-
-    # May consider the recording method to be non-blocking
-    def record_callback(self,in_data,frame_count,time_info,status_flag):
-        #TODO: insert code to record data
-        return(data,pyaudio.paContinue)
-    
-    # Play back a recording    
-    def play_recording(self,filename = None):
-        if filename == None:
-            filename = self.filename
-        
-        if filename != None:
-            wf = wave.open(filename,'rb')
-
-            output_stream = self.p.open(format = self.p.get_format_from_width(wf.getsampwidth()),
-                            channels = wf.getnchannels(),
-                            rate = wf.getframerate(),
-                            output = True)
-            
-            data = wf.readframes(self.chunk_size)
-            print('PLAYBACK...')
-            while len(data)>0:
-                output_stream.write(data)
-                data = wf.readframes(self.chunk_size)
-            print('PLAYBACK STOP')
-            
-            wf.close()
-            output_stream.stop_stream()
-            output_stream.close()
-
-#---------------- BUFFER METHODS -----------------------------------
+#---------------- DATA METHODS -----------------------------------
+    # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return np.array(np.frombuffer(data, dtype = np.int16).reshape((-1,self.channels)))
+        return np.frombuffer(data, dtype = np.int16).reshape((-1,self.channels))
     
+#---------------- BUFFER METHODS -----------------------------------
+    # Write the data obtained into buffer and move to the next chunk   
     def write_buffer(self,data):
         self.buffer[self.next_chunk,:,:] = self.audiodata_to_array(data)
         self.next_chunk = (self.next_chunk + 1) % self.num_chunk
-        
+    
+    # Return the buffer data as a 2D array by stitching the chunks together  
     def get_buffer(self):
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
                            self.buffer.shape[2])) / 2**7
+
+#---------------- RECORDING METHODS -----------------------------------
+    # Append the current chunk(which is before next_chunk) to recorded data            
+    def record_data(self):
+        data = cp.copy(self.buffer[self.next_chunk-1])
+        self.recorded_data.append(data)
+        
+    # Return the recorded data as 2D numpy array (similar to get_buffer)    
+    def flush_record_data(self):
+        flushed_data = np.array(self.recorded_data)
+        self.recorded_data = []
+        return flushed_data.reshape((flushed_data.shape[0] * flushed_data.shape[1],
+                           flushed_data.shape[2])) / 2**7
                            
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
         self.write_buffer(self.audiodata_to_array(in_data))
-        self.signal_data = self.buffer[self.next_chunk-1]
+        if self.recording:
+            self.record_data()
         return(in_data,pyaudio.paContinue)
     
+    # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback):
         if self.audio_stream == None:
             self.audio_stream = self.p.open(channels = self.channels,
@@ -177,14 +159,14 @@ class Recorder():
             
             self.stream_start()
             
+    # Start the streaming
     def stream_start(self):
         self.audio_stream.start_stream()
-
+    # Stop the streaming
     def stream_stop(self):
-        #self.signal_data *= 0 #np.array([0] * self.chunk_size)
-        #self.buffer *= 0
         self.audio_stream.stop_stream()
-    
+        
+    # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         if self.audio_stream.is_active():
             if not self.audio_stream.is_stopped():
@@ -193,7 +175,8 @@ class Recorder():
             self.audio_stream = None
 #----------------- DECORATOR METHODS --------------------------------------
             
-#---------------- DESTRUCTOR??? METHODS -----------------------------------         
+#---------------- DESTRUCTOR??? METHODS -----------------------------------
+    # Close the audio object, to be called if streaming is no longer needed        
     def close(self):
         self.stream_close()
         self.p.terminate()
