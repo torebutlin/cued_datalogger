@@ -35,6 +35,11 @@ class SonogramPlot(MatplotlibCanvas):
         F_bins, T_bins = np.meshgrid(freqs, times)
 
         self.axes.contour(F_bins, T_bins, FT)
+    
+    def update_plot(self, window_width):
+        self.window_width = window_width
+
+        self.init_plot(self)
 
 
 class SonogramWidget(QWidget):
@@ -66,7 +71,7 @@ class SonogramWidget(QWidget):
         
         self.window_width_slider.valueChanged.connect(self.window_width_spinbox.setValue)
         self.window_width_spinbox.valueChanged.connect(self.window_width_slider.setValue)
-        
+        self.window_width_slider.valueChanged.connect(self.sonogram_plot.update_plot)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.window_width_label)
@@ -101,6 +106,8 @@ if __name__ == '__main__':
     duration = 10.0
     t = np.arange(0.0, duration, 1/4096)
     signal = function_generator(t)
+    
+    app = 0
     
     app = QApplication(sys.argv)
     sonogram = SonogramWidget(signal, t)

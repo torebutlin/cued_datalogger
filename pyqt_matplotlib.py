@@ -22,3 +22,6 @@ class MatplotlibCanvas(FigureCanvas):
 
     def init_plot(self):
         pass
+    
+    def update_plot(self):
+        pass
