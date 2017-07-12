@@ -11,7 +11,6 @@ from pyqt_matplotlib import MatplotlibCanvas
 from scipy.signal import spectrogram, get_window
 
 
-
 class SonogramPlot(MatplotlibCanvas):
     def __init__(self, sig, t, sample_freq, window_width, window_increment):
         self.sig = sig
@@ -21,8 +20,9 @@ class SonogramPlot(MatplotlibCanvas):
         self.window_increment = window_increment
         
         MatplotlibCanvas.__init__(self)
+        self.draw_plot()
     
-    def init_plot(self):
+    def draw_plot(self):
         freqs, times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
                                             noverlap=(self.window_width - self.window_increment))
@@ -39,7 +39,7 @@ class SonogramPlot(MatplotlibCanvas):
     
     def update_plot(self, window_width):
         self.window_width = window_width
-        self.init_plot()
+        self.draw_plot()
         self.draw()
 
 
