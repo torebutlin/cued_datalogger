@@ -10,6 +10,8 @@ from pyqt_matplotlib import MatplotlibCanvas
 
 from scipy.signal import spectrogram, get_window
 
+
+
 class SonogramPlot(MatplotlibCanvas):
     def __init__(self, sig, t, sample_freq, window_width, window_increment):
         self.sig = sig
@@ -31,15 +33,14 @@ class SonogramPlot(MatplotlibCanvas):
         freqs = np.abs(freqs[:freqs.size // 2 + 1])
 
         self.F_bins, self.T_bins = np.meshgrid(freqs, times)
-        
-        print("f: "+ str(self.F_bins.shape) + " t: " + str(self.F_bins.shape) + " FT: " + str(self.FT.shape))
- 
+         
         self.axes.contour(self.F_bins, self.T_bins, self.FT)
+        
     
     def update_plot(self, window_width):
         self.window_width = window_width
-
-        self.init_plot(self)
+        self.init_plot()
+        self.draw()
 
 
 class SonogramWidget(QWidget):
@@ -60,18 +61,22 @@ class SonogramWidget(QWidget):
         self.window_width_label.setText("Window width")
         
         self.window_width_spinbox = QSpinBox(self)
-        self.window_width_spinbox.setRange(2, 1024)
-        self.window_width_spinbox.setValue(256)
+        self.window_width_spinbox.setRange(2, 512)
+        self.window_width_spinbox.setValue(self.window_width)
+        self.window_width_spinbox.setSingleStep(64)
 
         
         self.window_width_slider = QSlider(Qt.Horizontal, self)
         self.window_width_slider.setFocusPolicy(Qt.NoFocus)
-        self.window_width_slider.setRange(2, 1024)
+        self.window_width_slider.setRange(2, 512)
+        self.window_width_slider.setSingleStep(64)
         self.window_width_slider.setValue(self.window_width)
         
         self.window_width_slider.valueChanged.connect(self.window_width_spinbox.setValue)
         self.window_width_spinbox.valueChanged.connect(self.window_width_slider.setValue)
         self.window_width_slider.valueChanged.connect(self.sonogram_plot.update_plot)
+        self.window_width_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.window_width_label)
