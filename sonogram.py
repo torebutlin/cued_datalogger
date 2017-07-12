@@ -5,16 +5,15 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, Qt
 
 import numpy as np
-from numpy.fft import rfft, rfftfreq
 
 from pyqt_matplotlib import MatplotlibCanvas
 
-from sonogram_functions import sliding_window_fft
+from sonogram_functions import calculate_sonogram
 
 
 class SonogramPlot(MatplotlibCanvas):
-    def __init__(self, signal, t, sample_freq, window_width, window_increment):
-        self.signal = signal
+    def __init__(self, sig, t, sample_freq, window_width, window_increment):
+        self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
@@ -23,18 +22,12 @@ class SonogramPlot(MatplotlibCanvas):
         MatplotlibCanvas.__init__(self)
     
     def init_plot(self):
-        # Create the window
-        hanning = np.hanning(self.window_width)
-
-        # Take the FTs
-        freqs, times, FT = sliding_window_fft(self.signal, self.t, hanning, 
-                                              self.sample_freq, self.window_width, 
-                                              self.window_increment)
-
-        # Convert the time and freq to a mesh (for plotting in 3d)
-        F_bins, T_bins = np.meshgrid(freqs, times)
-
-        self.axes.contour(F_bins, T_bins, FT)
+        self.F_bins, self.T_bins, self.FT = calculate_sonogram(self.sig, 
+                                                               self.t, 
+                                                               self.sample_freq,
+                                                               self.window_width,
+                                                               self.window_increment)
+        self.axes.contour(self.F_bins, self.T_bins, self.FT)
     
     def update_plot(self, window_width):
         self.window_width = window_width
@@ -43,8 +36,8 @@ class SonogramPlot(MatplotlibCanvas):
 
 
 class SonogramWidget(QWidget):
-    def __init__(self, signal, t, sample_freq=4096, window_width=356, window_increment=32):
-        self.signal = signal
+    def __init__(self, sig, t, sample_freq=4096, window_width=356, window_increment=32):
+        self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
@@ -54,7 +47,7 @@ class SonogramWidget(QWidget):
         self.init_ui()
     
     def init_ui(self):
-        self.sonogram_plot = SonogramPlot(self.signal, self.t, self.sample_freq, self.window_width, self.window_increment)
+        self.sonogram_plot = SonogramPlot(self.sig, self.t, self.sample_freq, self.window_width, self.window_increment)
 
         self.window_width_label = QLabel(self)
         self.window_width_label.setText("Window width")
@@ -105,11 +98,11 @@ def function_generator(t):
 if __name__ == '__main__':
     duration = 10.0
     t = np.arange(0.0, duration, 1/4096)
-    signal = function_generator(t)
+    sig = function_generator(t)
     
     app = 0
     
     app = QApplication(sys.argv)
-    sonogram = SonogramWidget(signal, t)
+    sonogram = SonogramWidget(sig, t)
     sys.exit(app.exec_())  
     
