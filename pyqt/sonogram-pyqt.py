@@ -1,61 +1,72 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
+
+import pyqtgraph as pg
+from pyqtgraph import PlotWidget, PlotItem
+from mypyqtgraph_functions import ContourMap
 
 import numpy as np
-
-from pyqt_matplotlib import MatplotlibCanvas
 
 from scipy.signal import spectrogram, get_window
 
 
-class SonogramPlot(MatplotlibCanvas):
-    def __init__(self, sig, t, sample_freq, window_width, window_increment, plot_type="Contour"):
+class SonogramPlotPyQt(QWidget):
+    def __init__(self, sig, t, sample_freq, window_width, window_increment,
+                 plot_type="Contour", num_contours=32, contour_spacing=1e-3, cmap="jet"):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
         self.window_increment = window_increment
         self.plot_type = plot_type
+        self.num_contours = num_contours
+        self.contour_spacing = contour_spacing
+        self.cmap = cmap
+                  
+        super().__init__()
         
-        MatplotlibCanvas.__init__(self)
-        self.draw_plot()
+        self.recalculate_sonogram()
+        
+        # Convert the sonogram data to contours
+        self.contour_map = ContourMap(self.freqs, self.times, self.FT, num_contours, contour_spacing, cmap)
+        self.contour_map.setLabel('bottom', "Frequency", "Hz")
+        self.contour_map.setLabel('left', "Time", "s")
+        
+        # Show the contour map widget
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.contour_map)
+        self.setLayout(vbox)
+        
     
-    def draw_plot(self):      
-        freqs, times, self.FT = spectrogram(self.sig, self.sample_freq, 
-                                            window=get_window('hann', self.window_width),
-                                            nperseg=self.window_width,
-                                            noverlap=(self.window_width - self.window_increment))
+    def recalculate_sonogram(self):
+        self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq,
+                                                      window=get_window('hann', self.window_width), 
+                                                      nperseg=self.window_width, 
+                                                      noverlap=(self.window_width - self.window_increment))
+        # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
-        
+        # Take the real part of the spectrum
         self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
+        self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
         
-        freqs = np.abs(freqs[:freqs.size // 2 + 1])
-
-        self.F_bins, self.T_bins = np.meshgrid(freqs, times)
         
+        
+    def draw_plot(self):      
         if self.plot_type == "Contour":
-            self.axes.contour(self.F_bins, self.T_bins, self.FT)
-            self.axes.set_xlabel('Freq (Hz)')
-            self.axes.set_ylabel('Time (s)')
-            self.axes.set_xlim(freqs.min(), freqs.max())
-            self.axes.set_ylim(times.min(), times.max())
+            self.contour_map.update_contours()
             
         elif self.plot_type == "Surface":
             pass
         
         elif self.plot_type == "Colourmap":
-            self.axes.pcolormesh(self.F_bins, self.T_bins, self.FT)
-            self.axes.set_xlabel('Freq (Hz)')
-            self.axes.set_ylabel('Time (s)')
-            self.axes.set_xlim(freqs.min(), freqs.max())
-            self.axes.set_ylim(times.min(), times.max())
+            pass
             
         else:
             pass
-        
+                
     
     def update_plot(self, value):
         sender_name = self.sender().objectName()
@@ -67,7 +78,8 @@ class SonogramPlot(MatplotlibCanvas):
             self.window_increment = value
             
         elif sender_name == "sample_freq_spinbox":
-            self.sample_freq = value
+            #self.sample_freq = value
+            pass
         
         elif sender_name == "plot_type_combobox":
             self.plot_type = value
@@ -75,9 +87,19 @@ class SonogramPlot(MatplotlibCanvas):
         else:
             pass
         
+        self.recalculate_sonogram()
+        
+        # Update the plot's data as well
+        self.contour_map.x = self.freqs
+        self.contour_map.y = self.times
+        self.contour_map.Z = self.FT
+        self.contour_map.num_contours = self.num_contours
+        self.contour_map.contour_spacing = self.contour_spacing
+        self.contour_map.cmap_name = self.cmap
+        self.contour_map.update_scale_fact()
+        
         self.draw_plot()
-        self.draw()
-
+        
 
 class SonogramWidget(QWidget):
     def __init__(self, sig, t, sample_freq=4096, window_width=256, window_increment=32):
@@ -91,7 +113,7 @@ class SonogramWidget(QWidget):
         self.init_ui()
     
     def init_ui(self):
-        self.sonogram_plot = SonogramPlot(self.sig, self.t, self.sample_freq, self.window_width, self.window_increment)
+        self.sonogram_plot_pyqt = SonogramPlotPyQt(self.sig, self.t, self.sample_freq, self.window_width, self.window_increment)
 
         # Window width interactivity
         self.window_width_label = QLabel(self)
@@ -103,7 +125,6 @@ class SonogramWidget(QWidget):
         self.window_width_spinbox.setValue(self.window_width)
         self.window_width_spinbox.setSingleStep(32)
 
-        
         self.window_width_slider = QSlider(Qt.Horizontal, self)
         self.window_width_slider.setObjectName("window_width_slider")
         self.window_width_slider.setRange(2, 512)
@@ -112,7 +133,8 @@ class SonogramWidget(QWidget):
         
         self.window_width_slider.valueChanged.connect(self.window_width_spinbox.setValue)
         self.window_width_spinbox.valueChanged.connect(self.window_width_slider.setValue)
-        self.window_width_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+
+        self.window_width_spinbox.valueChanged.connect(self.sonogram_plot_pyqt.update_plot)
         
         # Window increment interativity
         self.window_increment_label = QLabel(self)
@@ -124,7 +146,7 @@ class SonogramWidget(QWidget):
         self.window_increment_spinbox.setValue(self.window_increment)
         self.window_increment_spinbox.setSingleStep(32)
         
-        self.window_increment_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+        self.window_increment_spinbox.valueChanged.connect(self.sonogram_plot_pyqt.update_plot)
         
         # Sample frequency interactivity
         self.sample_freq_label = QLabel(self)
@@ -136,7 +158,7 @@ class SonogramWidget(QWidget):
         self.sample_freq_spinbox.setValue(self.sample_freq)
         self.sample_freq_spinbox.setSingleStep(32)
         
-        self.sample_freq_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+        self.sample_freq_spinbox.valueChanged.connect(self.sonogram_plot_pyqt.update_plot)
         
         # Plot type interactivity
         self.plot_type_label = QLabel(self)
@@ -146,7 +168,7 @@ class SonogramWidget(QWidget):
         self.plot_type_combobox.addItems(["Contour", "Surface", "Colourmap"])
         self.plot_type_combobox.setObjectName("plot_type_combobox")
         
-        self.plot_type_combobox.activated[str].connect(self.sonogram_plot.update_plot)        
+        self.plot_type_combobox.activated[str].connect(self.sonogram_plot_pyqt.update_plot)        
         
         # Layout
         grid = QGridLayout()
@@ -161,7 +183,11 @@ class SonogramWidget(QWidget):
         grid.addWidget(self.plot_type_combobox, 3, 1)
         
         vbox = QVBoxLayout()
-        vbox.addWidget(self.sonogram_plot)
+        hbox = QHBoxLayout()
+        
+        hbox.addWidget(self.sonogram_plot_pyqt)
+        
+        vbox.addLayout(hbox)
         vbox.addLayout(grid)
 
         self.setLayout(vbox)
