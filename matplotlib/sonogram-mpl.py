@@ -32,9 +32,7 @@ class SonogramPlotMPL(MatplotlibCanvas):
         self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
                                             nperseg=self.window_width,
-                                            noverlap=(self.window_width - self.window_increment),
-                                            return_onesided=True)
-        # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
+                                            noverlap=(self.window_width - self.window_increment))
         self.FT = self.FT.transpose()
         # Scipy calculates all the negative frequencies as well - we only want the positive ones
         # TODO: Currently a nasty hack, as leaves a big (twice the size necessary) array floating around
