@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, Qt
 
@@ -12,12 +12,13 @@ from scipy.signal import spectrogram, get_window
 
 
 class SonogramPlot(MatplotlibCanvas):
-    def __init__(self, sig, t, sample_freq, window_width, window_increment):
+    def __init__(self, sig, t, sample_freq, window_width, window_increment, plot_type="Contour"):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
         self.window_increment = window_increment
+        self.plot_type = plot_type
         
         MatplotlibCanvas.__init__(self)
         self.draw_plot()
@@ -34,8 +35,24 @@ class SonogramPlot(MatplotlibCanvas):
         freqs = np.abs(freqs[:freqs.size // 2 + 1])
 
         self.F_bins, self.T_bins = np.meshgrid(freqs, times)
-         
-        self.axes.contour(self.F_bins, self.T_bins, self.FT)
+        
+        if self.plot_type == "Contour":
+            self.axes.contour(self.F_bins, self.T_bins, self.FT)
+            self.axes.set_xlabel('Freq (Hz)')
+            self.axes.set_ylabel('Time (s)')
+            self.axes.set_xlim(freqs.min(), freqs.max())
+            self.axes.set_ylim(times.min(), times.max())
+            
+        elif self.plot_type == "Surface":
+            pass
+        elif self.plot_type == "Colourmap":
+            self.axes.pcolormesh(self.F_bins, self.T_bins, self.FT)
+            self.axes.set_xlabel('Freq (Hz)')
+            self.axes.set_ylabel('Time (s)')
+            self.axes.set_xlim(freqs.min(), freqs.max())
+            self.axes.set_ylim(times.min(), times.max())
+        else:
+            pass
         
     
     def update_plot(self, value):
@@ -49,6 +66,9 @@ class SonogramPlot(MatplotlibCanvas):
             
         elif sender_name == "sample_freq_spinbox":
             self.sample_freq = value
+        
+        elif sender_name == "plot_type_combobox":
+            self.plot_type = value
         
         else:
             pass
@@ -116,6 +136,16 @@ class SonogramWidget(QWidget):
         
         self.sample_freq_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
         
+        # Plot type interactivity
+        self.plot_type_label = QLabel(self)
+        self.plot_type_label.setText("Plot type")
+        
+        self.plot_type_combobox = QComboBox(self)
+        self.plot_type_combobox.addItems(["Contour", "Surface", "Colourmap"])
+        self.plot_type_combobox.setObjectName("plot_type_combobox")
+        
+        self.plot_type_combobox.activated[str].connect(self.sonogram_plot.update_plot)        
+        
         # Layout
         grid = QGridLayout()
         grid.addWidget(self.window_width_label, 0, 0)
@@ -125,7 +155,8 @@ class SonogramWidget(QWidget):
         grid.addWidget(self.window_increment_spinbox, 1, 1)
         grid.addWidget(self.sample_freq_label, 2, 0)
         grid.addWidget(self.sample_freq_spinbox, 2, 1)
-
+        grid.addWidget(self.plot_type_label, 3, 0)
+        grid.addWidget(self.plot_type_combobox, 3, 1)
         
         vbox = QVBoxLayout()
         vbox.addWidget(self.sonogram_plot)
