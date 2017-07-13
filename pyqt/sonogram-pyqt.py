@@ -7,7 +7,7 @@ from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox
 
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, PlotItem
-from mypyqtgraph_functions import ContourMap
+from mypyqtgraph_functions import ContourMapPlot
 
 import numpy as np
 
@@ -16,7 +16,7 @@ from scipy.signal import spectrogram, get_window
 
 class SonogramPlotPyQt(QWidget):
     def __init__(self, sig, t, sample_freq, window_width, window_increment,
-                 plot_type="Contour", num_contours=32, contour_spacing=1e-3, cmap="jet"):
+                 plot_type="Colourmap", num_contours=32, contour_spacing=1e-3, cmap="jet"):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
@@ -32,13 +32,13 @@ class SonogramPlotPyQt(QWidget):
         self.recalculate_sonogram()
         
         # Convert the sonogram data to contours
-        self.contour_map = ContourMap(self.freqs, self.times, self.FT, num_contours, contour_spacing, cmap)
-        self.contour_map.setLabel('bottom', "Frequency", "Hz")
-        self.contour_map.setLabel('left', "Time", "s")
+        self.map_plot = ContourMapPlot(self.freqs, self.times, self.FT, num_contours, contour_spacing, cmap)
+        self.map_plot.setLabel('bottom', "Frequency", "Hz")
+        self.map_plot.setLabel('left', "Time", "s")
         
         # Show the contour map widget
         vbox = QVBoxLayout()
-        vbox.addWidget(self.contour_map)
+        vbox.addWidget(self.map_plot)
         self.setLayout(vbox)
         
     
@@ -57,13 +57,13 @@ class SonogramPlotPyQt(QWidget):
         
     def draw_plot(self):      
         if self.plot_type == "Contour":
-            self.contour_map.update_contours()
+            self.map_plot.update_map(show_contours=True)
             
         elif self.plot_type == "Surface":
             pass
         
         elif self.plot_type == "Colourmap":
-            pass
+            self.map_plot.update_map(show_contours=False)
             
         else:
             pass
@@ -90,13 +90,13 @@ class SonogramPlotPyQt(QWidget):
         self.recalculate_sonogram()
         
         # Update the plot's data as well
-        self.contour_map.x = self.freqs
-        self.contour_map.y = self.times
-        self.contour_map.Z = self.FT
-        self.contour_map.num_contours = self.num_contours
-        self.contour_map.contour_spacing = self.contour_spacing
-        self.contour_map.cmap_name = self.cmap
-        self.contour_map.update_scale_fact()
+        self.map_plot.x = self.freqs
+        self.map_plot.y = self.times
+        self.map_plot.Z = self.FT
+        self.map_plot.num_contours = self.num_contours
+        self.map_plot.contour_spacing = self.contour_spacing
+        self.map_plot.cmap_name = self.cmap
+        self.map_plot.update_scale_fact()
         
         self.draw_plot()
         
@@ -183,7 +183,7 @@ class SonogramWidget(QWidget):
         self.plot_type_label.setText("Plot type")
         # Create combobox
         self.plot_type_combobox = QComboBox(self)
-        self.plot_type_combobox.addItems(["Contour", "Surface", "Colourmap"])
+        self.plot_type_combobox.addItems(["Colourmap","Contour", "Surface"])
         self.plot_type_combobox.setObjectName("plot_type_combobox")
         # Update on change
         self.plot_type_combobox.activated[str].connect(self.sonogram_plot_pyqt.update_plot)        
