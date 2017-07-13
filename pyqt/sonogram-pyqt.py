@@ -142,11 +142,11 @@ class SonogramWidget(QWidget):
         # Create spinbox       
         self.window_increment_spinbox = Power2SteppedSpinBox(self)
         self.window_increment_spinbox.setObjectName("window_increment_spinbox")        
-        self.window_increment_spinbox.setRange(2, 256)
+        self.window_increment_spinbox.setRange(16, 256)
         # Create slider        
         self.window_increment_slider = Power2SteppedSlider(Qt.Horizontal, self)
         self.window_increment_slider.setObjectName("window_increment_slider")
-        self.window_increment_slider.setRange(16, 512)
+        self.window_increment_slider.setRange(16, 256)
         # Connect spinbox and slider together
         self.window_increment_spinbox.valueChanged.connect(self.window_increment_slider.setValue)
         self.window_increment_slider.valueChanged.connect(self.window_increment_spinbox.setValue)
@@ -163,11 +163,11 @@ class SonogramWidget(QWidget):
         # Create spinbox       
         self.sample_freq_spinbox = Power2SteppedSpinBox(self)
         self.sample_freq_spinbox.setObjectName("sample_freq_spinbox")        
-        self.sample_freq_spinbox.setRange(2, 256)
+        self.sample_freq_spinbox.setRange(256, 32768)
         # Create slider        
         self.sample_freq_slider = Power2SteppedSlider(Qt.Horizontal, self)
         self.sample_freq_slider.setObjectName("sample_freq_slider")
-        self.sample_freq_slider.setRange(16, 512)
+        self.sample_freq_slider.setRange(256, 32768)
         # Connect spinbox and slider together
         self.sample_freq_spinbox.valueChanged.connect(self.sample_freq_slider.setValue)
         self.sample_freq_slider.valueChanged.connect(self.sample_freq_spinbox.setValue)
