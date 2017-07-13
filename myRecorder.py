@@ -22,7 +22,7 @@ class Recorder():
         self.chunk_size = chunk_size
         self.format = pyaudio.paInt16
         self.p = None
-        self.device_index = 0;
+        self.device_index = None;
         self.audio_stream = None
         self.num_chunk = num_chunk;        
         
@@ -75,26 +75,44 @@ class Recorder():
      # Set the recording audio device by name, 
      # revert to default if no such device found
      # TODO: Change to do Regular Expression???
-     # TODO: Pick a device that has input channels
     def set_device_by_name(self, name):
+        dev_name,dev_index = self.available_devices()
+        if not dev_name:
+            print("Seems like you don't have any input devices")
+            return None
         try:
-            self.set_device_by_index(self.available_devices().index(name))
+            self._set_device_by_index(dev_index[dev_name.index(name)])
         except ValueError:
             try:
                 print('Device not found, reverting to default')
                 default = self.p.get_default_input_device_info()
-                self.set_device_by_index(default['index'])
+                self._set_device_by_index(default['index'])
             except IOError:
                 print('No default device!')
+                try:
+                    self._set_device_by_index(dev_index[0])
+                except IOError:
+                    print('No Device can be set')
+                    return None
+        except IOError:
+            print('Device chosen cannot be found!')
+            return None
+                    
                 
-    # Get audio device names 
+    # Get audio device names, only the ones with inputs 
     def available_devices(self):
-        return ([ self.p.get_device_info_by_index(i)['name'] 
-                  for i in range(self.p.get_device_count())] )
+        names = [self.p.get_device_info_by_index(i)['name']
+                  for i in range(self.p.get_device_count())
+                  if self.p.get_device_info_by_index(i)['maxInputChannels']>0]
+        
+        index = [self.p.get_device_info_by_index(i)['index'] 
+                for i in range(self.p.get_device_count())
+                if self.p.get_device_info_by_index(i)['maxInputChannels']>0]
+        
+        return(names,index)
     
-    # Set the selected device by index  
-    def set_device_by_index(self,index):
-       # TODO: Add check for invalid index input
+    # Set the selected device by index, Private Function
+    def _set_device_by_index(self,index):
         self.device_index = index;
         print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
     
@@ -146,7 +164,7 @@ class Recorder():
     
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
-        if self.audio_stream == None:
+        if self.audio_stream == None and not self.device_index == None:
             self.audio_stream = self.p.open(channels = self.channels,
                              rate = self.rate,
                              format = self.format,

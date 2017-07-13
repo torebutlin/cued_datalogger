@@ -51,8 +51,11 @@ class Recorder(Task):
 #---------------- DEVICE SETTING METHODS -----------------------------------
     # Get audio device names 
     def available_devices(self):
-        data = []
-        print(pdaq.DAQmxGetSysDevNames(pdaq.byref(data)))
+        numBytesneeded = pdaq.DAQmxGetSysDevNames(None,0)
+        databuffer = pdaq.create_string_buffer(numBytesneeded)
+        pdaq.DAQmxGetSysDevNames(databuffer,numBytesneeded)
+        devices_name = pdaq.string_at(databuffer).decode('utf-8')#.split(',')
+        return(devices_name)
         
     # Return the channel names to be used when assigning task     
     def list_channels(self):
