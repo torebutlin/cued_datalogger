@@ -14,15 +14,12 @@ import numpy as np
 #import pprint as pp
 import copy as cp
 
-class MyList(list):
-    pass
-
 
 class Recorder(Task):
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 30000.0, chunk_size = 1000,
                  num_chunk = 4,device_name = None):
-        Task.__init__(self)
+        super().__init__()
         self.channels = channels
         self.channelnames = self.list_channels()
         self.rate = rate
@@ -33,11 +30,11 @@ class Recorder(Task):
         self.num_chunk = num_chunk;        
         
         self.open_recorder()
-        
-        #if device_name != None:
-        #    self.set_device_by_name(str(device_name))
-            
         self.allocate_buffer()
+        print('You are using National Instrument for recording')
+        
+    def __del__(self):
+        self.close()
         
     def open_recorder(self):
         self.recording = False
@@ -51,14 +48,18 @@ class Recorder(Task):
                                         self.channels))
         self.next_chunk = 0;
             
-#---------------- DEVICE SETTING METHODS -----------------------------------            
-     # Set the recording audio device by name, 
-     # revert to default if no such device found
-     # TODO: Change to do Regular Expression???
-     # TODO: Pick a device that has input channels        
-    def list_channels(self):
-        return ['Dev1/ai%i' % i for i in range(self.channels)]
+#---------------- DEVICE SETTING METHODS -----------------------------------
+    # Get audio device names 
+    def available_devices(self):
+        data = []
+        print(pdaq.DAQmxGetSysDevNames(pdaq.byref(data)))
         
+    # Return the channel names to be used when assigning task     
+    def list_channels(self):
+        if self.channels >1:
+            return 'Dev1/ai0:%i' % (self.channels-1)
+        else:
+            return 'Dev1/ai0'
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
@@ -105,7 +106,7 @@ class Recorder(Task):
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
         if self.audio_stream == None:
-            self.CreateAIVoltageChan('Dev1/ai0',"",
+            self.CreateAIVoltageChan(self.channelnames,"",
                                      pdaq.DAQmx_Val_RSE,-10.0,10.0,
                                      pdaq.DAQmx_Val_Volts,None)
             self.CfgSampClkTiming("",self.rate,
@@ -127,8 +128,6 @@ class Recorder(Task):
         self.ClearTask()
         self.audio_stream = None
         
-    def __del__(self):
-        self.close()
 #----------------- DECORATOR METHODS --------------------------------------
             
 #---------------- DESTRUCTOR??? METHODS -----------------------------------

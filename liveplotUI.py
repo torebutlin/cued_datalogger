@@ -5,13 +5,16 @@ Created on Wed Jul  5 13:12:34 2017
 @author: eyt21
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QDesktopWidget,QStatusBar)
+    QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
+    QGroupBox,QRadioButton)
 from PyQt5.QtCore import QTimer
 import numpy as np
 
 import pyqtgraph as pg
+
+# Switch between Pyaudio and NI between changing myRecorder to NIRecorder
 import myRecorder as rcd
-#import NIRecorder as rcd
+
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
     def __init__(self,parent = None):
@@ -45,11 +48,11 @@ class LiveplotApp(QMainWindow):
     def initUI(self):
         # Setup the plot canvas        
         self.main_widget = QWidget(self)
-        vbox = QVBoxLayout(self.main_widget)
+        main_layout = QVBoxLayout(self.main_widget)
         
         # Set up time domain plot
         self.timeplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
-        vbox.addWidget(self.timeplotcanvas)
+        main_layout.addWidget(self.timeplotcanvas)
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
         self.timeplot.disableAutoRange(axis=None)
@@ -58,7 +61,7 @@ class LiveplotApp(QMainWindow):
         
         # Set up FFT plot
         self.fftplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
-        vbox.addWidget(self.fftplotcanvas)
+        main_layout.addWidget(self.fftplotcanvas)
         self.fftplot = self.fftplotcanvas.getPlotItem()
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
@@ -71,38 +74,71 @@ class LiveplotApp(QMainWindow):
         # First set up the container to put the buttons in
         btn_container = QWidget(self.main_widget)
         # Set up the container to display horizontally
-        hbox = QHBoxLayout(btn_container)
+        btn_layout = QHBoxLayout(btn_container)
         # Put the buttons in
         self.togglebtn = QPushButton('Pause',btn_container)
         self.togglebtn.resize(self.togglebtn.sizeHint())
         self.togglebtn.pressed.connect(self.toggle_rec)
-        hbox.addWidget(self.togglebtn)
+        btn_layout.addWidget(self.togglebtn)
         self.recordbtn = QPushButton('Record',btn_container)
         self.recordbtn.resize(self.recordbtn.sizeHint())
         self.recordbtn.pressed.connect(self.start_recording)
-        hbox.addWidget(self.recordbtn)
+        btn_layout.addWidget(self.recordbtn)
         self.sshotbtn = QPushButton('Get Snapshot',btn_container)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         self.sshotbtn.pressed.connect(self.get_snapshot)
-        hbox.addWidget(self.sshotbtn)
+        btn_layout.addWidget(self.sshotbtn)
         # Put the container into the main widget
-        vbox.addWidget(btn_container)
+        main_layout.addWidget(btn_container)
+        
+        # Acquisition panel
+        config_panel = QWidget(self.main_widget)
+        config_layout = QHBoxLayout(config_panel)
+        
+        config_container = QWidget(config_panel)
+        config_form = QFormLayout(config_container)
+        
+        self.typegroup = QGroupBox('Input Type', config_container)
+        pyaudio_button = QRadioButton('SoundCard',self.typegroup)
+        NI_button = QRadioButton('NI',self.typegroup)
+        typelbox = QHBoxLayout(self.typegroup)
+        typelbox.addWidget(pyaudio_button)
+        typelbox.addWidget(NI_button)
+        self.typegroup.setLayout(typelbox)
+        config_form.addRow(self.typegroup)
+        
+        configs = ['Source','Channels','Chunk Size','Number of Chunks']
+        self.configboxes = []
+        
+        for c in configs:
+            cbox = QLineEdit(config_container)
+            config_form.addRow(QLabel(c,config_container),cbox)
+            self.configboxes.append(cbox)
+
+        config_layout.addWidget(config_container)
+        config_button = QPushButton('Print Config', config_panel)
+        config_button.clicked.connect(self.config_status)
+        config_layout.addWidget(config_button)
+        
+        
+        main_layout.addWidget(config_panel)
         
         # Set up the status bar
         self.statusbar = QStatusBar(self.main_widget)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
-        vbox.addWidget(self.statusbar)
+        main_layout.addWidget(self.statusbar)
         
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
-        timer = QTimer(self)
-        timer.timeout.connect(self.update_line)
-        timer.start(25) # 25ms because that how roughly long the buffer fills up
-   
+        self.plottimer = QTimer(self)
+        self.plottimer.timeout.connect(self.update_line)
+        self.plottimer.start(25) # 25ms because that how roughly long the buffer fills up
+    
+    
     # Center the window
     def center(self):
         pr = self.parent.frameGeometry()
@@ -112,6 +148,42 @@ class LiveplotApp(QMainWindow):
         qr.moveCenter(cp)
         self.move(pr.topLeft())
         self.move(qr.left() - qr.width(),qr.top())
+    #---------------- Reset Methods-----------------------------------    
+    def ResetRecording(self):
+        self.statusbar.showMessage('Resetting...')
+        # Stop the update and close the stream
+        self.plottimer.stop()
+        self.rec.stream_close()
+        
+        # TODO: Check what type of recorder to use
+        # Pyaudio or NI
+        # Delete and reinitialise the recording object 
+        # if there is a change
+        
+        # TODO: Get Input from the Acquisition settings UI
+        # Requires the UI to be there in the first place
+        
+        # TODO: Change the values of recording object
+        
+        # Open the stream, plot and update
+        self.rec.stream_init()
+        self.ResetPlots()
+        self.plottimer.start(25)
+        
+    
+    
+    def ResetXdata(self):
+        data = self.rec.get_buffer()
+        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
+        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+    
+    def ResetPlots(self):
+        self.ResetXdata()
+        self.timeplot.clear()
+        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
+        self.fftplot.clear()
+        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
+        
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
     def toggle_rec(self):
@@ -184,6 +256,9 @@ class LiveplotApp(QMainWindow):
             else:
                 self.statusbar.showMessage('Stream Paused')
                 
+    def config_status(self, *arg):
+        print ( [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)] )
+    
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):

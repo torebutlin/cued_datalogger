@@ -16,6 +16,7 @@ class Recorder():
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
                  num_chunk = 4,device_name = None):
+        print('You are using pyAudio for recording')
         self.channels = channels
         self.rate = rate
         self.chunk_size = chunk_size
@@ -31,6 +32,9 @@ class Recorder():
             self.set_device_by_name(str(device_name))
             
         self.allocate_buffer()
+
+    def __del__(self):
+        self.close()
         
     def open_recorder(self):
         if self.p == None:
@@ -168,7 +172,7 @@ class Recorder():
         
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
-        if self.audio_stream.is_active():
+        if self.audio_stream and self.audio_stream.is_active():
             if not self.audio_stream.is_stopped():
                 self.stream_stop()
             self.audio_stream.close()
@@ -179,6 +183,7 @@ class Recorder():
     # Close the audio object, to be called if streaming is no longer needed        
     def close(self):
         self.stream_close()
-        self.p.terminate()
-        self.p = None
+        if not self.p:
+            self.p.terminate()
+            self.p = None
 
