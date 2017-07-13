@@ -54,6 +54,9 @@ class ContourMap(PlotWidget):
             self.addItem(contour)
              
     def update_contours(self):
+        self.setXRange(0, self.x.max() * 1.01)
+        self.setYRange(0, self.y.max() * 1.01)
+        
         for i, val in enumerate(np.linspace(0, 1, self.num_contours)):
             level = val*self.contour_spacing
             # Set the data for the contour at the specified level

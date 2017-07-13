@@ -43,16 +43,21 @@ class SonogramPlotPyQt(QWidget):
         
     
     def recalculate_sonogram(self):
-        self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq,
-                                                      window=get_window('hann', self.window_width), 
-                                                      nperseg=self.window_width, 
-                                                      noverlap=(self.window_width - self.window_increment))
+        #TODO: in reality get rid of this, just for demos
+        self.t = np.arange(0.0, 10, 1/self.sample_freq)
+        self.sig = function_generator(self.t)
+        #
+        
+        self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq, 
+                                            window=get_window('hann', self.window_width),
+                                            nperseg=self.window_width,
+                                            noverlap=(self.window_width - self.window_increment),
+                                            return_onesided=True)
+                                            
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
-        # Take the real part of the spectrum
-        self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
+        # Scipy calculates all the negative frequencies as well - we only want the positive ones
         self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
-        
         
         
     def draw_plot(self):      

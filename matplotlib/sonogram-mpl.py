@@ -23,25 +23,31 @@ class SonogramPlotMPL(MatplotlibCanvas):
         MatplotlibCanvas.__init__(self)
         self.draw_plot()
     
-    def draw_plot(self):      
-        freqs, times, self.FT = spectrogram(self.sig, self.sample_freq, 
+    def draw_plot(self):
+        #TODO: In reality, get rid of this - just for demos
+        self.t = np.arange(0.0, 10, 1/self.sample_freq)
+        self.sig = function_generator(self.t)
+        #
+        
+        self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
                                             nperseg=self.window_width,
-                                            noverlap=(self.window_width - self.window_increment))
+                                            noverlap=(self.window_width - self.window_increment),
+                                            return_onesided=True)
+        # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
-        
-        self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
-        
-        freqs = np.abs(freqs[:freqs.size // 2 + 1])
+        # Scipy calculates all the negative frequencies as well - we only want the positive ones
+        # TODO: Currently a nasty hack, as leaves a big (twice the size necessary array floating around)
+        self.freqs = np.abs(self.freqs)
 
-        self.F_bins, self.T_bins = np.meshgrid(freqs, times)
+        self.F_bins, self.T_bins = np.meshgrid(self.freqs, self.times)
         
         if self.plot_type == "Contour":
             self.axes.contour(self.F_bins, self.T_bins, self.FT)
             self.axes.set_xlabel('Freq (Hz)')
             self.axes.set_ylabel('Time (s)')
-            self.axes.set_xlim(freqs.min(), freqs.max())
-            self.axes.set_ylim(times.min(), times.max())
+            self.axes.set_xlim(self.freqs.min(), self.freqs.max())
+            self.axes.set_ylim(self.times.min(), self.times.max())
             
         elif self.plot_type == "Surface":
             pass
@@ -50,8 +56,8 @@ class SonogramPlotMPL(MatplotlibCanvas):
             self.axes.pcolormesh(self.F_bins, self.T_bins, self.FT)
             self.axes.set_xlabel('Freq (Hz)')
             self.axes.set_ylabel('Time (s)')
-            self.axes.set_xlim(freqs.min(), freqs.max())
-            self.axes.set_ylim(times.min(), times.max())
+            self.axes.set_xlim(self.freqs.min(), self.freqs.max())
+            self.axes.set_ylim(self.times.min(), self.times.max())
             
         else:
             pass
