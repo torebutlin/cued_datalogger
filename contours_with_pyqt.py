@@ -2,6 +2,7 @@ from scipy.signal import spectrogram, get_window
 import numpy as np
 
 from pyqtgraph.Qt import QtGui, QtCore 
+import pyqtgraph as pg
 
 import sys
 
@@ -41,9 +42,12 @@ freqs = np.abs(freqs[:freqs.size // 2 + 1])
 
 F_bins, T_bins = np.meshgrid(freqs, times)
 
-plot_contours(FT)
+spacing = (FT.max() - FT.min()) / num_contours
 
-#"""
+contour_plot = plot_contours(freqs, times, FT, num_contours=num_contours, contour_spacing=spacing)
+contour_plot.setLabel('bottom', "Frequency", "Hz")
+contour_plot.setLabel('left', "Time", "s")
+
 if __name__ == '__main__':
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
         QtGui.QApplication.instance().exec_()

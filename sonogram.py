@@ -45,12 +45,14 @@ class SonogramPlot(MatplotlibCanvas):
             
         elif self.plot_type == "Surface":
             pass
+        
         elif self.plot_type == "Colourmap":
             self.axes.pcolormesh(self.F_bins, self.T_bins, self.FT)
             self.axes.set_xlabel('Freq (Hz)')
             self.axes.set_ylabel('Time (s)')
             self.axes.set_xlim(freqs.min(), freqs.max())
             self.axes.set_ylim(times.min(), times.max())
+            
         else:
             pass
         
