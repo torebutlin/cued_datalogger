@@ -70,9 +70,12 @@ class DataWindow(QMainWindow):
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
         if not self.liveplot:
-            self.liveplot = lpUI.LiveplotApp(self)
-            self.liveplot.show()
-            self.liveplotbtn.setText('Close Oscilloscope')
+            try:
+                self.liveplot = lpUI.LiveplotApp(self)
+                self.liveplot.show()
+                self.liveplotbtn.setText('Close Oscilloscope')
+            except Exception as e:
+                print(e)
         else:
             self.liveplot.close()
             self.liveplot = None

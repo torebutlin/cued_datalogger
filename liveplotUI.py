@@ -11,7 +11,7 @@ import numpy as np
 
 import pyqtgraph as pg
 import myRecorder as rcd
-
+#import NIRecorder as rcd
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
     def __init__(self,parent = None):
@@ -53,7 +53,7 @@ class LiveplotApp(QMainWindow):
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
         self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-2**7,2**7))
+        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
         self.timeplotline = self.timeplot.plot(pen='g')
         
         # Set up FFT plot

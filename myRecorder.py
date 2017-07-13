@@ -141,7 +141,7 @@ class Recorder():
         return(in_data,pyaudio.paContinue)
     
     # TODO: Check for valid device, channels and all that before initialisation
-    def stream_init(self, playback):
+    def stream_init(self, playback = False):
         if self.audio_stream == None:
             self.audio_stream = self.p.open(channels = self.channels,
                              rate = self.rate,
