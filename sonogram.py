@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, Qt
 
@@ -22,9 +22,10 @@ class SonogramPlot(MatplotlibCanvas):
         MatplotlibCanvas.__init__(self)
         self.draw_plot()
     
-    def draw_plot(self):
+    def draw_plot(self):      
         freqs, times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
+                                            nperseg=self.window_width,
                                             noverlap=(self.window_width - self.window_increment))
         self.FT = self.FT.transpose()
         
@@ -37,8 +38,21 @@ class SonogramPlot(MatplotlibCanvas):
         self.axes.contour(self.F_bins, self.T_bins, self.FT)
         
     
-    def update_plot(self, window_width):
-        self.window_width = window_width
+    def update_plot(self, value):
+        sender_name = self.sender().objectName()
+        
+        if sender_name == "window_width_spinbox":
+            self.window_width = value
+            
+        elif sender_name == "window_increment_spinbox":
+            self.window_increment = value
+            
+        elif sender_name == "sample_freq_spinbox":
+            self.sample_freq = value
+        
+        else:
+            pass
+        
         self.draw_plot()
         self.draw()
 
@@ -57,35 +71,65 @@ class SonogramWidget(QWidget):
     def init_ui(self):
         self.sonogram_plot = SonogramPlot(self.sig, self.t, self.sample_freq, self.window_width, self.window_increment)
 
+        # Window width interactivity
         self.window_width_label = QLabel(self)
         self.window_width_label.setText("Window width")
         
         self.window_width_spinbox = QSpinBox(self)
+        self.window_width_spinbox.setObjectName("window_width_spinbox")
         self.window_width_spinbox.setRange(2, 512)
         self.window_width_spinbox.setValue(self.window_width)
-        self.window_width_spinbox.setSingleStep(64)
+        self.window_width_spinbox.setSingleStep(32)
 
         
         self.window_width_slider = QSlider(Qt.Horizontal, self)
-        self.window_width_slider.setFocusPolicy(Qt.NoFocus)
+        self.window_width_slider.setObjectName("window_width_slider")
         self.window_width_slider.setRange(2, 512)
-        self.window_width_slider.setSingleStep(64)
+        self.window_width_slider.setSingleStep(32)
         self.window_width_slider.setValue(self.window_width)
         
         self.window_width_slider.valueChanged.connect(self.window_width_spinbox.setValue)
         self.window_width_spinbox.valueChanged.connect(self.window_width_slider.setValue)
-        self.window_width_slider.valueChanged.connect(self.sonogram_plot.update_plot)
         self.window_width_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+        
+        # Window increment interativity
+        self.window_increment_label = QLabel(self)
+        self.window_increment_label.setText("Window increment")
+        
+        self.window_increment_spinbox = QSpinBox(self)
+        self.window_increment_spinbox.setObjectName("window_increment_spinbox")        
+        self.window_increment_spinbox.setRange(2, 128)
+        self.window_increment_spinbox.setValue(self.window_increment)
+        self.window_increment_spinbox.setSingleStep(32)
+        
+        self.window_increment_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+        
+        # Sample frequency interactivity
+        self.sample_freq_label = QLabel(self)
+        self.sample_freq_label.setText("Sample frequency")
+        
+        self.sample_freq_spinbox = QSpinBox(self)
+        self.sample_freq_spinbox.setObjectName("sample_freq_spinbox")        
+        self.sample_freq_spinbox.setRange(2, 44.1e3)
+        self.sample_freq_spinbox.setValue(self.sample_freq)
+        self.sample_freq_spinbox.setSingleStep(32)
+        
+        self.sample_freq_spinbox.valueChanged.connect(self.sonogram_plot.update_plot)
+        
+        # Layout
+        grid = QGridLayout()
+        grid.addWidget(self.window_width_label, 0, 0)
+        grid.addWidget(self.window_width_spinbox, 0, 1)
+        grid.addWidget(self.window_width_slider, 0, 2)
+        grid.addWidget(self.window_increment_label, 1, 0)
+        grid.addWidget(self.window_increment_spinbox, 1, 1)
+        grid.addWidget(self.sample_freq_label, 2, 0)
+        grid.addWidget(self.sample_freq_spinbox, 2, 1)
 
-
-        hbox = QHBoxLayout()
-        hbox.addWidget(self.window_width_label)
-        hbox.addWidget(self.window_width_spinbox)
-        hbox.addWidget(self.window_width_slider)  
         
         vbox = QVBoxLayout()
         vbox.addWidget(self.sonogram_plot)
-        vbox.addLayout(hbox)
+        vbox.addLayout(grid)
 
         self.setLayout(vbox)
         self.setWindowTitle('Sonogram')
