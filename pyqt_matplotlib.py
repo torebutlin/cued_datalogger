@@ -16,11 +16,13 @@ class MatplotlibCanvas(FigureCanvas):
         self.init_plot()
         
         FigureCanvas.__init__(self, fig)
-        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding,
-                                        QSizePolicy.Expanding)
+        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
 
     def init_plot(self):
+        pass
+    
+    def draw_plot(self):
         pass
     
     def update_plot(self):
