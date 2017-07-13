@@ -34,10 +34,10 @@ class SonogramPlotMPL(MatplotlibCanvas):
                                             nperseg=self.window_width,
                                             noverlap=(self.window_width - self.window_increment))
         self.FT = self.FT.transpose()
-        # Scipy calculates all the negative frequencies as well - we only want the positive ones
-        # TODO: Currently a nasty hack, as leaves a big (twice the size necessary) array floating around
-        self.freqs = np.abs(self.freqs)
-
+        # Scipy calculates all the conjugate spectra/frequencies as well - we only want the positive ones
+        self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
+        self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
+        
         self.F_bins, self.T_bins = np.meshgrid(self.freqs, self.times)
         
         if self.plot_type == "Contour":
