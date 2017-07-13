@@ -56,8 +56,9 @@ class SonogramPlotPyQt(QWidget):
                                             
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
-        # Scipy calculates all the negative frequencies as well - we only want the positive ones
+        # Scipy calculates all the conjugate spectra/frequencies as well - we only want the positive ones
         self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
+        self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
         
         
     def draw_plot(self):      
