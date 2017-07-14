@@ -6,13 +6,14 @@ from PyQt5.QtWidgets import QSizePolicy
 
 
 class MatplotlibCanvas(FigureCanvas):
-    def __init__(self):
+    def __init__(self, suptitle=None):
         matplotlib.use('Qt5Agg')  
         matplotlib.rcParams['toolbar'] = 'None'
 
         fig = Figure()
+        fig.suptitle(suptitle)
         self.axes = fig.add_subplot(111)
-        self.axes.hold(False)
+
         self.init_plot()
         
         FigureCanvas.__init__(self, fig)

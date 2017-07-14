@@ -5,7 +5,9 @@ import numpy as np
 
 
 class Power2SteppedSlider(QSlider):
+    """A QSlider that increments in powers of 2 when moved"""
     
+    # Create custom signal, overriding pre-existing valueChanged signal
     valueChanged = pyqtSignal(int)
       
     def __init__(self, orientation, parent=None):
@@ -23,7 +25,9 @@ class Power2SteppedSlider(QSlider):
         
         
 class Power2SteppedSpinBox(QSpinBox):
+    """A QSpinBox that increments in powers of 2 when the value is updated""" 
     
+    # Create custom signal, overriding pre-existing valueChanged signal
     valueChanged = pyqtSignal(int)
      
     def __init__(self, parent=None):
