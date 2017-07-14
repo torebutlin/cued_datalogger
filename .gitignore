@@ -1,3 +1,5 @@
- __pycache__/
-matplotlib/__pycache__/
-pyqt/__pycache__/
+__pycache__/
+sonogram/__pycache__/
+sonogram/matplotlib/__pycache__/
+sonogram/pyqt/__pycache__/
+cwt/__pycache
