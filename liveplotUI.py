@@ -6,14 +6,14 @@ Created on Wed Jul  5 13:12:34 2017
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton)
-from PyQt5.QtCore import QTimer
+    QGroupBox,QRadioButton,QSplitter )
+from PyQt5.QtCore import Qt, QTimer
 import numpy as np
 
 import pyqtgraph as pg
 
 # Switch between Pyaudio and NI between changing myRecorder to NIRecorder
-import myRecorder as rcd
+import NIRecorder as rcd
 
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
@@ -49,10 +49,13 @@ class LiveplotApp(QMainWindow):
         # Setup the plot canvas        
         self.main_widget = QWidget(self)
         main_layout = QVBoxLayout(self.main_widget)
+        main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
+        main_splitter.setOpaqueResize(opaque = False)
+        main_layout.addWidget(main_splitter)
         
         # Set up time domain plot
-        self.timeplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
-        main_layout.addWidget(self.timeplotcanvas)
+        self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
+        main_splitter.addWidget(self.timeplotcanvas)
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
         self.timeplot.disableAutoRange(axis=None)
@@ -60,8 +63,8 @@ class LiveplotApp(QMainWindow):
         self.timeplotline = self.timeplot.plot(pen='g')
         
         # Set up FFT plot
-        self.fftplotcanvas = pg.PlotWidget(self.main_widget, background = 'default')
-        main_layout.addWidget(self.fftplotcanvas)
+        self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
+        main_splitter.addWidget(self.fftplotcanvas)
         self.fftplot = self.fftplotcanvas.getPlotItem()
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
@@ -71,8 +74,10 @@ class LiveplotApp(QMainWindow):
         
         self.update_line()
         
+        nongraphUI = QWidget(main_splitter)
+        nongraphUI_layout = QVBoxLayout(nongraphUI)
         # First set up the container to put the buttons in
-        btn_container = QWidget(self.main_widget)
+        btn_container = QWidget(nongraphUI)
         # Set up the container to display horizontally
         btn_layout = QHBoxLayout(btn_container)
         # Put the buttons in
@@ -89,14 +94,15 @@ class LiveplotApp(QMainWindow):
         self.sshotbtn.pressed.connect(self.get_snapshot)
         btn_layout.addWidget(self.sshotbtn)
         # Put the container into the main widget
-        main_layout.addWidget(btn_container)
+        nongraphUI_layout.addWidget(btn_container)
         
         # Acquisition panel
-        config_panel = QWidget(self.main_widget)
+        config_panel = QWidget(nongraphUI)
         config_layout = QHBoxLayout(config_panel)
         
         config_container = QWidget(config_panel)
         config_form = QFormLayout(config_container)
+        config_form.setSpacing (2)
         
         self.typegroup = QGroupBox('Input Type', config_container)
         pyaudio_button = QRadioButton('SoundCard',self.typegroup)
@@ -121,13 +127,15 @@ class LiveplotApp(QMainWindow):
         config_layout.addWidget(config_button)
         
         
-        main_layout.addWidget(config_panel)
+        nongraphUI_layout.addWidget(config_panel)
         
+        
+        main_splitter.addWidget(nongraphUI)
         # Set up the status bar
-        self.statusbar = QStatusBar(self.main_widget)
+        self.statusbar = QStatusBar(nongraphUI)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
-        main_layout.addWidget(self.statusbar)
+        nongraphUI_layout.addWidget(self.statusbar)
         
         #Set the main widget as central widget
         self.main_widget.setFocus()
