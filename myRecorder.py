@@ -6,43 +6,7 @@ Recorder class:
     which can be accessed for plotting
 """
 
-# Add codes to install pyaudio if pyaudio is not installed
-import pyaudio
-import numpy as np
-import pprint as pp
-import copy as cp
-
-class Recorder():
-#---------------- INITIALISATION METHODS -----------------------------------
-    def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
-                 num_chunk = 4,device_name = None):
-        print('You are using pyAudio for recording')
-        self.channels = channels
-        self.rate = rate
-        self.chunk_size = chunk_size
-        self.format = pyaudio.paInt16
-        self.p = None
-        self.device_index = None;
-        self.audio_stream = None
-        self.num_chunk = num_chunk;        
-        
-        self.open_recorder()
-        
-        if device_name != None:
-            self.set_device_by_name(str(device_name))
-            
-        self.allocate_buffer()
-
-    def __del__(self):
-        self.close()
-        
-    def open_recorder(self):
-        if self.p == None:
-            self.p = pyaudio.PyAudio()
-        self.recording = False
-        self.recorded_data = []
-        
-        ''' Note to self:
+''' Note to self:
             Each data is int16, so it is 2 bytes per sample.
             A 3 sec recording contains 132300 samples, but 
             considering the chunk is only takes 1024 samples, 
@@ -63,6 +27,46 @@ class Recorder():
             int32 data type (default numpy array), hence the memory is doubled. 
             Taking that into consideration, the longest possible recording time 
             is then halved.''' 
+
+
+# Add codes to install pyaudio if pyaudio is not installed
+import pyaudio
+import numpy as np
+import pprint as pp
+import copy as cp
+
+class Recorder():
+#---------------- INITIALISATION METHODS -----------------------------------
+    def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
+                 num_chunk = 4,device_name = None):
+        self.channels = channels
+        self.rate = rate
+        self.chunk_size = chunk_size
+        self.num_chunk = num_chunk;
+        self.audio_stream = None
+        
+        print('You are using pyAudio for recording')
+        self.p = None
+        self.format = pyaudio.paInt16
+        self.device_index = None;
+        
+        self.open_recorder()
+        self.allocate_buffer()
+        
+        if device_name != None:
+            self.set_device_by_name(str(device_name))
+
+
+    def __del__(self):
+        self.close()
+        
+    def open_recorder(self):
+        if self.p == None:
+            self.p = pyaudio.PyAudio()
+        self.recording = False
+        self.recorded_data = []
+        
+        
                      
     # Set up the buffer         
     def allocate_buffer(self):
@@ -111,18 +115,18 @@ class Recorder():
         
         return(names,index)
     
-    # Set the selected device by index, Private Function
-    def _set_device_by_index(self,index):
-        self.device_index = index;
-        print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
-    
-    # Display the current selected device info      
+     # Display the current selected device info      
     def current_device_info(self):
         pp.pprint(self.p.get_device_info_by_index(self.device_index))
             
     # Originally setting file name   
     def set_filename(self,filename):
         self.filename = filename
+    
+    # Set the selected device by index, Private Function
+    def _set_device_by_index(self,index):
+        self.device_index = index;
+        print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
         
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
