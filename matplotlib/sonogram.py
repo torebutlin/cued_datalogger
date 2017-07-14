@@ -27,6 +27,7 @@ class SonogramPlotWidget(MatplotlibCanvas):
         self.contour_spacing_dB = contour_spacing_dB
         
         MatplotlibCanvas.__init__(self, "Sonogram")
+
         
         # Calculate the initial sonogram and display it
         self.calculate_sonogram()
@@ -34,6 +35,8 @@ class SonogramPlotWidget(MatplotlibCanvas):
     
     def draw_plot(self):
         """Redraw the sonogram on the canvas"""
+        
+        self.axes.clear()
         
         if self.plot_type == "Contour":
             
@@ -97,6 +100,7 @@ class SonogramPlotWidget(MatplotlibCanvas):
             pass
         
         # Update the plot
+        self.calculate_sonogram()
         self.draw_plot()
     
     def calculate_sonogram(self):
