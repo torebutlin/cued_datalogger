@@ -140,10 +140,10 @@ class LiveplotApp(QMainWindow):
         data = data.reshape((len(data),))
         window = np.hanning(data.shape[0])
         weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
-        self.fft_data = np.fft.rfft(window * data * weightage)
-        self.psd_data = abs(self.fft_data)**2 / (np.abs(window)**2).sum()
+        fft_data = np.fft.rfft(window * data * weightage)
+        psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum()
         self.timeplotline.setData(x = self.timedata, y = data)
-        self.fftplotline.setData(x = self.freqdata, y = self.psd_data** 0.5)
+        self.fftplotline.setData(x = self.freqdata, y = psd_data** 0.5)
     
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
@@ -180,7 +180,7 @@ class LiveplotApp(QMainWindow):
         # Save the time series as a new channel
         self.parent.channel_set.new_channel(np.arange(data.size)/self.rec.rate, name="Time")
         # Save the data as a new channel
-        self.parent.channel_set.new_channel(data, name="Value")
+        self.parent.channel_set.new_channel(data.reshape(len(data)), name="Value")
         
         self.dataSaved.emit()        
         print('Data saved!')

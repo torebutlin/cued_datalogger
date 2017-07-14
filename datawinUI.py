@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
 from PyQt5.QtCore import QCoreApplication,QTimer
 
 import numpy as np
+from numpy.fft import rfft, rfftfreq
 
 import pyqtgraph as pg
 import liveplotUI as lpUI
@@ -50,16 +51,28 @@ class DataWindow(QMainWindow):
         self.liveplotbtn.pressed.connect(self.toggle_liveplot)
         vbox.addWidget(self.liveplotbtn)
         
+        # Set up the button to plot the FFT
+        self.fft_btn = QPushButton("Calculate FFT", self.main_widget)
+        self.fft_btn.pressed.connect(self.plot_fft)
+        vbox.addWidget(self.fft_btn)
+        
+        # Set up the button to plot the sonogram
+        self.sonogram_btn = QPushButton("Calculate sonogram", self.main_widget)
+        self.sonogram_btn.pressed.connect(self.plot_sonogram)  
+        vbox.addWidget(self.sonogram_btn)
         
         #Set up the tabs container for recorded data
         self.data_tabs = QTabWidget(self)
         self.data_tabs.setMovable(True)
-        self.data_tabs.setTabsClosable (True)
+        self.data_tabs.setTabsClosable (False)
         #self.data_tabs.setTabPosition(0)
         vbox.addWidget(self.data_tabs)
         
         # Add tab containing a plot widget
         self.data_tabs.addTab(data_tab_widget(self), "Time Series")
+        self.data_tabs.addTab(data_tab_widget(self), "Frequency domain")
+        self.data_tabs.addTab(QWidget(self), "Sonogram")
+
         
         #Set the main widget as central widget
         self.main_widget.setFocus()
@@ -95,9 +108,26 @@ class DataWindow(QMainWindow):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot((self.channel_set.channels[0].data, self.channel_set.channels[1].data), clear = True, pen='g')
-        
+        self.data_tabs.currentWidget().canvasplot.plot(x=self.channel_set.channels[0].data, y=self.channel_set.channels[1].data, clear = True, pen='g')
     
+    def plot_sonogram(self):
+        # Switch to sonogram tab
+        self.data_tabs.setCurrentIndex(2)
+    
+    def plot_fft(self):
+        # Switch to frequency domain tab
+        self.data_tabs.setCurrentIndex(1)
+        
+        # Calculate FT and associated frequencies
+        ft = np.abs(np.real(rfft(self.channel_set.channels[1].data)))
+        freqs = np.real(rfftfreq(self.channel_set.channels[1].data.size, 1/4096))
+        # Store in new channels
+        self.channel_set.new_channel(freqs, "Frequency")
+        self.channel_set.new_channel(ft, "Amplitude")
+
+        # Plot data
+        self.data_tabs.currentWidget().canvasplot.plot(x=self.channel_set.channels[2].data, y=self.channel_set.channels[3].data, clear = True, pen='g')
+        
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
