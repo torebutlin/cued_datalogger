@@ -138,7 +138,7 @@ class SonogramPlotWidget(MatplotlibCanvas):
 
 
 class SonogramWidget(QWidget):
-    def __init__(self, sig, t, sample_freq=4096, window_width=256, window_increment=32):
+    def __init__(self, sig, t, sample_freq=4096, window_width=256, window_increment=32, parent=None):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
