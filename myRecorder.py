@@ -53,8 +53,7 @@ class Recorder():
         self.open_recorder()
         self.allocate_buffer()
         
-        if device_name != None:
-            self.set_device_by_name(str(device_name))
+        self.set_device_by_name(str(device_name))
 
 
     def __del__(self):

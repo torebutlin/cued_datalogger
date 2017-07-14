@@ -6,15 +6,16 @@ Created on Wed Jul  5 13:12:34 2017
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame )
+    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox)
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QImage
+#from PyQt5.QtGui import QImage
 import numpy as np
 
 import pyqtgraph as pg
 
 # Switch between Pyaudio and NI between changing myRecorder to NIRecorder
-import myRecorder as rcd
+import myRecorder as mR
+import NIRecorder as NIR
 
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
@@ -23,11 +24,11 @@ class LiveplotApp(QMainWindow):
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,500,500,500)
+        self.setGeometry(500,500,500,750)
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = rcd.Recorder(num_chunk = 6,
+        self.rec = NIR.Recorder(num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
         self.rec.stream_init(playback = True)
@@ -39,6 +40,7 @@ class LiveplotApp(QMainWindow):
         
         # Construct UI        
         self.initUI()
+        self.config_setup()
         
         # Center and show window
         self.center()
@@ -115,20 +117,27 @@ class LiveplotApp(QMainWindow):
         typelbox = QHBoxLayout(self.typegroup)
         typelbox.addWidget(pyaudio_button)
         typelbox.addWidget(NI_button)
-        
+        print(self.typegroup.children())
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
         # Add the group to Acquisition settings form
         config_form.addRow(self.typegroup)
         
         # Add the remaining settings to Acquisition settings form
-        configs = ['Source','Channels','Chunk Size','Number of Chunks']
+        configs = ['Source','Rate','Channels','Chunk Size','Number of Chunks']
         self.configboxes = []
         
         for c in configs:
-            cbox = QLineEdit(nongraphUI)
-            config_form.addRow(QLabel(c,nongraphUI),cbox)
-            self.configboxes.append(cbox)
+            if c is 'Source':
+                cbox = QComboBox(nongraphUI)
+                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                self.configboxes.append(cbox)
+                
+            else:
+                cbox = QLineEdit(nongraphUI)
+                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                self.configboxes.append(cbox)
+            print(type(cbox),type(cbox) is QComboBox)    
             
         # Add the Acquisition form to the Acquisition layout
         config_layout.addLayout(config_form)
@@ -168,8 +177,8 @@ class LiveplotApp(QMainWindow):
         }
         .QSplitter::handle:vertical{
                 background: solid green;
-        }                   ''')
-        #background-image: url(Handle_bar.png);
+        }                   ''')#background-image: url(Handle_bar.png);
+        
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -179,6 +188,30 @@ class LiveplotApp(QMainWindow):
         self.plottimer.timeout.connect(self.update_line)
         self.plottimer.start(25) # 25ms because that how roughly long the buffer fills up
     
+    def config_setup(self):
+        rb = self.typegroup.findChildren(QRadioButton)
+        if type(self.rec) is mR.Recorder:
+            rb[0].setChecked(True)
+            nextR = mR.Recorder()
+        elif type(self.rec) is NIR.Recorder:
+            rb[1].setChecked(True)
+            nextR = NIR.Recorder()
+        
+        info = [nextR.available_devices()[0], self.rec.rate,self.rec.channels,
+                self.rec.chunk_size,self.rec.num_chunk]
+        for cbox,i in zip(self.configboxes,info):
+            if type(cbox) is QComboBox:
+                cbox.clear()
+                cbox.addItems(i)
+                    
+                print(cbox.count())
+            else:
+                cbox.setText(str(i))
+                
+        del nextR
+         
+        
+        
     
     # Center the window
     def center(self):
@@ -197,6 +230,8 @@ class LiveplotApp(QMainWindow):
         self.rec.stream_close()
         
         # TODO: Check what type of recorder to use
+        print(type(self.rec))
+        self.config_status()
         # Pyaudio or NI
         # Delete and reinitialise the recording object 
         # if there is a change
@@ -210,8 +245,6 @@ class LiveplotApp(QMainWindow):
         self.rec.stream_init()
         self.ResetPlots()
         self.plottimer.start(25)
-        
-    
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
@@ -299,7 +332,7 @@ class LiveplotApp(QMainWindow):
                 
     def config_status(self, *arg):
         print ( [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)] )
-    
+        print ( [cbox.text() for cbox in self.configboxes])
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):

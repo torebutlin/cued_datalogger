@@ -84,6 +84,7 @@ class DataWindow(QMainWindow):
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
+        self.activateWindow()
         reply = QMessageBox.question(self,'Message',
         'Are you sure you want to quit?', QMessageBox.Yes|
         QMessageBox.No, QMessageBox.No)

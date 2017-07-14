@@ -47,7 +47,7 @@ class Recorder():
             
 #---------------- DEVICE SETTING METHODS -----------------------------------
     def set_device_by_name(self, name):
-        devices = self.available_devices()
+        devices = self.available_devices()[0]
         selected_device = None
         if not devices:
             print('No NI devices found')
@@ -68,7 +68,9 @@ class Recorder():
         databuffer = pdaq.create_string_buffer(numBytesneeded)
         pdaq.DAQmxGetSysDevNames(databuffer,numBytesneeded)
         devices_name = pdaq.string_at(databuffer).decode('utf-8').split(',')
-        return(devices_name)
+        device_list = []
+        device_list.append(devices_name)
+        return(device_list)
     
     # Display the current selected device info      
     def current_device_info(self):
