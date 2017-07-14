@@ -15,11 +15,11 @@ import numpy as np
 import copy as cp
 
 
-class Recorder(Task):
+class Recorder():#Task
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 30000.0, chunk_size = 1000,
                  num_chunk = 4,device_name = None):
-        super().__init__()
+        #super().__init__()
         self.channels = channels
         self.channelnames = self.list_channels()
         self.rate = rate
@@ -99,7 +99,7 @@ class Recorder(Task):
     def stream_audio_callback(self):
         in_data = np.zeros(self.chunk_size,dtype = np.int16)
         read = pdaq.int32()
-        self.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
+        self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
                            in_data,self.chunk_size,pdaq.byref(read),None)
         self.write_buffer(self.audiodata_to_array(in_data))
         if self.recording:
@@ -109,27 +109,30 @@ class Recorder(Task):
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
         if self.audio_stream == None:
-            self.CreateAIVoltageChan(self.channelnames,"",
+            self.audio_stream = Task()
+            self.audio_stream.stream_audio_callback = self.stream_audio_callback
+            self.audio_stream.CreateAIVoltageChan(self.channelnames,"",
                                      pdaq.DAQmx_Val_RSE,-10.0,10.0,
                                      pdaq.DAQmx_Val_Volts,None)
-            self.CfgSampClkTiming("",self.rate,
+            self.audio_stream.CfgSampClkTiming("",self.rate,
                                   pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,
                                   self.chunk_size)
-            self.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_Into_Buffer,
+            self.audio_stream.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_Into_Buffer,
                                                 1000,0,name = 'stream_audio_callback')
             
             self.stream_start()
     # Start the streaming
     def stream_start(self):
-        self.StartTask()
+        self.audio_stream.StartTask()
     # Stop the streaming
     def stream_stop(self):
-        self.StopTask()
+        self.audio_stream.StopTask()
         
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
-        self.ClearTask()
-        self.audio_stream = None
+        if self.audio_stream:
+            self.audio_stream.ClearTask()
+            self.audio_stream = None
         
 #----------------- DECORATOR METHODS --------------------------------------
             
