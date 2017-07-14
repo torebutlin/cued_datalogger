@@ -7,13 +7,20 @@ Created on Wed Jul  5 13:12:34 2017
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar)
 from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import pyqtSignal
+
 import numpy as np
 
 import pyqtgraph as pg
 import myRecorder as rcd
 
+from channel import Channel, ChannelSet
+
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
+    
+    dataSaved = pyqtSignal()
+    
     def __init__(self,parent = None):
         super().__init__()
         self.parent = parent
@@ -133,15 +140,15 @@ class LiveplotApp(QMainWindow):
         data = data.reshape((len(data),))
         window = np.hanning(data.shape[0])
         weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
-        fft_data = np.fft.rfft(window * data * weightage)
-        psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum()
+        self.fft_data = np.fft.rfft(window * data * weightage)
+        self.psd_data = abs(self.fft_data)**2 / (np.abs(window)**2).sum()
         self.timeplotline.setData(x = self.timedata, y = data)
-        self.fftplotline.setData(x = self.freqdata, y = psd_data** 0.5)
+        self.fftplotline.setData(x = self.freqdata, y = self.psd_data** 0.5)
     
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
         snapshot = self.rec.get_buffer()
-        self.transfer_data_to_plot(data = snapshot)
+        self.save_data(data = snapshot)
         self.statusbar.showMessage('Snapshot Captured!', 1500)
     
     # Start the data recording        
@@ -163,18 +170,22 @@ class LiveplotApp(QMainWindow):
         self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
-        self.transfer_data_to_plot(self.rec.flush_record_data())
+        self.save_data(self.rec.flush_record_data())
         self.statusbar.clearMessage()
     
     # Transfer data to main window      
-    def transfer_data_to_plot(self,data = None):
-        if self.parent.data_tabs.currentWidget():
-            print('Transferring data')
-            self.parent.data_tabs.currentWidget()\
-            .canvasplot.plot(np.arange(len(data))/self.rec.rate, 
-                             data.reshape((len(data),)), clear = True,
-                             pen='g')
-            self.parent.activateWindow()
+    def save_data(self,data = None):
+        print('Saving data...')
+
+        # Save the time series as a new channel
+        self.parent.channel_set.new_channel(np.arange(data.size)/self.rec.rate, name="Time")
+        # Save the data as a new channel
+        self.parent.channel_set.new_channel(data, name="Value")
+        
+        self.dataSaved.emit()        
+        print('Data saved!')
+        
+
     
     # Set the status message to the default messages if it is empty       
     def default_status(self,*arg):

@@ -19,4 +19,4 @@ class data_tab_widget(QWidget):
         self.canvas = pg.PlotWidget(self, background = 'default')
         vbox.addWidget(self.canvas)
         self.canvasplot = self.canvas.getPlotItem()
-        self.canvasplot.setLabels(title="Time Plot", bottom = 'Time(s)')
+        #self.canvasplot.setLabels(title="Time Plot", bottom = 'Time(s)')
