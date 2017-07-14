@@ -7,6 +7,7 @@ from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox
 from pyqt_matplotlib import MatplotlibCanvas
 
 import numpy as np
+
 from mynumpy_functions import to_dB, from_dB
 
 from scipy.signal import spectrogram, get_window
