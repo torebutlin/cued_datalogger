@@ -6,14 +6,15 @@ Created on Wed Jul  5 13:12:34 2017
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter )
+    QGroupBox,QRadioButton,QSplitter,QFrame )
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QImage
 import numpy as np
 
 import pyqtgraph as pg
 
 # Switch between Pyaudio and NI between changing myRecorder to NIRecorder
-import NIRecorder as rcd
+import myRecorder as rcd
 
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
@@ -46,14 +47,16 @@ class LiveplotApp(QMainWindow):
         
      #---------------------- App construction methods-----------------------     
     def initUI(self):
-        # Setup the plot canvas        
+        # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QVBoxLayout(self.main_widget)
+        
+        # Set up the splitter, add to main layout
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter)
         
-        # Set up time domain plot
+        # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
         main_splitter.addWidget(self.timeplotcanvas)
         self.timeplot = self.timeplotcanvas.getPlotItem()
@@ -62,7 +65,7 @@ class LiveplotApp(QMainWindow):
         self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
         self.timeplotline = self.timeplot.plot(pen='g')
         
-        # Set up FFT plot
+        # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
         main_splitter.addWidget(self.fftplotcanvas)
         self.fftplot = self.fftplotcanvas.getPlotItem()
@@ -74,69 +77,99 @@ class LiveplotApp(QMainWindow):
         
         self.update_line()
         
+        # Set the rest of the UI and add to splitter
         nongraphUI = QWidget(main_splitter)
         nongraphUI_layout = QVBoxLayout(nongraphUI)
-        # First set up the container to put the buttons in
-        btn_container = QWidget(nongraphUI)
-        # Set up the container to display horizontally
-        btn_layout = QHBoxLayout(btn_container)
+        
+        # Set up the button layout to display horizontally
+        btn_layout = QHBoxLayout(nongraphUI)
         # Put the buttons in
-        self.togglebtn = QPushButton('Pause',btn_container)
+        self.togglebtn = QPushButton('Pause',nongraphUI)
         self.togglebtn.resize(self.togglebtn.sizeHint())
         self.togglebtn.pressed.connect(self.toggle_rec)
         btn_layout.addWidget(self.togglebtn)
-        self.recordbtn = QPushButton('Record',btn_container)
+        self.recordbtn = QPushButton('Record',nongraphUI)
         self.recordbtn.resize(self.recordbtn.sizeHint())
         self.recordbtn.pressed.connect(self.start_recording)
         btn_layout.addWidget(self.recordbtn)
-        self.sshotbtn = QPushButton('Get Snapshot',btn_container)
+        self.sshotbtn = QPushButton('Get Snapshot',nongraphUI)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         self.sshotbtn.pressed.connect(self.get_snapshot)
         btn_layout.addWidget(self.sshotbtn)
-        # Put the container into the main widget
-        nongraphUI_layout.addWidget(btn_container)
+        # Put the layout into the nongraphUI widget
+        nongraphUI_layout.addLayout(btn_layout)
         
-        # Acquisition panel
-        config_panel = QWidget(nongraphUI)
-        config_layout = QHBoxLayout(config_panel)
+        # Set up the Acquisition layout to display horizontally
+        config_layout = QHBoxLayout(nongraphUI)
         
-        config_container = QWidget(config_panel)
-        config_form = QFormLayout(config_container)
-        config_form.setSpacing (2)
+        # Set the Acquisition settings form
+        config_form = QFormLayout(nongraphUI)
+        #config_form.setSpacing (2)
         
-        self.typegroup = QGroupBox('Input Type', config_container)
+        # Set up the Acquisition type radiobuttons group
+        self.typegroup = QGroupBox('Input Type', nongraphUI)
         pyaudio_button = QRadioButton('SoundCard',self.typegroup)
         NI_button = QRadioButton('NI',self.typegroup)
+        
+        # Put the radiobuttons horizontally
         typelbox = QHBoxLayout(self.typegroup)
         typelbox.addWidget(pyaudio_button)
         typelbox.addWidget(NI_button)
+        
+        # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
+        # Add the group to Acquisition settings form
         config_form.addRow(self.typegroup)
         
+        # Add the remaining settings to Acquisition settings form
         configs = ['Source','Channels','Chunk Size','Number of Chunks']
         self.configboxes = []
         
         for c in configs:
-            cbox = QLineEdit(config_container)
-            config_form.addRow(QLabel(c,config_container),cbox)
+            cbox = QLineEdit(nongraphUI)
+            config_form.addRow(QLabel(c,nongraphUI),cbox)
             self.configboxes.append(cbox)
-
-        config_layout.addWidget(config_container)
-        config_button = QPushButton('Print Config', config_panel)
+            
+        # Add the Acquisition form to the Acquisition layout
+        config_layout.addLayout(config_form)
+        
+        # Add a button to Acquisition layout
+        config_button = QPushButton('Print Config', nongraphUI)
         config_button.clicked.connect(self.config_status)
         config_layout.addWidget(config_button)
         
+        # Add Acquisition layout to nongraphUI widget
+        nongraphUI_layout.addLayout(config_layout,10)
         
-        nongraphUI_layout.addWidget(config_panel)
-        
-        
-        main_splitter.addWidget(nongraphUI)
-        # Set up the status bar
+        # Set up the status bar and add to nongraphUI widget
         self.statusbar = QStatusBar(nongraphUI)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
         nongraphUI_layout.addWidget(self.statusbar)
         
+        # Add nongraphUI widget to splitter
+        main_splitter.addWidget(nongraphUI)
+        main_splitter.setStretchFactor(0, 40)
+        main_splitter.setStretchFactor(1, 40)
+        main_splitter.setStretchFactor(2, 0)
+        
+        # Experimental styling
+        main_splitter.setFrameShape(QFrame.Panel)
+        main_splitter.setFrameShadow(QFrame.Sunken)
+        self.main_widget.setStyleSheet('''
+        .QWidget{
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #eee, stop:1 #ccc);
+            border: 1px solid #777;
+            width: 13px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            border-radius: 4px;
+        }
+        .QSplitter::handle:vertical{
+                background: solid green;
+        }                   ''')
+        #background-image: url(Handle_bar.png);
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
