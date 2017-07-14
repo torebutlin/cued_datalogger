@@ -14,7 +14,7 @@ import numpy as np
 import pyqtgraph as pg
 import myRecorder as rcd
 
-from channel import Channel, ChannelSet
+from channel import DataSet, Channel, ChannelSet
 
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
@@ -177,15 +177,14 @@ class LiveplotApp(QMainWindow):
     def save_data(self,data = None):
         print('Saving data...')
 
-        # Save the time series as a new channel
-        self.parent.channel_set.new_channel(np.arange(data.size)/self.rec.rate, name="Time")
-        # Save the data as a new channel
-        self.parent.channel_set.new_channel(data.reshape(len(data)), name="Value")
+        # Save the time series
+        self.parent.cs.chans[0].set_data('t', np.arange(data.size)/self.rec.rate)
+        # Save the values
+        self.parent.cs.chans[0].set_data('y', data.reshape(data.size))
         
         self.dataSaved.emit()        
         print('Data saved!')
         
-
     
     # Set the status message to the default messages if it is empty       
     def default_status(self,*arg):

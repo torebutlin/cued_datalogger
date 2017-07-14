@@ -17,7 +17,7 @@ import pyqtgraph as pg
 import liveplotUI as lpUI
 from wintabwidgets import data_tab_widget
 
-from channel import Channel, ChannelSet
+from channel import DataSet, Channel, ChannelSet
 
 class DataWindow(QMainWindow):
     def __init__(self):
@@ -87,7 +87,15 @@ class DataWindow(QMainWindow):
     
     def init_channels(self):
         """Initialise the channels"""
-        self.channel_set = ChannelSet()
+        # Create the channel set
+        self.cs = ChannelSet()
+        # Set up the datasets in the channels
+        t = DataSet(id_='t')
+        y = DataSet(id_='y')
+        f = DataSet(id_='f')
+        s = DataSet(id_='s')
+        # Add one input channel
+        self.cs.add_channel(Channel(0, name="Input 0", datasets=[t,y,f,s]))
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
@@ -107,9 +115,11 @@ class DataWindow(QMainWindow):
     def plot_time_series(self):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
+        t = self.cs.chans[0].data('t')
+        y = self.cs.chans[0].data('y')
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot(x=self.channel_set.channels[0].data, y=self.channel_set.channels[1].data, clear = True, pen='g')
-    
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='g')
+        
     def plot_sonogram(self):
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
@@ -118,15 +128,18 @@ class DataWindow(QMainWindow):
         # Switch to frequency domain tab
         self.data_tabs.setCurrentIndex(1)
         
+        y = self.cs.chans[0].data('y')
+
         # Calculate FT and associated frequencies
-        ft = np.abs(np.real(rfft(self.channel_set.channels[1].data)))
-        freqs = np.real(rfftfreq(self.channel_set.channels[1].data.size, 1/4096))
-        # Store in new channels
-        self.channel_set.new_channel(freqs, "Frequency")
-        self.channel_set.new_channel(ft, "Amplitude")
+        ft = np.abs(np.real(rfft(y)))
+        freqs = np.real(rfftfreq(y.size, 1/4096))
+        
+        # Store in datasets
+        self.cs.chans[0].set_data('f', freqs)
+        self.cs.chans[0].set_data('s', ft)
 
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot(x=self.channel_set.channels[2].data, y=self.channel_set.channels[3].data, clear = True, pen='g')
+        self.data_tabs.currentWidget().canvasplot.plot(x=freqs, y=ft, clear=True, pen='g')
         
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
