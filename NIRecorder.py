@@ -24,6 +24,9 @@ class Recorder():
         
         print('You are using National Instrument for recording')
         #self.format = pdaq.int16()
+        
+        # TODO: setup set device by index
+        self.device_index = 0;
         self.device_name = self.set_device_by_name(device_name);
         self.channel_names = self.set_channels()
                

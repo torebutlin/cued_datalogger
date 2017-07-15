@@ -10,12 +10,13 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
 from PyQt5.QtCore import Qt, QTimer
 #from PyQt5.QtGui import QImage
 import numpy as np
+import re
 
 import pyqtgraph as pg
 
 # Switch between Pyaudio and NI between changing myRecorder to NIRecorder
 import myRecorder as mR
-import NIRecorder as NIR
+#import NIRecorder as NIR
 
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
@@ -28,10 +29,10 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = NIR.Recorder(num_chunk = 6,
+        self.rec = mR.Recorder(num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
-        self.rec.stream_init(playback = True)
+        self.rec.stream_init(playback = False)
         self.playing = True
         # Set up the TimeSeries and FreqSeries
         data = self.rec.get_buffer()
@@ -66,6 +67,7 @@ class LiveplotApp(QMainWindow):
         self.timeplot.disableAutoRange(axis=None)
         self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
         self.timeplotline = self.timeplot.plot(pen='g')
+        print(type(self.timeplotline))
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -143,8 +145,8 @@ class LiveplotApp(QMainWindow):
         config_layout.addLayout(config_form)
         
         # Add a button to Acquisition layout
-        config_button = QPushButton('Print Config', nongraphUI)
-        config_button.clicked.connect(self.config_status)
+        config_button = QPushButton('Set Config', nongraphUI)
+        config_button.clicked.connect(self.ResetRecording)
         config_layout.addWidget(config_button)
         
         # Add Acquisition layout to nongraphUI widget
@@ -192,25 +194,23 @@ class LiveplotApp(QMainWindow):
         rb = self.typegroup.findChildren(QRadioButton)
         if type(self.rec) is mR.Recorder:
             rb[0].setChecked(True)
-            nextR = mR.Recorder()
-        elif type(self.rec) is NIR.Recorder:
-            rb[1].setChecked(True)
-            nextR = NIR.Recorder()
+            selR = mR.Recorder()
+        #elif type(self.rec) is NIR.Recorder:
+        #    rb[1].setChecked(True)
+        #    selR = NIR.Recorder()
         
-        info = [nextR.available_devices()[0], self.rec.rate,self.rec.channels,
+        info = [selR.available_devices()[0], self.rec.rate,self.rec.channels,
                 self.rec.chunk_size,self.rec.num_chunk]
         for cbox,i in zip(self.configboxes,info):
             if type(cbox) is QComboBox:
                 cbox.clear()
                 cbox.addItems(i)
-                    
+                cbox.setCurrentIndex(self.rec.device_index)    
                 print(cbox.count())
             else:
                 cbox.setText(str(i))
                 
-        del nextR
-         
-        
+        del selR
         
     
     # Center the window
@@ -225,38 +225,60 @@ class LiveplotApp(QMainWindow):
     #---------------- Reset Methods-----------------------------------    
     def ResetRecording(self):
         self.statusbar.showMessage('Resetting...')
+        
         # Stop the update and close the stream
         self.plottimer.stop()
-        self.rec.stream_close()
-        
-        # TODO: Check what type of recorder to use
+        self.rec.close()
         print(type(self.rec))
-        self.config_status()
-        # Pyaudio or NI
-        # Delete and reinitialise the recording object 
-        # if there is a change
+                
+        try:
+                
+            # Get Input from the Acquisition settings UI
+            Rtype, settings = self.config_status()
+            
+            # Delete and reinitialise the recording object
+            # Change the settings
+            #if Rtype[0]:
+            self.rec = mR.Recorder(device_name = settings[0])
+            #elif Rtype[1] and not type(self.rec) is NIR.Recorder:
+            #    self.rec = NIR.Recorder()
+            # TODO?: Change the values of recording object
+            self.rec.rate = settings[1]
+            self.rec.channels = settings[2]
+            self.rec.chunk_size = settings[3]
+            self.rec.num_chunk = settings[4]
+            self.rec.allocate_buffer()
+        except Exception as e:
+            print(e)
+            print('Cannot set up new recorder')
         
-        # TODO: Get Input from the Acquisition settings UI
-        # Requires the UI to be there in the first place
-        
-        # TODO: Change the values of recording object
-        
+        try:
         # Open the stream, plot and update
-        self.rec.stream_init()
-        self.ResetPlots()
-        self.plottimer.start(25)
+            self.rec.stream_init()
+            self.ResetPlots()
+            self.plottimer.start(25)
+        except Exception as e:
+            print(e)
+            print('Cannot stream,restart the app')    
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
+        print(data.shape)
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
     
     def ResetPlots(self):
-        self.ResetXdata()
-        self.timeplot.clear()
-        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-        self.fftplot.clear()
-        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
+        print('resetting')
+        try:
+            self.ResetXdata()
+            self.timeplotline.clear()
+            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
+            self.fftplotline.clear()
+            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
+            self.update_line()
+        except Exception as e:
+            print(e)
+            print('Cannot set up new recorder')
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
@@ -331,8 +353,21 @@ class LiveplotApp(QMainWindow):
                 self.statusbar.showMessage('Stream Paused')
                 
     def config_status(self, *arg):
-        print ( [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)] )
-        print ( [cbox.text() for cbox in self.configboxes])
+        recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
+        configs = []
+        for cbox in self.configboxes:
+            if type(cbox) is QComboBox:
+                configs.append(cbox.currentText())
+            else:
+                notnumRegex = re.compile(r'(\D)+')
+                config_input = cbox.text().strip(' ')
+                if notnumRegex.search(config_input):
+                    configs.append(None)
+                else:
+                    configs.append(int(config_input))
+                    
+        print(recType,configs)
+        return(recType, configs)
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
