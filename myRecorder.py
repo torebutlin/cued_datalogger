@@ -199,6 +199,37 @@ class Recorder():
             self.audio_stream.close()
             self.audio_stream = None
 #----------------- DECORATOR METHODS --------------------------------------
+    @property
+    def num_chunk(self):
+        return self._num_chunk
+
+    @num_chunk.setter
+    def num_chunk(self, num_chunks):
+        n = max(1, int(num_chunks))
+        try:
+            if n * self.chunk_size > 2**16:
+                n = 2**16 // self.chunk_size
+            self._num_chunk = n
+            self.allocate_buffer()
+        except Exception as e:
+            print(e)
+            self._num_chunks = n
+        
+    @property
+    def chunk_size(self):
+        return self._chunk_size
+
+    @chunk_size.setter
+    def chunk_size(self, chunk_size):
+        n = max(1, int(chunk_size))
+        try:
+            if n * self.num_chunk > 2**16:
+                n = 2**16 // self.num_chunk
+            self._chunk_size = n
+            self.allocate_buffer()
+        except Exception as e:
+            print(e)
+            self._chunk_size = n
             
 #---------------- DESTRUCTOR??? METHODS -----------------------------------
     # Close the audio object, to be called if streaming is no longer needed        
