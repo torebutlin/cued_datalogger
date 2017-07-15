@@ -28,22 +28,20 @@ Recorder class:
             Taking that into consideration, the longest possible recording time 
             is then halved.''' 
 
-
+from RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
 import pyaudio
 import numpy as np
 import pprint as pp
-import copy as cp
+#import copy as cp
 
-class Recorder():
+class Recorder(RecorderParent):
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
                  num_chunk = 4,device_name = None):
-        self.channels = channels
-        self.rate = rate
-        self.chunk_size = chunk_size
-        self.num_chunk = num_chunk;
-        self.audio_stream = None
+        
+        super().__init__(channels = channels,rate = rate, 
+             chunk_size = chunk_size,num_chunk = num_chunk)
         
         print('You are using pyAudio for recording')
         self.p = None
@@ -51,28 +49,21 @@ class Recorder():
         self.device_index = None;
         
         self.open_recorder()
-        self.allocate_buffer()
-        
         self.set_device_by_name(str(device_name))
-
-
-    def __del__(self):
-        self.close()
         
     def open_recorder(self):
+        super().open_recorder()
         if self.p == None:
             self.p = pyaudio.PyAudio()
-        self.recording = False
-        self.recorded_data = []
-        
-        
-                     
-    # Set up the buffer         
-    def allocate_buffer(self):
-        self.buffer = np.zeros(shape = (self.num_chunk,
-                                        self.chunk_size,
-                                        self.channels))
-        self.next_chunk = 0;
+
+#---------------- DESTRUCTOR METHODS -----------------------------------
+    # Close the audio object, to be called if streaming is no longer needed        
+    def close(self):
+        super().close()
+        #self.stream_close()
+        if not self.p:
+            self.p.terminate()
+            self.p = None
             
 #---------------- DEVICE SETTING METHODS -----------------------------------            
      # Set the recording audio device by name, 
@@ -117,10 +108,6 @@ class Recorder():
      # Display the current selected device info      
     def current_device_info(self):
         pp.pprint(self.p.get_device_info_by_index(self.device_index))
-            
-    # Originally setting file name   
-    def set_filename(self,filename):
-        self.filename = filename
     
     # Set the selected device by index, Private Function
     def _set_device_by_index(self,index):
@@ -131,31 +118,6 @@ class Recorder():
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
         return np.frombuffer(data, dtype = np.int16).reshape((-1,self.channels))
-    
-#---------------- BUFFER METHODS -----------------------------------
-    # Write the data obtained into buffer and move to the next chunk   
-    def write_buffer(self,data):
-        self.buffer[self.next_chunk,:,:] = self.audiodata_to_array(data)
-        self.next_chunk = (self.next_chunk + 1) % self.num_chunk
-    
-    # Return the buffer data as a 2D array by stitching the chunks together  
-    def get_buffer(self):
-        return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
-                 .reshape((self.buffer.shape[0] * self.buffer.shape[1],
-                           self.buffer.shape[2])) / 2**7
-
-#---------------- RECORDING METHODS -----------------------------------
-    # Append the current chunk(which is before next_chunk) to recorded data            
-    def record_data(self):
-        data = cp.copy(self.buffer[self.next_chunk-1])
-        self.recorded_data.append(data)
-        
-    # Return the recorded data as 2D numpy array (similar to get_buffer)    
-    def flush_record_data(self):
-        flushed_data = np.array(self.recorded_data)
-        self.recorded_data = []
-        return flushed_data.reshape((flushed_data.shape[0] * flushed_data.shape[1],
-                           flushed_data.shape[2])) / 2**7
                            
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
@@ -198,44 +160,3 @@ class Recorder():
                 self.stream_stop()
             self.audio_stream.close()
             self.audio_stream = None
-#----------------- DECORATOR METHODS --------------------------------------
-    @property
-    def num_chunk(self):
-        return self._num_chunk
-
-    @num_chunk.setter
-    def num_chunk(self, num_chunks):
-        n = max(1, int(num_chunks))
-        try:
-            if n * self.chunk_size > 2**16:
-                n = 2**16 // self.chunk_size
-            self._num_chunk = n
-            self.allocate_buffer()
-        except Exception as e:
-            print(e)
-            self._num_chunks = n
-        
-    @property
-    def chunk_size(self):
-        return self._chunk_size
-
-    @chunk_size.setter
-    def chunk_size(self, chunk_size):
-        n = max(1, int(chunk_size))
-        try:
-            if n * self.num_chunk > 2**16:
-                n = 2**16 // self.num_chunk
-            self._chunk_size = n
-            self.allocate_buffer()
-        except Exception as e:
-            print(e)
-            self._chunk_size = n
-            
-#---------------- DESTRUCTOR??? METHODS -----------------------------------
-    # Close the audio object, to be called if streaming is no longer needed        
-    def close(self):
-        self.stream_close()
-        if not self.p:
-            self.p.terminate()
-            self.p = None
-
