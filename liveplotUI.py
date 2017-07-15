@@ -6,7 +6,8 @@ Created on Wed Jul  5 13:12:34 2017
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox)
+    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
+    QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
 #from PyQt5.QtGui import QImage
 import numpy as np
@@ -25,7 +26,7 @@ class LiveplotApp(QMainWindow):
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,500,500,750)
+        self.setGeometry(500,500,500,600)
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
@@ -54,10 +55,41 @@ class LiveplotApp(QMainWindow):
         self.main_widget = QWidget(self)
         main_layout = QVBoxLayout(self.main_widget)
         
+        #Set up the channel tickboxes widget
+        channels_box = QWidget(self.main_widget)
+        channels_layout = QGridLayout(channels_box)
+        
+        for i in range (50):
+            channels_layout.addWidget(QCheckBox(channels_box))
+        
+        scroll = QScrollArea(self.main_widget)
+        #scroll.ensureVisible(50,50)
+        scroll.setWidget(channels_box)
+        scroll.setWidgetResizable(True)
+        main_layout.addWidget(scroll,10)
+        
+         # Set up the button layout to display horizontally
+        btn_layout = QHBoxLayout(self.main_widget)
+        # Put the buttons in
+        self.togglebtn = QPushButton('Pause',self.main_widget)
+        self.togglebtn.resize(self.togglebtn.sizeHint())
+        self.togglebtn.pressed.connect(self.toggle_rec)
+        btn_layout.addWidget(self.togglebtn)
+        self.recordbtn = QPushButton('Record',self.main_widget)
+        self.recordbtn.resize(self.recordbtn.sizeHint())
+        self.recordbtn.pressed.connect(self.start_recording)
+        btn_layout.addWidget(self.recordbtn)
+        self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
+        self.sshotbtn.resize(self.sshotbtn.sizeHint())
+        self.sshotbtn.pressed.connect(self.get_snapshot)
+        btn_layout.addWidget(self.sshotbtn)
+        # Put the layout into the nongraphUI widget
+        main_layout.addLayout(btn_layout)
+        
         # Set up the splitter, add to main layout
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
-        main_layout.addWidget(main_splitter)
+        main_layout.addWidget(main_splitter,90)
         
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -67,7 +99,6 @@ class LiveplotApp(QMainWindow):
         self.timeplot.disableAutoRange(axis=None)
         self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
         self.timeplotline = self.timeplot.plot(pen='g')
-        print(type(self.timeplotline))
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -85,23 +116,6 @@ class LiveplotApp(QMainWindow):
         nongraphUI = QWidget(main_splitter)
         nongraphUI_layout = QVBoxLayout(nongraphUI)
         
-        # Set up the button layout to display horizontally
-        btn_layout = QHBoxLayout(nongraphUI)
-        # Put the buttons in
-        self.togglebtn = QPushButton('Pause',nongraphUI)
-        self.togglebtn.resize(self.togglebtn.sizeHint())
-        self.togglebtn.pressed.connect(self.toggle_rec)
-        btn_layout.addWidget(self.togglebtn)
-        self.recordbtn = QPushButton('Record',nongraphUI)
-        self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.pressed.connect(self.start_recording)
-        btn_layout.addWidget(self.recordbtn)
-        self.sshotbtn = QPushButton('Get Snapshot',nongraphUI)
-        self.sshotbtn.resize(self.sshotbtn.sizeHint())
-        self.sshotbtn.pressed.connect(self.get_snapshot)
-        btn_layout.addWidget(self.sshotbtn)
-        # Put the layout into the nongraphUI widget
-        nongraphUI_layout.addLayout(btn_layout)
         
         # Set up the Acquisition layout to display horizontally
         config_layout = QHBoxLayout(nongraphUI)
@@ -247,7 +261,6 @@ class LiveplotApp(QMainWindow):
             self.rec.channels = settings[2]
             self.rec.chunk_size = settings[3]
             self.rec.num_chunk = settings[4]
-            self.rec.allocate_buffer()
         except Exception as e:
             print(e)
             print('Cannot set up new recorder')
