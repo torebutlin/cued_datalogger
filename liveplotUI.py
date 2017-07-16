@@ -15,7 +15,7 @@ import re
 
 import pyqtgraph as pg
 
-# Switch between Pyaudio and NI between changing myRecorder to NIRecorder
+# Uncomment the NIRecorder later
 import myRecorder as mR
 #import NIRecorder as NIR
 
@@ -30,7 +30,8 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = mR.Recorder(num_chunk = 6,
+        self.rec = mR.Recorder( channels = 1,
+                                num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
         self.rec.stream_init(playback = False)
@@ -59,7 +60,7 @@ class LiveplotApp(QMainWindow):
         channels_box = QWidget(self.main_widget)
         channels_layout = QGridLayout(channels_box)
         
-        for i in range (50):
+        for i in range (10):
             channels_layout.addWidget(QCheckBox(channels_box))
         
         scroll = QScrollArea(self.main_widget)
@@ -91,6 +92,8 @@ class LiveplotApp(QMainWindow):
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter,90)
         
+        
+        self.plotlines = []
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
         main_splitter.addWidget(self.timeplotcanvas)
@@ -98,7 +101,7 @@ class LiveplotApp(QMainWindow):
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
         self.timeplot.disableAutoRange(axis=None)
         self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-        self.timeplotline = self.timeplot.plot(pen='g')
+       
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -107,8 +110,11 @@ class LiveplotApp(QMainWindow):
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
         self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
-        self.fftplotline = self.fftplot.plot(pen = 'y')
-        self.fftplotline.setDownsampling(auto = True) 
+        
+        for i in range(self.rec.channels):
+            #colour = pg.mkColor(125,23*i,255,120)
+            self.plotlines.append(self.timeplot.plot(pen = 'g'))
+            self.plotlines.append(self.fftplot.plot(pen = 'y'))
         
         self.update_line()
         
@@ -202,7 +208,7 @@ class LiveplotApp(QMainWindow):
         # Set up a timer to update the plot
         self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
-        self.plottimer.start(25) # 25ms because that how roughly long the buffer fills up
+        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2) # 25ms because that how roughly long the buffer fills up
     
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
@@ -245,8 +251,7 @@ class LiveplotApp(QMainWindow):
         self.rec.close()
         print(type(self.rec))
                 
-        try:
-                
+        try:    
             # Get Input from the Acquisition settings UI
             Rtype, settings = self.config_status()
             
@@ -269,29 +274,41 @@ class LiveplotApp(QMainWindow):
         # Open the stream, plot and update
             self.rec.stream_init()
             self.ResetPlots()
-            self.plottimer.start(25)
+            print(self.rec.chunk_size*1000//self.rec.rate + 1)
+            self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         except Exception as e:
             print(e)
             print('Cannot stream,restart the app')    
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
-        print(data.shape)
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
     
     def ResetPlots(self):
         print('resetting')
         try:
+            n_plotlines = len(self.plotlines)
             self.ResetXdata()
-            self.timeplotline.clear()
+            
+            for _ in range(n_plotlines):
+                line = self.plotlines.pop()
+                line.clear()
+                del line
+                
+                
+            for _ in range(self.rec.channels):
+                self.plotlines.append(self.timeplot.plot(pen = 'g'))
+                self.plotlines.append(self.fftplot.plot(pen = 'y'))
+            
+            #self.timeplotline.clear()
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-            self.fftplotline.clear()
+            #self.fftplotline.clear()
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
             self.update_line()
         except Exception as e:
             print(e)
-            print('Cannot set up new recorder')
+            print('Cannot reset plots')
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
@@ -311,13 +328,15 @@ class LiveplotApp(QMainWindow):
     # Updates the plots    
     def update_line(self):
         data = self.rec.get_buffer()
-        data = data.reshape((len(data),))
         window = np.hanning(data.shape[0])
         weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
-        fft_data = np.fft.rfft(window * data * weightage)
-        psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum()
-        self.timeplotline.setData(x = self.timedata, y = data)
-        self.fftplotline.setData(x = self.freqdata, y = psd_data** 0.5)
+        for i in range(data.shape[1]):
+            plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
+            
+            fft_data = np.fft.rfft(window * plotdata * weightage)
+            psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
+            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
+            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
     
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
@@ -351,11 +370,14 @@ class LiveplotApp(QMainWindow):
     def transfer_data_to_plot(self,data = None):
         if self.parent.data_tabs.currentWidget():
             print('Transferring data')
-            self.parent.data_tabs.currentWidget()\
-            .canvasplot.plot(np.arange(len(data))/self.rec.rate, 
-                             data.reshape((len(data),)), clear = True,
-                             pen='g')
-            self.parent.activateWindow()
+            self.parent.data_tabs.currentWidget().canvasplot.clear()
+            for i in range(data.shape[1]):
+                plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
+                
+                self.parent.data_tabs.currentWidget()\
+                .canvasplot.plot(np.arange(len(plotdata))/self.rec.rate, 
+                                 plotdata,pen='g')
+                self.parent.activateWindow()
     
     # Set the status message to the default messages if it is empty       
     def default_status(self,*arg):
