@@ -16,6 +16,7 @@ from numpy.fft import rfft, rfftfreq
 import pyqtgraph as pg
 import liveplotUI as lpUI
 from wintabwidgets import data_tab_widget
+from sonogram.matplotlib.sonogram import SonogramWidget
 
 from channel import DataSet, Channel, ChannelSet
 
@@ -71,7 +72,6 @@ class DataWindow(QMainWindow):
         # Add tab containing a plot widget
         self.data_tabs.addTab(data_tab_widget(self), "Time Series")
         self.data_tabs.addTab(data_tab_widget(self), "Frequency domain")
-        self.data_tabs.addTab(QWidget(self), "Sonogram")
 
         
         #Set the main widget as central widget
@@ -121,6 +121,9 @@ class DataWindow(QMainWindow):
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='g')
         
     def plot_sonogram(self):
+        signal = self.cs.chans[0].data('y')
+        t = self.cs.chans[0].data('t')
+        self.data_tabs.addTab(SonogramWidget(signal, t, parent=self), "Sonogram")
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
     
