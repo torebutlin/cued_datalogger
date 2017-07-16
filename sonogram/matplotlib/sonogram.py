@@ -134,11 +134,9 @@ class SonogramPlotWidget(MatplotlibCanvas):
     
     def update_contour_sequence(self):
         """Update the array which says where to plot contours, how many etc"""
-        # Create a vector with the right spacing from min to max value
-        self.contour_sequence = np.arange(self.FT_dB.min(), self.FT_dB.max(),
-                                          self.contour_spacing_dB)
-        # Take the appropriate number of contours
-        self.contour_sequence = self.contour_sequence[-self.num_contours:]
+        # Create a vector with the right spacing with the correct number of contours
+        startval = self.FT_dB.max() - (self.num_contours * self.contour_spacing_dB)
+        self.contour_sequence = np.linspace(startval, self.FT_dB.max(), num=self.num_contours)
         
 
 
