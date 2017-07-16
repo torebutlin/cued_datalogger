@@ -17,6 +17,7 @@ import pyqtgraph as pg
 import liveplotUI as lpUI
 from wintabwidgets import data_tab_widget
 from sonogram.matplotlib.sonogram import SonogramWidget
+from cwt.cwt import CWTWidget
 
 from channel import DataSet, Channel, ChannelSet
 
@@ -61,6 +62,11 @@ class DataWindow(QMainWindow):
         self.sonogram_btn = QPushButton("Calculate sonogram", self.main_widget)
         self.sonogram_btn.pressed.connect(self.plot_sonogram)  
         vbox.addWidget(self.sonogram_btn)
+        
+        # Set up the button to plot the CWT
+        self.cwt_btn = QPushButton("Calculate CWT", self.main_widget)
+        self.cwt_btn.pressed.connect(self.plot_cwt)  
+        vbox.addWidget(self.cwt_btn)
         
         #Set up the tabs container for recorded data
         self.data_tabs = QTabWidget(self)
@@ -127,6 +133,13 @@ class DataWindow(QMainWindow):
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
     
+    def plot_cwt(self):
+        signal = self.cs.chans[0].data('y')
+        t = self.cs.chans[0].data('t')
+        self.data_tabs.addTab(CWTWidget(signal, t, parent=self), "CWT")
+        # Switch to sonogram tab
+        self.data_tabs.setCurrentIndex(3)
+        
     def plot_fft(self):
         # Switch to frequency domain tab
         self.data_tabs.setCurrentIndex(1)
