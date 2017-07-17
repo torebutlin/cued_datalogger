@@ -20,7 +20,6 @@ class Recorder(RecorderParent):
         print('You are using National Instrument for recording')
         
         self.device_name = self.set_device_by_name(device_name);
-        self.channel_names = self.set_channels()
                
         self.open_recorder()
             
@@ -109,7 +108,7 @@ class Recorder(RecorderParent):
             try:
                 self.audio_stream = Task()
                 self.audio_stream.stream_audio_callback = self.stream_audio_callback
-                self.audio_stream.CreateAIVoltageChan(self.channel_names,"",
+                self.audio_stream.CreateAIVoltageChan(self.set_channels(),"",
                                          pdaq.DAQmx_Val_RSE,-10.0,10.0,
                                          pdaq.DAQmx_Val_Volts,None)
                 self.audio_stream.CfgSampClkTiming("",self.rate,
