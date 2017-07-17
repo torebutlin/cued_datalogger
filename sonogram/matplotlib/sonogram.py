@@ -16,13 +16,13 @@ from scipy.signal import spectrogram, get_window
 class SonogramPlotWidget(MatplotlibCanvas):
     """A MatplotlibCanvas widget displaying the Sonogram plot"""
     
-    def __init__(self, sig, t, sample_freq, window_width, window_increment,
+    def __init__(self, sig, t, sample_freq, window_width, window_overlap_fraction,
                  plot_type="Colourmap", num_contours=5, contour_spacing_dB=5):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
-        self.window_increment = window_increment
+        self.window_overlap_fraction = window_overlap_fraction
         self.plot_type = plot_type
         self.num_contours = num_contours
         self.contour_spacing_dB = contour_spacing_dB
@@ -80,12 +80,9 @@ class SonogramPlotWidget(MatplotlibCanvas):
         if sender_name == "window_width_spinbox" or sender_name == "window_width_slider":
             self.window_width = value
            
-        elif sender_name == "window_increment_spinbox" or sender_name == "window_increment_slider":
-            self.window_increment = value
-            
-        elif sender_name == "sample_freq_spinbox" or sender_name == "sample_freq_slider":
-            self.sample_freq = value
-        
+        elif sender_name == "window_overlap_fraction_spinbox" or sender_name == "window_overlap_fraction_slider":
+            self.window_overlap_fraction = value
+                   
         elif sender_name == "plot_type_combobox":
             self.plot_type = value
         
@@ -106,15 +103,11 @@ class SonogramPlotWidget(MatplotlibCanvas):
     
     def calculate_sonogram(self):
         """Recalculate the sonogram"""
-        #TODO: In reality, get rid of this - just for demos
-        self.t = np.arange(0.0, 10, 1/self.sample_freq)
-        self.sig = function_generator(self.t)
-        #
         
         self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
                                             nperseg=self.window_width,
-                                            noverlap=(self.window_width - self.window_increment))
+                                            noverlap=self.window_width // self.window_overlap_fraction)
         
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
@@ -141,19 +134,19 @@ class SonogramPlotWidget(MatplotlibCanvas):
 
 
 class SonogramWidget(QWidget):
-    def __init__(self, sig, t, sample_freq=4096, window_width=256, window_increment=32, parent=None):
+    def __init__(self, sig, t, sample_freq=4096, window_width=256, window_overlap_fraction=8, parent=None):
         self.sig = sig
         self.t = t
         self.sample_freq = sample_freq
         self.window_width = window_width
-        self.window_increment = window_increment
+        self.window_overlap_fraction = window_overlap_fraction
                
         super().__init__()
         self.init_ui()
     
     def init_ui(self):
         # Add a sonogram plot
-        self.sonogram_plot = SonogramPlotWidget(self.sig, self.t, self.sample_freq, self.window_width, self.window_increment)
+        self.sonogram_plot = SonogramPlotWidget(self.sig, self.t, self.sample_freq, self.window_width, self.window_overlap_fraction)
         
         #------------Window width controls------------
         self.window_width_label = QLabel(self)
@@ -177,46 +170,26 @@ class SonogramWidget(QWidget):
         self.window_width_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
         
         #------------Window increment controls------------
-        self.window_increment_label = QLabel(self)
-        self.window_increment_label.setText("Window increment")
+        self.window_overlap_fraction_label = QLabel(self)
+        self.window_overlap_fraction_label.setText("Window overlap fraction")
         # Create spinbox       
-        self.window_increment_spinbox = Power2SteppedSpinBox(self)
-        self.window_increment_spinbox.setObjectName("window_increment_spinbox")        
-        self.window_increment_spinbox.setRange(16, 256)
+        self.window_overlap_fraction_spinbox = Power2SteppedSpinBox(self)
+        self.window_overlap_fraction_spinbox.setObjectName("window_overlap_fraction_spinbox")        
+        self.window_overlap_fraction_spinbox.setRange(1, 64)
         # Create slider        
-        self.window_increment_slider = Power2SteppedSlider(Qt.Horizontal, self)
-        self.window_increment_slider.setObjectName("window_increment_slider")
-        self.window_increment_slider.setRange(16, 256)
+        self.window_overlap_fraction_slider = Power2SteppedSlider(Qt.Horizontal, self)
+        self.window_overlap_fraction_slider.setObjectName("window_overlap_fraction_slider")
+        self.window_overlap_fraction_slider.setRange(1, 64)
         # Connect spinbox and slider together
-        self.window_increment_spinbox.valueChanged.connect(self.window_increment_slider.setValue)
-        self.window_increment_slider.valueChanged.connect(self.window_increment_spinbox.setValue)
+        self.window_overlap_fraction_spinbox.valueChanged.connect(self.window_overlap_fraction_slider.setValue)
+        self.window_overlap_fraction_slider.valueChanged.connect(self.window_overlap_fraction_spinbox.setValue)
         # Set values
-        self.window_increment_spinbox.setValue(self.window_increment)
-        self.window_increment_slider.setValue(self.window_increment)
+        self.window_overlap_fraction_spinbox.setValue(self.window_overlap_fraction)
+        self.window_overlap_fraction_slider.setValue(self.window_overlap_fraction)
         # Update screen on change
-        self.window_increment_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
-        self.window_increment_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
+        self.window_overlap_fraction_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
+        self.window_overlap_fraction_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
         
-        #------------Sample freq controls------------
-        self.sample_freq_label = QLabel(self)
-        self.sample_freq_label.setText("Sample freq")
-        # Create spinbox       
-        self.sample_freq_spinbox = Power2SteppedSpinBox(self)
-        self.sample_freq_spinbox.setObjectName("sample_freq_spinbox")        
-        self.sample_freq_spinbox.setRange(256, 32768)
-        # Create slider        
-        self.sample_freq_slider = Power2SteppedSlider(Qt.Horizontal, self)
-        self.sample_freq_slider.setObjectName("sample_freq_slider")
-        self.sample_freq_slider.setRange(256, 32768)
-        # Connect spinbox and slider together
-        self.sample_freq_spinbox.valueChanged.connect(self.sample_freq_slider.setValue)
-        self.sample_freq_slider.valueChanged.connect(self.sample_freq_spinbox.setValue)
-        # Set values
-        self.sample_freq_spinbox.setValue(self.sample_freq)
-        self.sample_freq_slider.setValue(self.sample_freq)
-        # Update screen on change
-        self.sample_freq_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
-        self.sample_freq_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
         
         #------------Plot type controls------------
         self.plot_type_label = QLabel(self)
@@ -280,12 +253,10 @@ class SonogramWidget(QWidget):
         sonogram_controls.addWidget(self.window_width_label, 1, 0)
         sonogram_controls.addWidget(self.window_width_spinbox, 1, 1)
         sonogram_controls.addWidget(self.window_width_slider, 1, 2)
-        sonogram_controls.addWidget(self.window_increment_label, 2, 0)
-        sonogram_controls.addWidget(self.window_increment_spinbox, 2, 1)
-        sonogram_controls.addWidget(self.window_increment_slider, 2, 2)
-        sonogram_controls.addWidget(self.sample_freq_label, 3, 0)
-        sonogram_controls.addWidget(self.sample_freq_spinbox, 3, 1)
-        sonogram_controls.addWidget(self.sample_freq_slider, 3, 2)
+        sonogram_controls.addWidget(self.window_overlap_fraction_label, 2, 0)
+        sonogram_controls.addWidget(self.window_overlap_fraction_spinbox, 2, 1)
+        sonogram_controls.addWidget(self.window_overlap_fraction_slider, 2, 2)
+
         
         # Plot controls:
         self.plot_controls_label = QLabel(self)
