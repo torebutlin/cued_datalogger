@@ -2,6 +2,7 @@ import sys
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, Qt
+
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
 from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox
 

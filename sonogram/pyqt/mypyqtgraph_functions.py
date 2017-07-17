@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from pyqtgraph import PlotWidget
 from pyqtgraph.Qt import QtGui
 
+from PyQt5.QtGui import QGraphicsItemGroup
 
 class SimpleColormap(Colormap):
     def __init__(self, name):
@@ -33,11 +34,19 @@ class ContourMapPlot(PlotWidget):
         self.update_map()
                  
     def update_map(self, show_contours=False):
-        self.setXRange(0, self.x.max() * 1.01)
-        self.setYRange(0, self.y.max() * 1.01)
+        # Set axes scaling
+        x_axis = self.getAxis('bottom')
+        y_axis = self.getAxis('left')
+        
+        x_axis.setScale(self.x_scale_fact)
+        y_axis.setScale(self.y_scale_fact)
+        
+        self.autoRange()
         
         # Clear the current screen
         self.clear()
+        
+        self.z_img = pg.ImageItem(self.Z.transpose())
         
         if show_contours:
             for i in np.linspace(0, 1, self.num_contours):
@@ -45,15 +54,13 @@ class ContourMapPlot(PlotWidget):
                 # Create the contour with a given colour
                 contour = pg.IsocurveItem(pen=self.cmap.to_rgb(i))
                 # Set the data for the contour at the specified level
-                contour.setData(self.Z.transpose(), level=level)
-                # Transform it to the correct unit scale
-                contour.setTransform(self.samples_to_units)
+                contour.setData(self.z_img.image, level=level)
+                # Add it to the plot
                 self.addItem(contour)
         else:
-            colorplot = pg.ImageItem(self.Z.transpose())
-            colorplot.setTransform(self.samples_to_units)
-            colorplot.setLookupTable(self.cmap.to_rgb(np.arange(256)))
-            self.addItem(colorplot)
+            #self.z_img.setTransform(self.samples_to_units)
+            self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+            self.addItem(self.z_img)
 
     def update_scale_fact(self):
         # We need to convert from x and y being in 'samples' to being in 'units'.
