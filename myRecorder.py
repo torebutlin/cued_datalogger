@@ -74,6 +74,7 @@ class Recorder(RecorderParent):
         if not dev_name:
             print("Seems like you don't have any input devices")
             return None
+        
         try:
             self._set_device_by_index(dev_index[dev_name.index(name)])
         except ValueError:
@@ -87,10 +88,10 @@ class Recorder(RecorderParent):
                     self._set_device_by_index(dev_index[0])
                 except IOError:
                     print('No Device can be set')
-                    return None
+                    #return None
         except IOError:
             print('Device chosen cannot be found!')
-            return None
+            #return None
                     
                 
     # Get audio device names, only the ones with inputs 
@@ -107,12 +108,16 @@ class Recorder(RecorderParent):
     
      # Display the current selected device info      
     def current_device_info(self):
-        pp.pprint(self.p.get_device_info_by_index(self.device_index))
+        if self.device_index:
+            pp.pprint(self.p.get_device_info_by_index(self.device_index))
+        else:
+            print('No index set')
     
     # Set the selected device by index, Private Function
     def _set_device_by_index(self,index):
-        self.device_index = index;
-        print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
+        if index:
+            self.device_index = index;
+            print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
         
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
@@ -129,7 +134,9 @@ class Recorder(RecorderParent):
     
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
-        if self.audio_stream == None and not self.device_index == None:
+        print('init')
+        if (not self.device_index == None) and (self.audio_stream == None) :
+            print('init')
             self.audio_stream = self.p.open(channels = self.channels,
                              rate = self.rate,
                              format = self.format,
@@ -145,13 +152,18 @@ class Recorder(RecorderParent):
             print('Write Available: %i' % self.audio_stream.get_write_available())
             
             self.stream_start()
+            return True
+        else:
+            return False
             
     # Start the streaming
     def stream_start(self):
-        self.audio_stream.start_stream()
+        if self.audio_stream:
+            self.audio_stream.start_stream()
     # Stop the streaming
     def stream_stop(self):
-        self.audio_stream.stop_stream()
+        if self.audio_stream:
+            self.audio_stream.stop_stream()
         
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):

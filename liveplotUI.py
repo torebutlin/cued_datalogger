@@ -34,8 +34,9 @@ class LiveplotApp(QMainWindow):
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
-        self.rec.stream_init(playback = False)
-        self.playing = True
+        
+        if self.rec.stream_init(playback = False):
+            self.playing = True
         # Set up the TimeSeries and FreqSeries
         data = self.rec.get_buffer()
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
@@ -225,7 +226,8 @@ class LiveplotApp(QMainWindow):
             if type(cbox) is QComboBox:
                 cbox.clear()
                 cbox.addItems(i)
-                cbox.setCurrentIndex(self.rec.device_index)    
+                if self.rec.device_index:
+                    cbox.setCurrentIndex(self.rec.device_index)    
                 print(cbox.count())
             else:
                 cbox.setText(str(i))
