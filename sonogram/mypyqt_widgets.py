@@ -59,9 +59,7 @@ class Power2SteppedSpinBox(QSpinBox):
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Colormap
 
-import pyqtgraph as pg
-from pyqtgraph import PlotWidget
-from pyqtgraph.Qt import QtGui
+from pyqtgraph import PlotWidget, ImageItem
 
 
 class SimpleColormap(Colormap):
@@ -73,50 +71,37 @@ class SimpleColormap(Colormap):
         return np.asarray(self.cmap(x)) * 255
 
 
-class ColorMapPlot(PlotWidget):
-    def __init__(self, x, y, z, num_contours, contour_spacing_dB, cmap="jet"):
+class ColorMapPlotWidget(PlotWidget):
+    """A PlotWidget optimised for plotting color(heat) maps"""
+    def __init__(self, parent=None, cmap="jet"):
+        self.cmap = SimpleColormap(cmap)
+        self.num_contours = 5
+        self.contour_spacing_dB = 5
+        self.parent = parent
+        super().__init__(parent=self.parent)
+        
+    def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
         self.x = x
-        self.y = y
+        self.y =y
         self.z = z
         self.num_contours = num_contours
         self.contour_spacing_dB = contour_spacing_dB
-        self.cmap = SimpleColormap(cmap)
-        self.samples_to_units = None
         
-        super().__init__()
+        # Set up axes:
+        x_axis = self.getAxis('bottom')
+        y_axis = self.getAxis('left')
+
+        self.x_scale_fact = self.get_scale_fact(x)
+        self.y_scale_fact = self.get_scale_fact(y)
         
-        # Draw the initial plot
-        self.update()
-                 
-    def update(self):
-        # Set the axes limits to display 1% more than the maximum value
-        self.setXRange(0, self.x.max() * 1.01)
-        self.setYRange(0, self.y.max() * 1.01)
-
-        # Update the scale factor
-        self.update_scale_fact()
-
-        # Create the new colour plot
-        colorplot = pg.ImageItem(self.z.transpose())
-        # Transform it
-        colorplot.setTransform(self.samples_to_units)
-        # Set the colours
-        colorplot.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        x_axis.setScale(self.x_scale_fact)
+        y_axis.setScale(self.y_scale_fact)
         
-        # Clear the current screen
-        self.clear()
-        # Show the colour map in the PlotWidget
-        self.addItem(colorplot)
+        #self.autoRange()
+        
+        self.z_img = ImageItem(z.transpose())
+        self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        self.addItem(self.z_img)
 
-    def update_scale_fact(self):
-        # We need to convert from x and y being in 'samples' to being in 'units'.
-        # Currently the values of Z will just be plotted on axes where the scale
-        # is the (i, j) position of the value in Z.
-        # We want to plot them on axes where the scale is x, y.
-        # To do this we use a QTransform matrix
-        self.samples_to_units = QtGui.QTransform()
-        # Scale factor to map the largest sample number to the largest unit
-        self.x_scale_fact = self.x.max() / self.x.size
-        self.y_scale_fact = self.y.max() / self.y.size
-        # Set the values in the transformation matrix
-        self.samples_to_units.scale(self.x_scale_fact, self.y_scale_fact)
+    def get_scale_fact(self, var):
+        return var.max() / var.size

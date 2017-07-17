@@ -1,75 +1,34 @@
 import sys
 
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import QObject, Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
-from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox
-from pyqt_matplotlib import MatplotlibCanvas
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout
+from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget
 
 import numpy as np
-
-from mynumpy_functions import to_dB, from_dB
+from mynumpy_functions import to_dB
 
 from scipy.signal import spectrogram, get_window
 
-
-class SonogramPlotWidget(MatplotlibCanvas):
-    """A MatplotlibCanvas widget displaying the Sonogram plot"""
+class SonogramPlotWidget(ColorMapPlotWidget):
+    """A widget displaying the Sonogram plot"""
     
-    def __init__(self, sig, t, sample_freq, window_width, window_overlap_fraction,
-                 plot_type="Colourmap", num_contours=5, contour_spacing_dB=5):
-        self.sig = sig
-        self.t = t
+    def __init__(self, sample_freq=4096, window_width=256, 
+                 window_overlap_fraction=8, contour_spacing_dB=5, 
+                 num_contours=5, parent=None):
+        super().__init__()
+        self.parent = parent
+        
         self.sample_freq = sample_freq
         self.window_width = window_width
         self.window_overlap_fraction = window_overlap_fraction
-        self.plot_type = plot_type
-        self.num_contours = num_contours
         self.contour_spacing_dB = contour_spacing_dB
+        self.num_contours = num_contours
         
-        MatplotlibCanvas.__init__(self, "Sonogram")
-
+        self.setLabel('bottom', "Frequency", "Hz")
+        self.setLabel('left', "Time", "s")
         
-        # Calculate the initial sonogram and display it
-        self.calculate_sonogram()
-        self.draw_plot()
+        self.show()
     
-    def draw_plot(self):
-        """Redraw the sonogram on the canvas"""
-        
-        self.axes.clear()
-        
-        if self.plot_type == "Contour":
-            
-            self.update_contour_sequence()
-            
-            self.axes.contour(self.F_bins, self.T_bins, self.FT_dB, self.contour_sequence)
-            
-            self.axes.set_xlabel('Freq (Hz)')
-            self.axes.set_ylabel('Time (s)')
-            
-            self.axes.set_xlim(self.freqs.min(), self.freqs.max())
-            self.axes.set_ylim(self.times.min(), self.times.max())
-            
-        elif self.plot_type == "Surface":
-            pass
-        
-        elif self.plot_type == "Colourmap":
-            
-            self.update_contour_sequence()
-            
-            self.axes.pcolormesh(self.F_bins, self.T_bins, self.FT_dB, vmin=self.contour_sequence[0])
-            
-            self.axes.set_xlabel('Freq (Hz)')
-            self.axes.set_ylabel('Time (s)')
-            
-            self.axes.set_xlim(self.freqs.min(), self.freqs.max())
-            self.axes.set_ylim(self.times.min(), self.times.max())
-            
-        else:
-            pass
-        
-        self.draw()
         
     def update_attributes(self, value):
         """A slot for updating the attributes when input widgets are adjusted"""
@@ -82,9 +41,6 @@ class SonogramPlotWidget(MatplotlibCanvas):
            
         elif sender_name == "window_overlap_fraction_spinbox" or sender_name == "window_overlap_fraction_slider":
             self.window_overlap_fraction = value
-                   
-        elif sender_name == "plot_type_combobox":
-            self.plot_type = value
         
         elif sender_name == "contour_spacing_spinbox" or sender_name == "contour_spacing_slider":
             self.contour_spacing_dB = value
@@ -98,16 +54,16 @@ class SonogramPlotWidget(MatplotlibCanvas):
             pass
         
         # Update the plot
-        self.calculate_sonogram()
-        self.draw_plot()
+        self.update_plot()
     
     def calculate_sonogram(self):
-        """Recalculate the sonogram"""
+        """Calculate the sonogram"""
         
         self.freqs, self.times, self.FT = spectrogram(self.sig, self.sample_freq, 
                                             window=get_window('hann', self.window_width),
                                             nperseg=self.window_width,
-                                            noverlap=self.window_width // self.window_overlap_fraction)
+                                            noverlap=self.window_width // self.window_overlap_fraction,
+                                            return_onesided=False)
         
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
@@ -120,33 +76,41 @@ class SonogramPlotWidget(MatplotlibCanvas):
         
         # Convert to dB
         self.FT_dB = to_dB(self.FT)
-        
-        # Create mesh for plotting in 3D
-        self.F_bins, self.T_bins = np.meshgrid(self.freqs, self.times)
 
-    
-    def update_contour_sequence(self):
+    def update_lowest_contour(self):
         """Update the array which says where to plot contours, how many etc"""
         # Create a vector with the right spacing with the correct number of contours
-        startval = self.FT_dB.max() - (self.num_contours * self.contour_spacing_dB)
-        self.contour_sequence = np.linspace(startval, self.FT_dB.max(), num=self.num_contours)
+        self.lowest_contour = self.FT_dB.max() - (self.num_contours * self.contour_spacing_dB)      
+
+    def update_plot(self, sig=None):
+        """Recalculate, clear and replot"""
         
-
-
+        if sig is not None:
+            self.sig = sig
+        if self.sig == None:
+            raise ValueError("Cannot calculate sonogram: no input data")
+            
+        self.calculate_sonogram()
+        self.update_lowest_contour()
+        self.clear()
+        self.plot_colormap(self.freqs, self.times, self.FT_dB, 
+                           num_contours=self.num_contours, 
+                           contour_spacing_dB=self.contour_spacing_dB)
+        
+        
 class SonogramWidget(QWidget):
-    def __init__(self, sig, t, sample_freq=4096, window_width=256, window_overlap_fraction=8, parent=None):
-        self.sig = sig
-        self.t = t
-        self.sample_freq = sample_freq
-        self.window_width = window_width
-        self.window_overlap_fraction = window_overlap_fraction
-               
+    def __init__(self, parent=None):     
         super().__init__()
+        
+        self.sample_freq = 4096
+        self.window_width = 256
+        self.window_overlap_fraction = 8
+        
         self.init_ui()
     
     def init_ui(self):
         # Add a sonogram plot
-        self.sonogram_plot = SonogramPlotWidget(self.sig, self.t, self.sample_freq, self.window_width, self.window_overlap_fraction)
+        self.sonogram_plot = SonogramPlotWidget(parent=self)
         
         #------------Window width controls------------
         self.window_width_label = QLabel(self)
@@ -189,17 +153,7 @@ class SonogramWidget(QWidget):
         # Update screen on change
         self.window_overlap_fraction_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
         self.window_overlap_fraction_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
-        
-        
-        #------------Plot type controls------------
-        self.plot_type_label = QLabel(self)
-        self.plot_type_label.setText("Plot type")
-        # Create combobox
-        self.plot_type_combobox = QComboBox(self)
-        self.plot_type_combobox.addItems(["Colourmap", "Contour", "Surface"])
-        self.plot_type_combobox.setObjectName("plot_type_combobox")
-        # Update on change
-        self.plot_type_combobox.activated[str].connect(self.sonogram_plot.update_attributes)        
+              
         
         #------------Contour spacing controls------------
         self.contour_spacing_label = QLabel(self)
@@ -270,8 +224,7 @@ class SonogramWidget(QWidget):
         plot_controls.addWidget(self.num_contours_label, 1, 1)
         plot_controls.addWidget(self.num_contours_spinbox, 2, 1)
         plot_controls.addWidget(self.num_contours_slider, 3, 1)
-        plot_controls.addWidget(self.plot_type_label, 4, 0)
-        plot_controls.addWidget(self.plot_type_combobox, 4, 1)
+
                 
         vbox = QVBoxLayout()
         hbox = QHBoxLayout()
@@ -285,6 +238,9 @@ class SonogramWidget(QWidget):
         self.setLayout(vbox)
         self.setWindowTitle('Sonogram')
         self.show()
+    
+    def plot(self, sig):
+        self.sonogram_plot.update_plot(sig)
 
 
 def func_1(t, w, x, A=4e3):
@@ -310,7 +266,8 @@ if __name__ == '__main__':
     app = 0
     
     app = QApplication(sys.argv)
-    sonogram = SonogramWidget(sig, t)
+    sonogram = SonogramWidget()
+    sonogram.plot(sig)
         
     sys.exit(app.exec_())  
     
