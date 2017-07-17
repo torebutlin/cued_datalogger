@@ -114,12 +114,6 @@ class DataWindow(QMainWindow):
 		# Plot when data received
             self.liveplot.dataSaved.connect(self.plot_time_series)
             
-            #except Exception as e:
-            #    print(e.message)
-            #    t,v,tb = sys.exc_info()
-            #    print(t)
-            #    print(v)
-            #    print(traceback.format_tb(tb))
         else:
             self.liveplot.close()
             self.liveplot = None

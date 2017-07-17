@@ -8,7 +8,7 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox)
+    QCheckBox,QButtonGroup)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 #from PyQt5.QtGui import QImage
 import numpy as np
@@ -18,7 +18,7 @@ import pyqtgraph as pg
 
 # Uncomment the NIRecorder later
 import myRecorder as mR
-#import NIRecorder as NIR
+import NIRecorder as NIR
 
 from channel import DataSet, Channel, ChannelSet
 
@@ -36,7 +36,7 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = mR.Recorder( channels = 1,
+        self.rec = NIR.Recorder( channels = 1,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
@@ -149,16 +149,21 @@ class LiveplotApp(QMainWindow):
         
         # Set up the Acquisition type radiobuttons group
         self.typegroup = QGroupBox('Input Type', nongraphUI)
+        typelbox = QHBoxLayout(self.typegroup)
         pyaudio_button = QRadioButton('SoundCard',self.typegroup)
         NI_button = QRadioButton('NI',self.typegroup)
-        
         # Put the radiobuttons horizontally
-        typelbox = QHBoxLayout(self.typegroup)
         typelbox.addWidget(pyaudio_button)
         typelbox.addWidget(NI_button)
-        print(self.typegroup.children())
+        
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
+        
+        # Set up QbuttonGroup to manage the buttons' signals
+        typebtngroup = QButtonGroup(self.typegroup)
+        typebtngroup.addButton(pyaudio_button)
+        typebtngroup.addButton(NI_button)
+        typebtngroup.buttonReleased.connect(self.display_sources)
         # Add the group to Acquisition settings form
         config_form.addRow(self.typegroup)
         
@@ -231,25 +236,33 @@ class LiveplotApp(QMainWindow):
         rb = self.typegroup.findChildren(QRadioButton)
         if type(self.rec) is mR.Recorder:
             rb[0].setChecked(True)
-            selR = mR.Recorder()
-        #elif type(self.rec) is NIR.Recorder:
-        #    rb[1].setChecked(True)
-        #    selR = NIR.Recorder()
+        elif type(self.rec) is NIR.Recorder:
+            rb[1].setChecked(True)
+            
+        self.display_sources()
         
-        info = [selR.available_devices()[0], self.rec.rate,self.rec.channels,
+        info = [ self.rec.rate,self.rec.channels,
                 self.rec.chunk_size,self.rec.num_chunk]
-        for cbox,i in zip(self.configboxes,info):
-            if type(cbox) is QComboBox:
-                cbox.clear()
-                cbox.addItems(i)
-                if self.rec.device_index:
-                    cbox.setCurrentIndex(self.rec.device_index)    
-                print(cbox.count())
-            else:
-                cbox.setText(str(i))
-                
-        del selR
+        for cbox,i in zip(self.configboxes[1:],info):
+            cbox.setText(str(i))
+    
+    def display_sources(self):
+        rb = self.typegroup.findChildren(QRadioButton)
+        if rb[0].isChecked():
+            selR = mR.Recorder()
+        elif rb[1].isChecked():
+            selR = NIR.Recorder()
+        else:
+            return 0
         
+        source_box = self.configboxes[0]
+        source_box.clear()
+        source_box.addItems(selR.available_devices()[0])
+        if self.rec.device_name:
+            source_box.setCurrentText(self.rec.device_name)
+        
+        del selR
+         
     
     # Center the window
     def center(self):
@@ -268,6 +281,7 @@ class LiveplotApp(QMainWindow):
         self.plottimer.stop()
         self.rec.close()
         print(type(self.rec))
+        del self.rec
                 
         try:    
             # Get Input from the Acquisition settings UI
@@ -275,10 +289,10 @@ class LiveplotApp(QMainWindow):
             
             # Delete and reinitialise the recording object
             # Change the settings
-            #if Rtype[0]:
-            self.rec = mR.Recorder(device_name = settings[0])
-            #elif Rtype[1] and not type(self.rec) is NIR.Recorder:
-            #    self.rec = NIR.Recorder()
+            if Rtype[0]:
+                self.rec = mR.Recorder(device_name = settings[0])
+            elif Rtype[1]:
+                self.rec = NIR.Recorder(device_name = settings[0])
             # TODO?: Change the values of recording object
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
@@ -296,6 +310,10 @@ class LiveplotApp(QMainWindow):
             self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         except Exception as e:
             print(e)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
             print('Cannot stream,restart the app')    
     
     def ResetXdata(self):
@@ -314,16 +332,14 @@ class LiveplotApp(QMainWindow):
                 line.clear()
                 del line
                 
-                
             for _ in range(self.rec.channels):
                 self.plotlines.append(self.timeplot.plot(pen = 'g'))
                 self.plotlines.append(self.fftplot.plot(pen = 'y'))
             
-            #self.timeplotline.clear()
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-            #self.fftplotline.clear()
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
             self.update_line()
+            
         except Exception as e:
             print(e)
             print('Cannot reset plots')
@@ -345,16 +361,25 @@ class LiveplotApp(QMainWindow):
     
     # Updates the plots    
     def update_line(self):
-        data = self.rec.get_buffer()
-        window = np.hanning(data.shape[0])
-        weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
-        for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
-            
-            fft_data = np.fft.rfft(window * plotdata * weightage)
-            psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
-            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
-            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
+        try:
+            data = self.rec.get_buffer()
+            #print(data)
+            window = np.hanning(data.shape[0])
+            weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
+            for i in range(data.shape[1]):
+                plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
+                
+                fft_data = np.fft.rfft(window * plotdata * weightage)
+                psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
+                self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
+                self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
+        except Exception as e:
+            print(e)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            self.close()
     
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
@@ -412,12 +437,9 @@ class LiveplotApp(QMainWindow):
             if type(cbox) is QComboBox:
                 configs.append(cbox.currentText())
             else:
-                notnumRegex = re.compile(r'(\D)+')
+                #notnumRegex = re.compile(r'(\D)+')
                 config_input = cbox.text().strip(' ')
-                if notnumRegex.search(config_input):
-                    configs.append(None)
-                else:
-                    configs.append(int(config_input))
+                configs.append(int(float(config_input)))
                     
         print(recType,configs)
         return(recType, configs)

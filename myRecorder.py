@@ -47,6 +47,7 @@ class Recorder(RecorderParent):
         self.p = None
         self.format = pyaudio.paInt16
         self.device_index = None;
+        self.device_name = device_name
         
         self.open_recorder()
         self.set_device_by_name(str(device_name))
@@ -117,7 +118,8 @@ class Recorder(RecorderParent):
     def _set_device_by_index(self,index):
         if index:
             self.device_index = index;
-            print("Selected device: %s" % (self.p.get_device_info_by_index(index)['name']))
+            self.device_name = self.p.get_device_info_by_index(index)['name']
+            print("Selected device: %s" % self.device_name)
         
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
