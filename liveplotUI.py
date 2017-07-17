@@ -22,6 +22,8 @@ import NIRecorder as NIR
 
 from channel import DataSet, Channel, ChannelSet
 
+
+PLAYBACK = False
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
     
@@ -36,11 +38,11 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = NIR.Recorder(channels = 1,
+        self.rec = mR.Recorder(channels = 1,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
-        if self.rec.stream_init(playback = False):
+        if self.rec.stream_init(playback = PLAYBACK):
             self.playing = True
             
         # Set up the TimeSeries and FreqSeries
@@ -74,15 +76,24 @@ class LiveplotApp(QMainWindow):
         main_layout = QVBoxLayout(self.main_widget)
         
         #Set up the channel tickboxes widget
-        channels_box = QWidget(self.main_widget)
-        channels_layout = QGridLayout(channels_box)
+        self.channels_box = QWidget(self.main_widget)
+        self.channels_layout = QGridLayout(self.channels_box)
         
-        for i in range (10):
-            channels_layout.addWidget(QCheckBox(channels_box))
+        self.chan_btn_group = QButtonGroup(self.channels_box)
+        self.chan_btn_group.setExclusive(False)
+        for i in range (self.rec.channels):
+            chan_btn = QCheckBox('Channel %i' % i,self.channels_box)
+            chan_btn.setCheckState(Qt.Checked)
+            self.channels_layout.addWidget(chan_btn)
+            self.chan_btn_group.addButton(chan_btn,i)
+            
+        self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+        
+        #print(self.channels_layout.count())
         
         scroll = QScrollArea(self.main_widget)
         #scroll.ensureVisible(50,50)
-        scroll.setWidget(channels_box)
+        scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
         main_layout.addWidget(scroll,10)
         
@@ -108,7 +119,6 @@ class LiveplotApp(QMainWindow):
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter,90)
-        print('b')
         
         self.plotlines = []
         # Set up time domain plot, add to splitter
@@ -159,6 +169,7 @@ class LiveplotApp(QMainWindow):
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
         
+        # TODO: Give id to the buttons
         # Set up QbuttonGroup to manage the buttons' signals
         typebtngroup = QButtonGroup(self.typegroup)
         typebtngroup.addButton(pyaudio_button)
@@ -247,6 +258,7 @@ class LiveplotApp(QMainWindow):
             cbox.setText(str(i))
     
     def display_sources(self):
+        # TODO: make use of the button input in callback
         rb = self.typegroup.findChildren(QRadioButton)
         if rb[0].isChecked():
             selR = mR.Recorder()
@@ -263,7 +275,6 @@ class LiveplotApp(QMainWindow):
         
         del selR
          
-    
     # Center the window
     def center(self):
         pr = self.parent.frameGeometry()
@@ -305,7 +316,7 @@ class LiveplotApp(QMainWindow):
         
         try:
         # Open the stream, plot and update
-            self.rec.stream_init()
+            self.rec.stream_init(playback = PLAYBACK)
             self.toggle_rec()
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
@@ -316,7 +327,17 @@ class LiveplotApp(QMainWindow):
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            print('Cannot stream,restart the app')  
+            print('Cannot stream,restart the app')
+            
+        try:
+            self.ResetChanBtns()
+        except Exception as e:
+            print(e)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            print('Cannot reset buttons')
             
         self.statusbar.clearMessage()
     
@@ -347,6 +368,26 @@ class LiveplotApp(QMainWindow):
         except Exception as e:
             print(e)
             print('Cannot reset plots')
+            
+    def ResetChanBtns(self):
+        for btn in self.chan_btn_group.buttons():
+            btn.setCheckState(Qt.Checked)
+            
+        extra_btns = abs(self.rec.channels - self.channels_layout.count())
+        if extra_btns:
+            if self.rec.channels > self.channels_layout.count():
+                for n in range(self.channels_layout.count(),self.rec.channels):
+                    chan_btn = QCheckBox('Channel %i' % n,self.channels_box)
+                    chan_btn.setCheckState(Qt.Checked)
+                    self.channels_layout.addWidget(chan_btn)
+                    self.chan_btn_group.addButton(chan_btn,n)
+            else:
+                for n in range(self.channels_layout.count()-1,self.rec.channels-1,-1):
+                    chan_btn = self.chan_btn_group.button(n)
+                    self.channels_layout.removeWidget(chan_btn)
+                    self.chan_btn_group.removeButton(chan_btn)
+                    chan_btn.deleteLater()
+                pass
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
@@ -439,6 +480,21 @@ class LiveplotApp(QMainWindow):
                     
         print(recType,configs)
         return(recType, configs)
+    
+    def display_channel_plots(self, *args):
+        for btn in args:
+            #print(btn)
+            print(self.channels_box.findChildren(QCheckBox))
+            print(self.chan_btn_group.id(btn))
+            print(btn.isChecked())
+            chan_num = self.chan_btn_group.id(btn)
+            if btn.isChecked():
+                self.plotlines[2*chan_num].setPen('g')
+                self.plotlines[2*chan_num+1].setPen('y')
+            else:
+                self.plotlines[2*chan_num].setPen(None)
+                self.plotlines[2*chan_num+1].setPen(None)
+                
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
