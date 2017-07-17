@@ -1,39 +1,14 @@
 """
-Recorder class:
-- Allow recording and configurations of recording device
-- Allow audio stream
-- Store data as numpy arrays for both recording and audio stream
-    which can be accessed for plotting
+Functions:
+- Sets up recording and configurations of recording device
+- Sets up audio stream
 """
-
-''' Note to self:
-            Each data is int16, so it is 2 bytes per sample.
-            A 3 sec recording contains 132300 samples, but 
-            considering the chunk is only takes 1024 samples, 
-            the nearest possible samples to take is 132096,
-            so it would take up 264192 bytes(258kB)
-            
-            A 1 min recording would take about 5MB, while
-            a 30 min recording would take about 151.4MB
-            
-            Supppose that an array can only contain 2GB (memory limit),
-            then the longest possible recording is 24347 secs, which is
-            406 mins, which is 6.76 hours.
-            
-            If instead a limit of 500MB is imposed, then
-            the longest recording time is 5944 secs, which is 99 mins.
-            
-            However, data being processed later on would probably be
-            int32 data type (default numpy array), hence the memory is doubled. 
-            Taking that into consideration, the longest possible recording time 
-            is then halved.''' 
 
 from RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
 import pyaudio
 import numpy as np
 import pprint as pp
-#import copy as cp
 
 class Recorder(RecorderParent):
 #---------------- INITIALISATION METHODS -----------------------------------
@@ -136,17 +111,20 @@ class Recorder(RecorderParent):
     
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
-        print('init')
         if (not self.device_index == None) and (self.audio_stream == None) :
-            print('init')
-            self.audio_stream = self.p.open(channels = self.channels,
-                             rate = self.rate,
-                             format = self.format,
-                             input = True,
-                             output = playback,
-                             frames_per_buffer = self.chunk_size,
-                             input_device_index = self.device_index,
-                             stream_callback = self.stream_audio_callback)
+            try:
+                self.audio_stream = self.p.open(channels = self.channels,
+                                 rate = self.rate,
+                                 format = self.format,
+                                 input = True,
+                                 output = playback,
+                                 frames_per_buffer = self.chunk_size,
+                                 input_device_index = self.device_index,
+                                 stream_callback = self.stream_audio_callback)
+            except Exception as e:
+                print(e)
+                self.audio_stream = None
+                return False
             
             print('Input latency: %.3e' % self.audio_stream.get_input_latency())
             print('Output latency: %.3e' % self.audio_stream.get_output_latency())
@@ -161,16 +139,26 @@ class Recorder(RecorderParent):
     # Start the streaming
     def stream_start(self):
         if self.audio_stream:
-            self.audio_stream.start_stream()
+            if self.audio_stream.is_stopped():
+                self.audio_stream.start_stream()
+            else:
+                print('Stream already started')
+        else:
+            print('No audio stream is set up')
+            
     # Stop the streaming
     def stream_stop(self):
-        if self.audio_stream:
-            self.audio_stream.stop_stream()
+        if self.audio_stream: 
+            if not self.audio_stream.is_stopped():
+                self.audio_stream.stop_stream()
+            else:
+                print('Stream already stopped')
+        else:
+            print('No audio stream is set up')
         
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         if self.audio_stream and self.audio_stream.is_active():
-            if not self.audio_stream.is_stopped():
-                self.stream_stop()
+            self.stream_stop()
             self.audio_stream.close()
             self.audio_stream = None

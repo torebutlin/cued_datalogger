@@ -36,26 +36,23 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = NIR.Recorder( channels = 1,
+        self.rec = NIR.Recorder(channels = 1,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
         if self.rec.stream_init(playback = False):
             self.playing = True
+            
         # Set up the TimeSeries and FreqSeries
+        
+        data = self.rec.get_buffer()
+        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
+        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+        
         try:
-            data = self.rec.get_buffer()
-            self.timedata = np.arange(data.shape[0]) /self.rec.rate 
-            self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
-        
-        
             # Construct UI        
             self.initUI()
             self.config_setup()
-             # Center and show window
-            self.center()
-            self.setFocus()
-            self.show()
         except Exception as e:
             print(e)
             t,v,tb = sys.exc_info()
@@ -63,9 +60,12 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             self.close()
-                
-        
-       
+            
+            
+             # Center and show window
+            self.center()
+            self.setFocus()
+            self.show()
         
      #---------------------- App construction methods-----------------------     
     def initUI(self):
@@ -278,6 +278,7 @@ class LiveplotApp(QMainWindow):
         self.statusbar.showMessage('Resetting...')
         
         # Stop the update and close the stream
+        self.playing = False
         self.plottimer.stop()
         self.rec.close()
         print(type(self.rec))
@@ -305,6 +306,7 @@ class LiveplotApp(QMainWindow):
         try:
         # Open the stream, plot and update
             self.rec.stream_init()
+            self.toggle_rec()
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
             self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
@@ -314,7 +316,9 @@ class LiveplotApp(QMainWindow):
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            print('Cannot stream,restart the app')    
+            print('Cannot stream,restart the app')  
+            
+        self.statusbar.clearMessage()
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
@@ -361,25 +365,17 @@ class LiveplotApp(QMainWindow):
     
     # Updates the plots    
     def update_line(self):
-        try:
-            data = self.rec.get_buffer()
-            #print(data)
-            window = np.hanning(data.shape[0])
-            weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
-            for i in range(data.shape[1]):
-                plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
-                
-                fft_data = np.fft.rfft(window * plotdata * weightage)
-                psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
-                self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
-                self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
-        except Exception as e:
-            print(e)
-            t,v,tb = sys.exc_info()
-            print(t)
-            print(v)
-            print(traceback.format_tb(tb))
-            self.close()
+        data = self.rec.get_buffer()
+        window = np.hanning(data.shape[0])
+        weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
+        for i in range(data.shape[1]):
+            plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
+            
+            fft_data = np.fft.rfft(window * plotdata * weightage)
+            psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
+            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
+            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
+    
     
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):

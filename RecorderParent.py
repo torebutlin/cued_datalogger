@@ -3,7 +3,39 @@
 Created on Sat Jul 15 20:01:58 2017
 
 @author: En Yi
+
+
+Recorder base class:
+- Sets up the buffer and skeleton for audio streaming
+- Requires a derived class
+- Store data as numpy arrays from recording and audio stream
+    which can be accessed for plotting
+
 """
+
+
+''' Note to self:
+            Each data is int16, so it is 2 bytes per sample.
+            A 3 sec recording contains 132300 samples, but 
+            considering the chunk is only takes 1024 samples, 
+            the nearest possible samples to take is 132096,
+            so it would take up 264192 bytes(258kB)
+            
+            A 1 min recording would take about 5MB, while
+            a 30 min recording would take about 151.4MB
+            
+            Supppose that an array can only contain 2GB (memory limit),
+            then the longest possible recording is 24347 secs, which is
+            406 mins, which is 6.76 hours.
+            
+            If instead a limit of 500MB is imposed, then
+            the longest recording time is 5944 secs, which is 99 mins.
+            
+            However, data being processed later on would probably be
+            int32 data type (default numpy array), hence the memory is doubled. 
+            Taking that into consideration, the longest possible recording time 
+            is then halved.''' 
+            
 from abc import ABCMeta
 import numpy as np
 import copy as cp
@@ -111,7 +143,7 @@ class RecorderParent(object):
             self._num_chunk = n
             self.allocate_buffer()
         except Exception as e:
-            print(e)
+            #print(e)
             self._num_chunks = n
         
     @property
@@ -127,7 +159,7 @@ class RecorderParent(object):
             self._chunk_size = n
             self.allocate_buffer()
         except Exception as e:
-            print(e)
+            #print(e)
             self._chunk_size = n
             
                                   
