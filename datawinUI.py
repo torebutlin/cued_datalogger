@@ -106,13 +106,16 @@ class DataWindow(QMainWindow):
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
         if not self.liveplot:
-            self.liveplot = lpUI.LiveplotApp(self)
-            self.liveplot.show()
-            self.liveplotbtn.setText('Close Oscilloscope')
+            try:
+                self.liveplot = lpUI.LiveplotApp(self)
+                self.liveplot.show()
+                self.liveplotbtn.setText('Close Oscilloscope')
+		
+		# Plot when data received
+            	self.liveplot.dataSaved.connect(self.plot_time_series)
             
-            # Plot when data received
-            self.liveplot.dataSaved.connect(self.plot_time_series)
-            
+            except Exception as e:
+                print(e)
         else:
             self.liveplot.close()
             self.liveplot = None
@@ -160,6 +163,7 @@ class DataWindow(QMainWindow):
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
+        self.activateWindow()
         reply = QMessageBox.question(self,'Message',
         'Are you sure you want to quit?', QMessageBox.Yes|
         QMessageBox.No, QMessageBox.No)
