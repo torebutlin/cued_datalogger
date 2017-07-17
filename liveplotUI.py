@@ -4,11 +4,12 @@ Created on Wed Jul  5 13:12:34 2017
 
 @author: eyt21
 """
+import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox)
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 #from PyQt5.QtGui import QImage
 import numpy as np
 import re
@@ -39,22 +40,32 @@ class LiveplotApp(QMainWindow):
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
-        
         if self.rec.stream_init(playback = False):
             self.playing = True
         # Set up the TimeSeries and FreqSeries
-        data = self.rec.get_buffer()
-        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
-        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+        try:
+            data = self.rec.get_buffer()
+            self.timedata = np.arange(data.shape[0]) /self.rec.rate 
+            self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
         
-        # Construct UI        
-        self.initUI()
-        self.config_setup()
         
-        # Center and show window
-        self.center()
-        self.setFocus()
-        self.show()
+            # Construct UI        
+            self.initUI()
+            self.config_setup()
+             # Center and show window
+            self.center()
+            self.setFocus()
+            self.show()
+        except Exception as e:
+            print(e)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            self.close()
+                
+        
+       
         
      #---------------------- App construction methods-----------------------     
     def initUI(self):
@@ -97,7 +108,7 @@ class LiveplotApp(QMainWindow):
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter,90)
-        
+        print('b')
         
         self.plotlines = []
         # Set up time domain plot, add to splitter
@@ -116,14 +127,14 @@ class LiveplotApp(QMainWindow):
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
         self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
-        
         for i in range(self.rec.channels):
             #colour = pg.mkColor(125,23*i,255,120)
             self.plotlines.append(self.timeplot.plot(pen = 'g'))
             self.plotlines.append(self.fftplot.plot(pen = 'y'))
         
         self.update_line()
-        
+
+            
         # Set the rest of the UI and add to splitter
         nongraphUI = QWidget(main_splitter)
         nongraphUI_layout = QVBoxLayout(nongraphUI)
@@ -215,7 +226,7 @@ class LiveplotApp(QMainWindow):
         self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2) # 25ms because that how roughly long the buffer fills up
-    
+        
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
         if type(self.rec) is mR.Recorder:
@@ -335,7 +346,6 @@ class LiveplotApp(QMainWindow):
     # Updates the plots    
     def update_line(self):
         data = self.rec.get_buffer()
-        data = data.reshape((len(data),))
         window = np.hanning(data.shape[0])
         weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
         for i in range(data.shape[1]):

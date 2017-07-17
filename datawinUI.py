@@ -4,7 +4,7 @@ Created on Tue Jul 11 11:44:12 2017
 
 @author: eyt21
 """
-import sys
+import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QApplication, QMessageBox, QDesktopWidget,QTabWidget,QTabBar)
 #from PyQt5.QtGui import QIcon,QFont
@@ -106,16 +106,20 @@ class DataWindow(QMainWindow):
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
         if not self.liveplot:
-            try:
-                self.liveplot = lpUI.LiveplotApp(self)
-                self.liveplot.show()
-                self.liveplotbtn.setText('Close Oscilloscope')
+            #try:
+            self.liveplot = lpUI.LiveplotApp(self)
+            self.liveplot.show()
+            self.liveplotbtn.setText('Close Oscilloscope')
 		
 		# Plot when data received
-            	self.liveplot.dataSaved.connect(self.plot_time_series)
+            self.liveplot.dataSaved.connect(self.plot_time_series)
             
-            except Exception as e:
-                print(e)
+            #except Exception as e:
+            #    print(e.message)
+            #    t,v,tb = sys.exc_info()
+            #    print(t)
+            #    print(v)
+            #    print(traceback.format_tb(tb))
         else:
             self.liveplot.close()
             self.liveplot = None
