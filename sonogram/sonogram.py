@@ -9,6 +9,7 @@ from mynumpy_functions import to_dB
 
 from scipy.signal import spectrogram, get_window
 
+
 class SonogramPlotWidget(ColorMapPlotWidget):
     """A widget displaying the Sonogram plot"""
     
@@ -77,11 +78,7 @@ class SonogramPlotWidget(ColorMapPlotWidget):
         # Convert to dB
         self.FT_dB = to_dB(self.FT)
 
-    def update_lowest_contour(self):
-        """Update the array which says where to plot contours, how many etc"""
-        # Create a vector with the right spacing with the correct number of contours
-        self.lowest_contour = self.FT_dB.max() - (self.num_contours * self.contour_spacing_dB)      
-
+    
     def update_plot(self, sig=None):
         """Recalculate, clear and replot"""
         
@@ -91,7 +88,6 @@ class SonogramPlotWidget(ColorMapPlotWidget):
             raise ValueError("Cannot calculate sonogram: no input data")
             
         self.calculate_sonogram()
-        self.update_lowest_contour()
         self.clear()
         self.plot_colormap(self.freqs, self.times, self.FT_dB, 
                            num_contours=self.num_contours, 

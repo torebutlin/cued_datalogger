@@ -82,10 +82,12 @@ class ColorMapPlotWidget(PlotWidget):
         
     def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
         self.x = x
-        self.y =y
+        self.y = y
         self.z = z
+        
         self.num_contours = num_contours
         self.contour_spacing_dB = contour_spacing_dB
+        self.update_lowest_contour()
         
         # Set up axes:
         x_axis = self.getAxis('bottom')
@@ -101,7 +103,13 @@ class ColorMapPlotWidget(PlotWidget):
         
         self.z_img = ImageItem(z.transpose())
         self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        self.z_img.setLevels([self.lowest_contour, self.highest_contour])
         self.addItem(self.z_img)
 
     def get_scale_fact(self, var):
         return var.max() / var.size
+    
+    def update_lowest_contour(self):
+        """Find the lowest contour to plot"""
+        self.lowest_contour = self.z.max() - (self.num_contours * self.contour_spacing_dB)
+        self.highest_contour = self.z.max()
