@@ -3,9 +3,11 @@
 """
 
 from RecorderParent import RecorderParent
+
 # TODO: Add codes to install pyaudio if pyaudio is not installed???
 import PyDAQmx as pdaq
 from PyDAQmx import Task
+
 import numpy as np
 import pprint as pp
 

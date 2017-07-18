@@ -16,7 +16,15 @@ import re
 
 import pyqtgraph as pg
 import myRecorder as mR
-import NIRecorder as NIR
+try:
+    import NIRecorder as NIR
+    NI_drivers = True
+except NotImplementedError:
+    print("Seems like you don't have National Instruments drivers")
+    NI_drivers = False
+except ModuleNotFoundError:
+    print("Seems like you don't have pyDAQmx modules")
+    NI_drivers = False
 
 # Theo's channel implementation, will probably use it later
 from channel import DataSet, Channel, ChannelSet
@@ -263,6 +271,11 @@ class LiveplotApp(QMainWindow):
     def display_sources(self):
         # TODO: make use of the button input in callback
         rb = self.typegroup.findChildren(QRadioButton)
+        if not NI_drivers and rb[1].isChecked():
+            print("You don't seem to have National Instrument drivers/modules")
+            rb[0].setChecked(True)
+            return 0
+        
         if rb[0].isChecked():
             selR = mR.Recorder()
         elif rb[1].isChecked():
