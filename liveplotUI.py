@@ -15,11 +15,10 @@ import numpy as np
 import re
 
 import pyqtgraph as pg
-
-# Uncomment the NIRecorder later
 import myRecorder as mR
 import NIRecorder as NIR
 
+# Theo's channel implementation, will probably use it later
 from channel import DataSet, Channel, ChannelSet
 
 
@@ -46,10 +45,8 @@ class LiveplotApp(QMainWindow):
             self.playing = True
             
         # Set up the TimeSeries and FreqSeries
-        
-        data = self.rec.get_buffer()
-        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
-        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+        self.timedata = None 
+        self.freqdata = None
         
         try:
             # Construct UI        
@@ -94,21 +91,18 @@ class LiveplotApp(QMainWindow):
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
         channel_box_layout.addWidget(scroll)
-        
-        try:
-            sel_btn_layout = QVBoxLayout(self.main_widget)    
-            sel_all_btn = QPushButton('Select All', self.channels_box)
-            sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-            desel_all_btn = QPushButton('Deselect All',self.channels_box)
-            desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-            inv_sel_btn = QPushButton('Invert Selection',self.channels_box)
-            inv_sel_btn.clicked.connect(self.invert_checkboxes)
-            for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
-                btn.resize(btn.sizeHint())
-                sel_btn_layout.addWidget(btn)        
-            channel_box_layout.addLayout(sel_btn_layout) 
-        except Exception as e:
-            print(e)
+      
+        sel_btn_layout = QVBoxLayout(self.main_widget)    
+        sel_all_btn = QPushButton('Select All', self.channels_box)
+        sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
+        desel_all_btn = QPushButton('Deselect All',self.channels_box)
+        desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
+        inv_sel_btn = QPushButton('Invert Selection',self.channels_box)
+        inv_sel_btn.clicked.connect(self.invert_checkboxes)
+        for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
+            btn.resize(btn.sizeHint())
+            sel_btn_layout.addWidget(btn)        
+        channel_box_layout.addLayout(sel_btn_layout)
         
         
         main_layout.addLayout(channel_box_layout,10)
@@ -140,32 +134,25 @@ class LiveplotApp(QMainWindow):
         self.plotlines = []
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
-        main_splitter.addWidget(self.timeplotcanvas)
         self.timeplot = self.timeplotcanvas.getPlotItem()
-        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)')
+        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-       
+        self.timeplot.setMouseEnabled(x=False,y = True)
+        main_splitter.addWidget(self.timeplotcanvas)
+        
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
-        main_splitter.addWidget(self.fftplotcanvas)
         self.fftplot = self.fftplotcanvas.getPlotItem()
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
-        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
-        for i in range(self.rec.channels):
-            #colour = pg.mkColor(125,23*i,255,120)
-            self.plotlines.append(self.timeplot.plot(pen = 'g'))
-            self.plotlines.append(self.fftplot.plot(pen = 'y'))
+        main_splitter.addWidget(self.fftplotcanvas)
         
-        self.update_line()
-
+        self.ResetPlots()
             
         # Set the rest of the UI and add to splitter
         nongraphUI = QWidget(main_splitter)
         nongraphUI_layout = QVBoxLayout(nongraphUI)
-        
         
         # Set up the Acquisition layout to display horizontally
         config_layout = QHBoxLayout(nongraphUI)
@@ -208,8 +195,7 @@ class LiveplotApp(QMainWindow):
             else:
                 cbox = QLineEdit(nongraphUI)
                 config_form.addRow(QLabel(c,nongraphUI),cbox)
-                self.configboxes.append(cbox)
-            print(type(cbox),type(cbox) is QComboBox)    
+                self.configboxes.append(cbox)  
             
         # Add the Acquisition form to the Acquisition layout
         config_layout.addLayout(config_form)
@@ -258,7 +244,7 @@ class LiveplotApp(QMainWindow):
         # Set up a timer to update the plot
         self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
-        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2) # 25ms because that how roughly long the buffer fills up
+        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
         
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
@@ -301,6 +287,7 @@ class LiveplotApp(QMainWindow):
         qr.moveCenter(cp)
         self.move(pr.topLeft())
         self.move(qr.left() - qr.width(),qr.top())
+        
     #---------------- Reset Methods-----------------------------------    
     def ResetRecording(self):
         self.statusbar.showMessage('Resetting...')
@@ -309,7 +296,6 @@ class LiveplotApp(QMainWindow):
         self.playing = False
         self.plottimer.stop()
         self.rec.close()
-        print(type(self.rec))
         del self.rec
                 
         try:    
@@ -317,12 +303,10 @@ class LiveplotApp(QMainWindow):
             Rtype, settings = self.config_status()
             
             # Delete and reinitialise the recording object
-            # Change the settings
             if Rtype[0]:
                 self.rec = mR.Recorder(device_name = settings[0])
             elif Rtype[1]:
                 self.rec = NIR.Recorder(device_name = settings[0])
-            # TODO?: Change the values of recording object
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
             self.rec.chunk_size = settings[3]
@@ -364,7 +348,6 @@ class LiveplotApp(QMainWindow):
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
     
     def ResetPlots(self):
-        print('resetting')
         try:
             n_plotlines = len(self.plotlines)
             self.ResetXdata()
@@ -378,8 +361,10 @@ class LiveplotApp(QMainWindow):
                 self.plotlines.append(self.timeplot.plot(pen = 'g'))
                 self.plotlines.append(self.fftplot.plot(pen = 'y'))
             
+            
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
+            self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = 0)
             self.update_line()
             
         except Exception as e:

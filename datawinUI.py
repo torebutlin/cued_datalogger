@@ -14,6 +14,8 @@ import numpy as np
 from numpy.fft import rfft, rfftfreq
 
 import pyqtgraph as pg
+import pyqtgraph.exporters
+
 import liveplotUI as lpUI
 from wintabwidgets import data_tab_widget
 from sonogram.matplotlib.sonogram import SonogramWidget
@@ -21,6 +23,7 @@ from cwt.cwt import CWTWidget
 
 from channel import DataSet, Channel, ChannelSet
 
+# For the exporter to work, need to change iteritem to item in pyqtgraph
 class DataWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -125,7 +128,17 @@ class DataWindow(QMainWindow):
         t = self.cs.chans[0].data('t')
         y = self.cs.chans[0].data('y')
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='g')
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='b')
+        try:    
+            exporter = pg.exporters.MatplotlibExporter(self.data_tabs.currentWidget().canvasplot)
+            exporter.export('testingmpl')
+        except Exception as e:
+            print(e)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+                
         
     def plot_sonogram(self):
         signal = self.cs.chans[0].data('y')
