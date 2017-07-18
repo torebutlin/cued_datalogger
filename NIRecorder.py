@@ -83,7 +83,7 @@ class Recorder(RecorderParent):
     # Return the channel names to be used when assigning task     
     def set_channels(self):
         if self.channels >1:
-            channelname =  '%s/ai0:%i' % (self.device_name, self.channels-1)
+            channelname =  '%s/ai0:%s/ai%i' % (self.device_name, self.device_name,self.channels-1)
         elif self.channels == 1:
             channelname = '%s/ai0' % self.device_name
             
@@ -93,10 +93,10 @@ class Recorder(RecorderParent):
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
     def stream_audio_callback(self):
-        in_data = np.zeros(self.chunk_size,dtype = np.int16)
+        in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)
         read = pdaq.int32()
         self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
-                           in_data,self.chunk_size,pdaq.byref(read),None)
+                           in_data,self.chunk_size*self.channels,pdaq.byref(read),None)
         self.write_buffer(self.audiodata_to_array(in_data))
         if self.recording:
             self.record_data()

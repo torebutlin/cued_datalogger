@@ -361,10 +361,9 @@ class LiveplotApp(QMainWindow):
                 self.plotlines.append(self.timeplot.plot(pen = 'g'))
                 self.plotlines.append(self.fftplot.plot(pen = 'y'))
             
-            
-            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-10,10))
-            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**8))
-            self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = 0)
+            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1))
+            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**4))
+            self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
             self.update_line()
             
         except Exception as e:
@@ -419,12 +418,12 @@ class LiveplotApp(QMainWindow):
     def update_line(self):
         data = self.rec.get_buffer()
         window = np.hanning(data.shape[0])
-        weightage = np.exp(-self.timedata / self.timedata[-1])[::-1]
+        weightage = np.exp(2* self.timedata / self.timedata[-1])
         for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),)) + 50*i
+            plotdata = data[:,i].reshape((len(data[:,i]),)) + 1*i
             
-            fft_data = np.fft.rfft(window * plotdata * weightage)
-            psd_data = abs(fft_data)**2 / (np.abs(window)**2).sum() + 1e3 * i
+            fft_data = np.fft.rfft(plotdata)
+            psd_data = abs(fft_data)**2  + 1e2 * i
             self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
             self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
     
@@ -432,7 +431,7 @@ class LiveplotApp(QMainWindow):
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
         snapshot = self.rec.get_buffer()
-        self.save_data(data = snapshot)
+        self.save_data(data = snapshot[:,0])
         self.statusbar.showMessage('Snapshot Captured!', 1500)
     
     # Start the data recording        
@@ -454,7 +453,7 @@ class LiveplotApp(QMainWindow):
         self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
-        self.save_data(self.rec.flush_record_data())
+        self.save_data(self.rec.flush_record_data()[:,0])
         self.statusbar.clearMessage()
     
     # Transfer data to main window      

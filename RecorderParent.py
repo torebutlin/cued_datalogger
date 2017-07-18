@@ -99,7 +99,7 @@ class RecorderParent(object):
     def get_buffer(self):
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
-                           self.buffer.shape[2])) / 2**7
+                           self.buffer.shape[2])) / 2**15
         
 #---------------- RECORDING METHODS -----------------------------------
     # Append the current chunk(which is before next_chunk) to recorded data            
@@ -112,7 +112,7 @@ class RecorderParent(object):
         flushed_data = np.array(self.recorded_data)
         self.recorded_data = []
         return flushed_data.reshape((flushed_data.shape[0] * flushed_data.shape[1],
-                           flushed_data.shape[2])) / 2**7
+                           flushed_data.shape[2])) / 2**15
 
 #---------------- STREAMING METHODS -----------------------------------                                     
     def stream_init(self, playback = False):

@@ -99,7 +99,7 @@ class Recorder(RecorderParent):
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return np.frombuffer(data, dtype = np.int16).reshape((-1,self.channels))
+        return np.frombuffer(data, dtype = np.int16).reshape((self.chunk_size,self.channels))
                            
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
