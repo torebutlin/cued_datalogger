@@ -44,23 +44,51 @@ def circle_plot(x0, y0, R0):
     theta = np.linspace(-np.pi, np.pi, 180)
     x = x0[0] + R0[0]*np.cos(theta)
     y = y0[0] + R0[0]*np.sin(theta)
-    plt.plot(x, y, '--')
-    plt.axis('equal')
+    return x, y
 
+def update_plots():
+    print("Getting axes limits...")
+    wmin, wmax = ax1.get_xlim()
+    
+    lower = np.where(w>wmin)[0][0]
+    upper = np.where(w<wmax)[0][-1]
+    print(lower, upper)
+    
+    d_ = d[lower:upper]
+    
+    ax2.clear()
+    ax2.plot(d_.real, d_.imag)
+
+    ax3.clear()
+    x0, y0, R0 = circle_fit(d_)
+    x_c, y_c = circle_plot(x0, y0, R0)
+    ax3.plot(d_.real, d_.imag)
+    ax3.plot(x_c, y_c, '--')
+    
+fig = plt.figure()
 
 w = np.linspace(0, 25 ,1e5)
-d = func(w, 5, 1, 1j)
-plt.figure()
-plt.plot(w, np.abs(d))
+d = func(w, 10, 1e-2, 500j) #+ func(w, 5, 1e-2, 200j) 
+
+ax1 = fig.add_subplot(211)
+ax1.set_title("Transfer function")
+ax1.plot(w, np.abs(d))
+# Add event handling:
+#ax1.callbacks.connect('xlim_changed', update_plots)
+
 
 # Nyquist
-plt.figure()
-plt.plot(d.real, d.imag)
+ax2 = fig.add_subplot(223)
+ax2.set_title("Nyquist plot")
+plt.gca().set_aspect('equal', adjustable='box')
 
 # Circle
-x0, y0, R0 = circle_fit(d)
-circle_plot(x0, y0, R0)
-
+ax3 = fig.add_subplot(224)
+ax3.set_title("Nyquist plot with circle fit")
+plt.gca().set_aspect('equal', adjustable='box')
+   
+update_plots()
+plt.show()
 
 
 
