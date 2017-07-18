@@ -38,7 +38,7 @@ class LiveplotApp(QMainWindow):
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
-        self.rec = mR.Recorder(channels = 1,
+        self.rec = mR.Recorder(channels = 15,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Set playback to False to not hear anything
@@ -77,25 +77,42 @@ class LiveplotApp(QMainWindow):
         
         #Set up the channel tickboxes widget
         self.channels_box = QWidget(self.main_widget)
-        self.channels_layout = QGridLayout(self.channels_box)
+        channel_box_layout = QHBoxLayout(self.main_widget)
         
+        self.checkbox_layout = QGridLayout(self.channels_box)
+        #Set up the QbuttonGroup to manage the signals
         self.chan_btn_group = QButtonGroup(self.channels_box)
-        self.chan_btn_group.setExclusive(False)
-        for i in range (self.rec.channels):
-            chan_btn = QCheckBox('Channel %i' % i,self.channels_box)
-            chan_btn.setCheckState(Qt.Checked)
-            self.channels_layout.addWidget(chan_btn)
-            self.chan_btn_group.addButton(chan_btn,i)
-            
+        self.chan_btn_group.setExclusive(False)                
+        channel_box_layout.addLayout(self.checkbox_layout) 
+        self.ResetChanBtns()
+        
         self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         
-        #print(self.channels_layout.count())
-        
+        # Make the button tickboxes scrollable
         scroll = QScrollArea(self.main_widget)
         #scroll.ensureVisible(50,50)
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
-        main_layout.addWidget(scroll,10)
+        channel_box_layout.addWidget(scroll)
+        
+        try:
+            sel_btn_layout = QVBoxLayout(self.main_widget)    
+            sel_all_btn = QPushButton('Select All', self.channels_box)
+            sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
+            desel_all_btn = QPushButton('Deselect All',self.channels_box)
+            desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
+            inv_sel_btn = QPushButton('Invert Selection',self.channels_box)
+            inv_sel_btn.clicked.connect(self.invert_checkboxes)
+            for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
+                btn.resize(btn.sizeHint())
+                sel_btn_layout.addWidget(btn)        
+            channel_box_layout.addLayout(sel_btn_layout) 
+        except Exception as e:
+            print(e)
+        
+        
+        main_layout.addLayout(channel_box_layout,10)
+        
         
          # Set up the button layout to display horizontally
         btn_layout = QHBoxLayout(self.main_widget)
@@ -252,7 +269,7 @@ class LiveplotApp(QMainWindow):
             
         self.display_sources()
         
-        info = [ self.rec.rate,self.rec.channels,
+        info = [self.rec.rate,self.rec.channels,
                 self.rec.chunk_size,self.rec.num_chunk]
         for cbox,i in zip(self.configboxes[1:],info):
             cbox.setText(str(i))
@@ -372,22 +389,31 @@ class LiveplotApp(QMainWindow):
     def ResetChanBtns(self):
         for btn in self.chan_btn_group.buttons():
             btn.setCheckState(Qt.Checked)
-            
-        extra_btns = abs(self.rec.channels - self.channels_layout.count())
+        
+        n_buttons = self.checkbox_layout.count()
+        extra_btns = abs(self.rec.channels - n_buttons)
         if extra_btns:
-            if self.rec.channels > self.channels_layout.count():
-                for n in range(self.channels_layout.count(),self.rec.channels):
+            if self.rec.channels > n_buttons:
+                columns_limit = 4
+                current_y = (n_buttons-1)//columns_limit
+                current_x = (n_buttons-1)%columns_limit
+                for n in range(n_buttons,self.rec.channels):
+                    current_x +=1
+                    if current_x%columns_limit == 0:
+                        current_y +=1
+                    current_x = current_x%columns_limit
+                    
                     chan_btn = QCheckBox('Channel %i' % n,self.channels_box)
                     chan_btn.setCheckState(Qt.Checked)
-                    self.channels_layout.addWidget(chan_btn)
+                    self.checkbox_layout.addWidget(chan_btn,current_y,current_x)
                     self.chan_btn_group.addButton(chan_btn,n)
             else:
-                for n in range(self.channels_layout.count()-1,self.rec.channels-1,-1):
+                for n in range(n_buttons-1,self.rec.channels-1,-1):
                     chan_btn = self.chan_btn_group.button(n)
-                    self.channels_layout.removeWidget(chan_btn)
+                    self.checkbox_layout.removeWidget(chan_btn)
                     self.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
-                pass
+                
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
@@ -484,9 +510,9 @@ class LiveplotApp(QMainWindow):
     def display_channel_plots(self, *args):
         for btn in args:
             #print(btn)
-            print(self.channels_box.findChildren(QCheckBox))
-            print(self.chan_btn_group.id(btn))
-            print(btn.isChecked())
+            #print(self.channels_box.findChildren(QCheckBox))
+            #print(self.chan_btn_group.id(btn))
+            #print(btn.isChecked())
             chan_num = self.chan_btn_group.id(btn)
             if btn.isChecked():
                 self.plotlines[2*chan_num].setPen('g')
@@ -495,6 +521,14 @@ class LiveplotApp(QMainWindow):
                 self.plotlines[2*chan_num].setPen(None)
                 self.plotlines[2*chan_num+1].setPen(None)
                 
+    def invert_checkboxes(self):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            btn.click()
+         
+    def toggle_all_checkboxes(self,state):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            if not btn.checkState() == state:
+                btn.click()
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
