@@ -66,13 +66,75 @@ def update_plots():
     
     p2.clear()
     p2.plot(d_.real, d_.imag)
-
+    
     p3.clear()
     x0, y0, R0 = circle_fit(d_)
+    #print(calculate_interesting_values(x0, y0, R0))
     x_c, y_c = circle_plot(x0, y0, R0)
     p3.plot(d_.real, d_.imag, pen=pg.mkPen(width=4))
     p3.plot(x_c, y_c, pen=pg.mkPen('r', width=2, style=QtCore.Qt.DashLine))
 
+
+def calculate_interesting_values(x0, y0, R0):
+    re, im = circle_plot(x0, y0, R0)
+    cmplx = re + 1j*im
+    
+    # Resonant frequency and phase angle
+    w0, t0 = 0, 0
+    w1, t1 = 0, 0
+    w2, t2 = 0, 0
+    w3, t3 = 0, 0
+    
+    def tAtB(tA, tB, wA, wB):
+        return (tA - tB) / (wA**2 - wB**2)
+    
+    def tAtBtC(tA, tB, tC, wA, wB, wC):
+        return (tAtB(tA, tB, wA, wB) - tAtB(tB, tC, wB, wC)) / (wA**2 - wC**2)
+    
+    def tAtBtCtD(tA, tB, tC, tD, wA, wB, wC, wD):
+        return (tAtBtC(tA, tB, tC, wA, wB, wC) - tAtBtC(tB, tC, tD, wB, wC, wD)) / (wA**2 - wD**2)
+    
+    t0t1 = tAtB(t0, t1, w0, w1)
+    t0t1t2 = tAtBtC(t0, t1, t2, w0, w1, w2)
+    t0t1t2t3 = tAtBtCtD(t0, t1, t2, t3, w0, w1, w2, w3)
+    
+    wr2 = (w0**2 + w1**2 + w2**2 - (t0t1t2 / t0t1t2t3)) / 3
+    wr = np.sqrt(wr2)
+    tr = t0 + (wr2 - w0**2)*t0t1 + (wr2 - w0**2)*(wr2 - w1**2)*t0t1t2 + (wr2 - w0**2)*(wr2 - w1**2)*(wr2 - w2**2)*t0t1t2t3
+    
+    # Damping factor
+    def calc_nr(wr, tr, wa, wb, ta, tb):
+        return (wa**2 - wb**2)/ (wr**2 * (np.tan(ta - tr) + np.tan(tr - tb)))
+    
+    w1, t1 = 0, 0
+    w2, t2 = 0, 0
+    w3, t3 = 0, 0
+    w4, t4 = 0, 0
+    w5, t5 = 0, 0
+    w6, t6 = 0, 0
+    
+    # Take mean of points
+    #3,4
+    nr34 = calc_nr(wr, tr, w3, w4, t3, t4)
+    
+    #2,5
+    nr25 = calc_nr(wr, tr, w2, w5, t2, t5)
+    
+    #1,6
+    nr16 = calc_nr(wr, tr, w1, w6, t1, t6)
+    
+    nr = (nr34 + nr25 + nr16)/3
+    
+    # Modal Constant
+    # Modulus:
+    C = 2*R0*wr2*nr
+    
+    # Phase angle
+    xD = 0
+    yD = 0
+    phi = np.atan((x0 - xD) / (y0 - yD))
+    
+    return wr, nr, C, phi
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -126,7 +188,9 @@ win.nextRow()
 p2 = win.addPlot(title="Nyquist plot")
 # Circle
 p3 = win.addPlot(title="Nyquist plot with circle fit")
-   
+
+
+
 update_plots()
 
 
