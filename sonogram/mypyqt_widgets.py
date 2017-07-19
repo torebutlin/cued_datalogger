@@ -113,3 +113,37 @@ class ColorMapPlotWidget(PlotWidget):
         """Find the lowest contour to plot"""
         self.lowest_contour = self.z.max() - (self.num_contours * self.contour_spacing_dB)
         self.highest_contour = self.z.max()
+        
+# -----------------------------------------
+# Matplotlib widgets
+# -----------------------------------------
+import matplotlib
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+from PyQt5.QtWidgets import QSizePolicy
+
+
+class MatplotlibCanvas(FigureCanvas):
+    def __init__(self, suptitle=None):
+        matplotlib.use('Qt5Agg')  
+        matplotlib.rcParams['toolbar'] = 'None'
+
+        fig = Figure()
+        fig.suptitle(suptitle)
+        self.axes = fig.add_subplot(111)
+
+        self.init_plot()
+        
+        FigureCanvas.__init__(self, fig)
+        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def init_plot(self):
+        pass
+    
+    def draw_plot(self):
+        pass
+    
+    def update_plot(self):
+        pass

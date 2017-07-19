@@ -1,8 +1,8 @@
 import sys
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout
-from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushButton, QLabel, QSpinBox, QHBoxLayout, QGridLayout
+from mypyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
 
 import numpy as np
 from mynumpy_functions import to_dB
@@ -10,8 +10,51 @@ from mynumpy_functions import to_dB
 from scipy.signal import spectrogram, get_window
 
 
+class SonogramContourWidget(MatplotlibCanvas):
+    """A MatplotlibCanvas widget displaying the Sonogram contour plot"""
+    
+    def __init__(self, parent=None):
+        self.parent = parent
+        self.sonogram_master = self.parent.sonogram_plot
+        
+        self.parent.num_contours_slider.valueChanged.connect(self.update_plot)
+        self.parent.num_contours_spinbox.valueChanged.connect(self.update_plot)
+        self.parent.contour_spacing_slider.valueChanged.connect(self.update_plot)
+        self.parent.contour_spacing_spinbox.valueChanged.connect(self.update_plot)
+        
+        MatplotlibCanvas.__init__(self, "Sonogram: Contour Plot")
+
+        self.update_plot()
+    
+    def update_plot(self):
+        """Redraw the sonogram on the canvas"""
+        self.F_bins, self.T_bins = np.meshgrid(self.sonogram_master.freqs, self.sonogram_master.times)
+
+        self.axes.clear()
+        
+        self.update_contour_sequence()
+        
+        self.axes.contour(self.F_bins, self.T_bins, self.sonogram_master.FT_dB, self.contour_sequence)
+        
+        self.axes.set_xlabel('Freq (Hz)')
+        self.axes.set_ylabel('Time (s)')
+        
+        self.axes.set_xlim(self.sonogram_master.freqs.min(), self.sonogram_master.freqs.max())
+        self.axes.set_ylim(self.sonogram_master.times.min(), self.sonogram_master.times.max())
+        
+        self.draw()
+
+    def update_contour_sequence(self):
+        """Update the array which says where to plot contours, how many etc"""
+        # Create a vector with the right spacing from min to max value
+        self.contour_sequence = np.arange(self.sonogram_master.FT_dB.min(), self.sonogram_master.FT_dB.max(),
+                                          self.sonogram_master.contour_spacing_dB)
+        # Take the appropriate number of contours
+        self.contour_sequence = self.contour_sequence[-self.sonogram_master.num_contours:]
+
+
 class SonogramPlotWidget(ColorMapPlotWidget):
-    """A widget displaying the Sonogram plot"""
+    """A widget displaying the Sonogram colourmap plot"""
     
     def __init__(self, sample_freq=4096, window_width=256, 
                  window_overlap_fraction=8, contour_spacing_dB=5, 
@@ -70,8 +113,6 @@ class SonogramPlotWidget(ColorMapPlotWidget):
         self.FT = self.FT.transpose()
         # Scipy calculates all the conjugate spectra/frequencies as well -
         # we only want the positive ones
-        # TODO: This might create problems if only real data is input, as scipy might
-        # calculate single-sided spectra if the data is solely real.
         self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
         self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
         
@@ -150,7 +191,6 @@ class SonogramWidget(QWidget):
         self.window_overlap_fraction_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
         self.window_overlap_fraction_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
               
-        
         #------------Contour spacing controls------------
         self.contour_spacing_label = QLabel(self)
         self.contour_spacing_label.setText("Contour spacing")
@@ -193,6 +233,12 @@ class SonogramWidget(QWidget):
         self.num_contours_slider.valueChanged.connect(self.sonogram_plot.update_attributes)
         self.num_contours_spinbox.valueChanged.connect(self.sonogram_plot.update_attributes)
         
+        #------------Matplotlib window controls---------
+        # Create button
+        self.convert_to_contour_btn = QPushButton("Convert to contour plot", self)
+        self.convert_to_contour_btn.resize(self.convert_to_contour_btn.sizeHint())
+        self.convert_to_contour_btn.clicked.connect(self.open_contour_plot)
+        
         #------------Layout------------
         # Sonogram controls:
         self.sonogram_controls_label = QLabel(self)
@@ -220,6 +266,7 @@ class SonogramWidget(QWidget):
         plot_controls.addWidget(self.num_contours_label, 1, 1)
         plot_controls.addWidget(self.num_contours_spinbox, 2, 1)
         plot_controls.addWidget(self.num_contours_slider, 3, 1)
+        plot_controls.addWidget(self.convert_to_contour_btn, 4, 0, 1, 2)
 
                 
         vbox = QVBoxLayout()
@@ -237,6 +284,13 @@ class SonogramWidget(QWidget):
     
     def plot(self, sig):
         self.sonogram_plot.update_plot(sig)
+
+    def open_contour_plot(self):
+        if hasattr(self, 'contour_plot'):
+            self.contour_plot.close()
+            
+        self.contour_plot = SonogramContourWidget(self)
+        self.contour_plot.show()
 
 
 def func_1(t, w, x, A=4e3):
