@@ -134,10 +134,8 @@ class RecorderParent(object):
         self.initialised_record = True
         
         print('Recording function is ready! Use record_start() to start')
-        
-
-    # Function to initiate a normal recording
-    def record_start(self):
+    # Function to check before recording
+    def _record_check(self):
         if not self.audio_stream:
             print('No recording stream initiated!')
             return False
@@ -145,6 +143,13 @@ class RecorderParent(object):
         # Check if the previous recorded data is flushed
         if self.recorded_data:
             print('Please flush your recorded data')
+            return False
+        
+        return True
+
+    # Function to initiate a normal recording
+    def record_start(self):
+        if not self._record_check():
             return False
                        
         # Start the recording

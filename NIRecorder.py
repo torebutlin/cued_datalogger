@@ -4,6 +4,7 @@
 
 from RecorderParent import RecorderParent
 
+import sys,traceback
 # TODO: Add codes to install pyaudio if pyaudio is not installed???
 import PyDAQmx as pdaq
 from PyDAQmx import Task
@@ -24,6 +25,7 @@ class Recorder(RecorderParent):
         self.device_name = self.set_device_by_name(device_name);
                
         self.open_recorder()
+        self.trigger_init()
             
 #---------------- DEVICE SETTING METHODS -----------------------------------
     def set_device_by_name(self, name):
@@ -154,4 +156,96 @@ class Recorder(RecorderParent):
         if self.audio_stream:
             self.audio_stream.ClearTask()
             self.audio_stream = None
+            
+    #---------------- RECORD TRIGGER METHODS ----------------------------------
+    def trigger_init(self):
+        self.trigger = False
+        self.pretrig_samples = self.chunk_size;
+        self.posttrig_samples = 0;
+        
+    def trigger_done_callback(self):
+        read = pdaq.int32()
+        
+        pretrig_data = np.zeros(self.pretrig_samples*self.channels,dtype = np.int16)
+        try:
+            self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_FirstPretrigSamp)
+            self.audio_stream.ReadBinaryI16(self.pretrig_samples,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
+                               pretrig_data,self.pretrig_samples*self.channels,pdaq.byref(read),None)
+        except Exception as e:
+            print(e)
+        finally:
+            self.recorded_data.append(pretrig_data)
+                
+        posttrig_data = np.zeros(self.posttrig_samples*self.channels,dtype = np.int16)
+        try:
+            self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_RefTrig)
+            self.audio_stream.ReadBinaryI16(self.posttrig_samples,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
+                               posttrig_data,self.posttrig_samples*self.channels,pdaq.byref(read),None)
+        except Exception as e:
+            print(e)
+        finally:
+            self.recorded_data.append(posttrig_data)
+            
+        try:
+            self.recorded_data.reshape((self.buffer.shape[0], self.buffer.shape[1],
+                           self.buffer.shape[2]))
+        except Exception as e:
+                print(e)
+            
+        try:                                         
+            self.audio_stream.SetSampQuantSampMode(pdaq.DAQmx_Val_ContSamps);
+            self.audio_stream.SetSampQuantSampPerChan(self.chunk_size);
+       
+            self.audio_stream.DisableRefTrig()
+            self.audio_stream.AutoRegisterDoneEvent(0)
+            self.trigger = False
+            self.stream_start()
+        except Exception as e:
+            print(e)
+        
+        print('Triggering done!')
+        return 0
+    
+    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0):
+        if self.audio_stream:
+            self.stream_stop()
+        else:
+            print('Please initialise a stream.')
+            return False
+        
+        if not self.trigger:
+            try:
+                self.posttrig_samples = int(duration * self.rate // self.chunk_size *self.chunk_size)
+                
+                self.audio_stream.trigger_done_callback = self.trigger_done_callback
+                
+                self.audio_stream.SetSampQuantSampMode(pdaq.DAQmx_Val_FiniteSamps);
+                self.audio_stream.SetSampQuantSampPerChan(pdaq.uInt64(self.posttrig_samples));
+               
+                trigger_channelname = '%s/ai%i' % (self.device_name, channel)
+                self.audio_stream.CfgAnlgEdgeRefTrig(trigger_channelname,
+                                                     pdaq.DAQmx_Val_RisingSlope,
+                                                     threshold,
+                                                     self.pretrig_samples)
+                
+                self.audio_stream.AutoRegisterDoneEvent(0, name = 'trigger_done_callback')
+                
+                self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_CurrReadPos);
+                                                   
+                self.trigger = True
+            except Exception as e:
+                print(e)
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
+                self.stream_close()
+                print('Stream Closed!')
+                return False
+            
+            self.stream_start()
+            return True
+        else:
+            print('You have already started a trigger')
+            return False
         
