@@ -27,6 +27,8 @@ class Recorder(RecorderParent):
         self.open_recorder()
         self.set_device_by_name(str(device_name))
         
+        self.trigger_init()
+        
     def open_recorder(self):
         super().open_recorder()
         if self.p == None:
@@ -104,9 +106,16 @@ class Recorder(RecorderParent):
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
-        self.write_buffer(self.audiodata_to_array(in_data))
+        data_array = self.audiodata_to_array(in_data)
+        self.write_buffer(data_array)
+        
+        # TODO: Add trigger check
+        if self.trigger:
+            self._trigger_check_threshold(data_array)
+            
         if self.recording:
             self.record_data()
+            
         return(in_data,pyaudio.paContinue)
     
     # TODO: Check for valid device, channels and all that before initialisation
@@ -162,3 +171,55 @@ class Recorder(RecorderParent):
             self.stream_stop()
             self.audio_stream.close()
             self.audio_stream = None
+            
+    #---------------- RECORD TRIGGER METHODS ----------------------------------
+    def trigger_init(self):
+        self.trigger = False
+        self.trigger_threshold = 0
+        self.trigger_channel = 0
+    
+    def trigger_start(self,duration = 3, threshold = 0.2, channel = 0):
+        if self.recording:
+            print('You are current recording. Please finish the recording before starting the trigger.')
+            return False
+        
+        if not self.trigger:
+            if not self._record_check():
+                return False
+            self.record_init(duration = duration)
+            self.trigger = True
+            self.trigger_threshold = threshold
+            self.trigger_channel = channel
+            print('Trigger Set!')
+            return True
+        else:
+            print('You have already started a trigger')
+            return False
+
+    def _trigger_check_threshold(self,data):
+        #Calculate RMS of chunk
+            norm_data = data[:,self.trigger_channel] / 2**15
+            rms = np.sqrt(np.mean(norm_data ** 2))
+            #print(rms)
+            
+            if rms > self.trigger_threshold:
+                print('Triggered!')
+                self.recording = True
+                self.trigger = False
+            
+        
+        
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        
