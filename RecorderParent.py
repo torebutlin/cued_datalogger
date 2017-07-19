@@ -52,9 +52,13 @@ class RecorderParent(object):
         self.audio_stream = None
         
         self.allocate_buffer()
+        self.show_stream_settings()
         
     def open_recorder(self):
         self.recording = False
+        self.initialised_record = False
+        self.next_rec_chunk = 0
+        self.total_rec_chunk = 0
         self.recorded_data = []
         
         # Set up the buffer         
@@ -71,7 +75,17 @@ class RecorderParent(object):
     # Close the audio object, to be called if streaming is no longer needed        
     def close(self):
         self.stream_close()
-    
+ 
+#---------------- DESTRUCTOR METHODS -----------------------------------     
+    def show_stream_settings(self):
+        print('Channels: %i' % self.channels)
+        print('Rate: %i' % self.rate)
+        print('Chunk size: %i' % self.chunk_size)
+        print('Number of chunks: %i' % self.num_chunk)
+        
+    def set_filename(self,filename):
+        self.filename = filename
+
     def set_device_by_name(self, name):
         pass
         
@@ -81,9 +95,6 @@ class RecorderParent(object):
     def current_device_info(self):
         pass
     
-    def set_filename(self,filename):
-        self.filename = filename
-        
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
@@ -102,10 +113,53 @@ class RecorderParent(object):
                            self.buffer.shape[2])) / 2**15
         
 #---------------- RECORDING METHODS -----------------------------------
+    def record_init(self,duration = 3):
+        # Calculate the number of recording chunks
+        self.total_rec_chunk = duration * self.rate // self.chunk_size
+        self.next_rec_chunk = 0
+        
+        self.initialised_record = True
+        
+        print('Recording function is ready! Use record_start() to start')
+        
+
+    # Function to initiate a normal recording
+    def record_start(self):
+        if not self.audio_stream:
+            print('No recording stream initiated!')
+            return False
+        
+        # Check if the previous recorded data is flushed
+        if self.recorded_data:
+            print('Please flush your recorded data')
+            return False
+                       
+        # Start the recording
+        if self.initialised_record: 
+            self.stream_start()
+            self.recording = True
+            print('Recording Start!')
+            return True
+        else:
+            print('Record not initialised! Use record_init(duration) first!')
+        
+    
+     # TODO: Add a function to end a normal recording, (internal only)
+    def _record_stop(self):
+        # Stop the recording
+        self.recording = False
+        # Give a signal that recording is done
+        print('Recording Done! Please flush the data with flush_record_data().')
+        
+    
     # Append the current chunk(which is before next_chunk) to recorded data            
     def record_data(self):
         data = cp.copy(self.buffer[self.next_chunk-1])
         self.recorded_data.append(data)
+        # Check to see whether recording is done
+        self.next_rec_chunk += 1
+        if self.next_rec_chunk == self.total_rec_chunk:
+            self._record_stop()
         
     # Return the recorded data as 2D numpy array (similar to get_buffer)    
     def flush_record_data(self):
@@ -146,6 +200,7 @@ class RecorderParent(object):
             #print(e)
             self._num_chunks = n
         
+        
     @property
     def chunk_size(self):
         return self._chunk_size
@@ -161,6 +216,7 @@ class RecorderParent(object):
         except Exception as e:
             #print(e)
             self._chunk_size = n
+
             
                                   
  
