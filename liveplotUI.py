@@ -453,17 +453,20 @@ class LiveplotApp(QMainWindow):
         # Disable buttons
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setDisabled(True)
+            
+        self.rec.record_init(duration = 3)
         # Start the recording
-        self.rec.recording = True
+        if self.rec.record_start():
+            self.rec.rEmitter.recorddone.connect(self.stop_recording)
         # Setup the timer to stop the recording
-        rec_timer = QTimer(self)
-        rec_timer.setSingleShot(True)
-        rec_timer.timeout.connect(self.stop_recording)
-        rec_timer.start(3000)
+        #rec_timer = QTimer(self)
+        #rec_timer.setSingleShot(True)
+        #rec_timer.timeout.connect(self.stop_recording)
+        #rec_timer.start(3000)
     
     # Stop the data recording and transfer the recorded data to main window    
     def stop_recording(self):
-        self.rec.recording = False
+        #self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
         self.save_data(self.rec.flush_record_data()[:,0])

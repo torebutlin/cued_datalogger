@@ -40,6 +40,13 @@ from abc import ABCMeta
 import numpy as np
 import copy as cp
 
+try:
+    from RecEmitter import RecEmitter
+    QT_EMITTER = True
+except Exception as e:
+    print(e)
+    QT_EMITTER = False
+
 class RecorderParent(object):
     __metaclass__ = ABCMeta
 #---------------- INITIALISATION METHODS -----------------------------------    
@@ -53,6 +60,12 @@ class RecorderParent(object):
         
         self.allocate_buffer()
         self.show_stream_settings()
+        
+        # For pyQt implementations
+        if QT_EMITTER:
+            self.rEmitter = RecEmitter()
+        else:
+            self.rEmitter = None
         
     def open_recorder(self):
         self.recording = False
@@ -142,6 +155,7 @@ class RecorderParent(object):
             return True
         else:
             print('Record not initialised! Use record_init(duration) first!')
+            return False
         
     
      # TODO: Add a function to end a normal recording, (internal only)
@@ -150,6 +164,8 @@ class RecorderParent(object):
         self.recording = False
         # Give a signal that recording is done
         print('Recording Done! Please flush the data with flush_record_data().')
+        if self.rEmitter:
+            self.rEmitter.recorddone.emit()
         
     
     # Append the current chunk(which is before next_chunk) to recorded data            
