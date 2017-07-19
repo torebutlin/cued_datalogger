@@ -46,10 +46,21 @@ def circle_plot(x0, y0, R0):
 
 def update_plots():
     wmin, wmax = p1.getAxis('bottom').range
-    #dmin, dmax = p1.getAxis('left').range
+    dmin, dmax = p1.getAxis('left').range
     
-    lower = np.where(w>wmin)[0][0]
-    upper = np.where(w<wmax)[0][-1]
+    lower_w = np.where(w>wmin)[0][0]
+    upper_w = np.where(w<wmax)[0][-1]
+    lower_d = np.where(d>dmin)[0][0]
+    upper_d = np.where(d<dmax)[0][-1]
+    
+    if lower_w > lower_d:
+        lower = lower_w
+    else:
+        lower = lower_d
+    if upper_w < upper_d:
+        upper = upper_w
+    else:
+        upper = upper_w
     
     d_ = d[lower:upper]
     
@@ -76,27 +87,37 @@ win = pg.GraphicsWindow(title="Circle Fit")
 # Transfer fn
 p1 = win.addPlot(title="Transfer function", x=w, y=np.abs(d))
 p_select = win.addPlot(title="Region Selection", x=w, y=np.abs(d))
-lr_x = pg.LinearRegionItem([w.min(), w.max()], orientation=pg.LinearRegionItem.Vertical)
-lr_y = pg.LinearRegionItem([d.min(), d.max()], orientation=pg.LinearRegionItem.Horizontal)
-lr_x.setZValue(-10)
-lr_y.setZValue(-10)
-p_select.addItem(lr_x)
-p_select.addItem(lr_y)
+
+# Create ROI - NOTE THIS DOES NOT WORK WELL
+# TODO: reimplement the ROI, really jerky updates
+roi = pg.ROI([w[0], d.min()], [w.max(), d.max()-d.min()], pen='r')
+# Horizontal scale handles
+roi.addScaleHandle([1, 0.5], [0, 0.5])
+roi.addScaleHandle([0, 0.5], [1, 0.5])
+# Vertical scale handles
+roi.addScaleHandle([0.5, 0], [0.5, 1])
+roi.addScaleHandle([0.5, 1], [0.5, 0])
+# Corner scale handles
+roi.addScaleHandle([1, 1], [0, 0])
+roi.addScaleHandle([0, 0], [1, 1])
+p_select.addItem(roi)
 
 
 def update_zoom():
-    p1.setXRange(*lr_x.getRegion(), padding=0)
-    p1.setYRange(*lr_y.getRegion(), padding=0)
+    x_min, y_min = roi.pos()
+    x_max, y_max = roi.pos() + roi.size()
+    p1.setXRange(x_min, x_max, padding=0)
+    p1.setYRange(y_min, y_max, padding=0)
 
-def update_region():
-    lr_x.setRegion(p1.getViewBox().viewRange()[0])
-    lr_y.setRegion(p1.getViewBox().viewRange()[1])
+def update_roi():
+    region = np.asarray(p1.getViewBox().viewRange())
+    roi.setPos(region[:, 0])
+    roi.setSize(region[:, 1] - region[:, 0])
     
-lr_x.sigRegionChanged.connect(update_zoom)
-lr_x.sigRegionChanged.connect(update_plots)
-lr_y.sigRegionChanged.connect(update_zoom)
-lr_y.sigRegionChanged.connect(update_plots)
-p1.sigXRangeChanged.connect(update_region)
+
+roi.sigRegionChanged.connect(update_zoom)
+roi.sigRegionChanged.connect(update_plots)
+p1.sigXRangeChanged.connect(update_roi)
 p1.sigXRangeChanged.connect(update_plots)
 update_zoom()
 
