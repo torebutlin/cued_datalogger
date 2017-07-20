@@ -49,10 +49,21 @@ class Recorder(RecorderParent):
         numBytesneeded = pdaq.DAQmxGetSysDevNames(None,0)
         databuffer = pdaq.create_string_buffer(numBytesneeded)
         pdaq.DAQmxGetSysDevNames(databuffer,numBytesneeded)
+                
+        #device_list = []
         devices_name = pdaq.string_at(databuffer).decode('utf-8').split(',')
-        device_list = []
-        device_list.append(devices_name)
-        return(device_list)
+        
+        device_type = []
+        for dev in devices_name:
+            numBytesneeded = pdaq.DAQmxGetDevProductType(dev,None,0)
+            databuffer = pdaq.create_string_buffer(numBytesneeded)
+            pdaq.DAQmxGetDevProductType(dev,databuffer,numBytesneeded)
+            device_type.append(pdaq.string_at(databuffer).decode('utf-8'))
+            
+        #device_list.append(devices_name)
+        #device_list.append(device_type)
+        
+        return(devices_name,device_type)
     
     # Display the current selected device info      
     def current_device_info(self):
@@ -120,7 +131,7 @@ class Recorder(RecorderParent):
                 self.audio_stream = Task()
                 self.audio_stream.stream_audio_callback = self.stream_audio_callback
                 self.audio_stream.CreateAIVoltageChan(self.set_channels(),"",
-                                         pdaq.DAQmx_Val_Cfg_Default,-10.0,10.0,    #DAQmx_Val_RSE
+                                         pdaq.DAQmx_Val_RSE,-10.0,10.0,    #DAQmx_Val_Cfg_Default
                                          pdaq.DAQmx_Val_Volts,None)
                 self.audio_stream.CfgSampClkTiming("",self.rate,
                                       pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,

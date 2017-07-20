@@ -125,11 +125,11 @@ class LiveplotApp(QMainWindow):
         btn_layout.addWidget(self.togglebtn)
         self.recordbtn = QPushButton('Record',self.main_widget)
         self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.pressed.connect(self.start_recording)
+        self.recordbtn.pressed.connect(lambda: self.start_recording(False))
         btn_layout.addWidget(self.recordbtn)
         self.triggerbtn = QPushButton('Trigger',self.main_widget)
         self.triggerbtn.resize(self.triggerbtn.sizeHint())
-        #self.triggerbtn.pressed.connect(self.start_recording)
+        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
         btn_layout.addWidget(self.triggerbtn)
         self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
@@ -289,7 +289,21 @@ class LiveplotApp(QMainWindow):
         
         source_box = self.configboxes[0]
         source_box.clear()
-        source_box.addItems(selR.available_devices()[0])
+        
+        try:
+            full_device_name = []
+            s,b =  selR.available_devices()
+            for a,b in zip(s,b):
+                if type(b) is str:
+                    full_device_name.append(a + ' - ' + b)
+                else:
+                    full_device_name.append(a)
+                    
+            source_box.addItems(full_device_name)
+        except Exception as e:
+            print(e)
+            source_box.addItems(selR.available_devices()[0])
+            
         if self.rec.device_name:
             source_box.setCurrentText(self.rec.device_name)
         
@@ -321,9 +335,11 @@ class LiveplotApp(QMainWindow):
             
             # Delete and reinitialise the recording object
             if Rtype[0]:
-                self.rec = mR.Recorder(device_name = settings[0])
+                self.rec = mR.Recorder()
             elif Rtype[1]:
-                self.rec = NIR.Recorder(device_name = settings[0])
+                self.rec = NIR.Recorder()
+                
+            self.rec.set_device_by_name(self.rec.available_devices()[0][settings[0]])
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
             self.rec.chunk_size = settings[3]
@@ -452,21 +468,26 @@ class LiveplotApp(QMainWindow):
         self.statusbar.showMessage('Snapshot Captured!', 1500)
     
     # Start the data recording        
-    def start_recording(self):
-        self.statusbar.showMessage('Recording...')
-        # Disable buttons
-        for btn in self.main_widget.findChildren(QPushButton):
-            btn.setDisabled(True)
+    def start_recording(self, trigger):
+        if trigger:
+            self.statusbar.showMessage('Trigger Set!')
+            for btn in self.main_widget.findChildren(QPushButton):
+                btn.setDisabled(True)
             
-        self.rec.record_init(duration = 3)
-        # Start the recording
-        if self.rec.record_start():
-            self.rec.rEmitter.recorddone.connect(self.stop_recording)
-        # Setup the timer to stop the recording
-        #rec_timer = QTimer(self)
-        #rec_timer.setSingleShot(True)
-        #rec_timer.timeout.connect(self.stop_recording)
-        #rec_timer.start(3000)
+            # Set up the trigger
+            if self.rec.trigger_start():
+                self.rec.rEmitter.recorddone.connect(self.stop_recording)
+            
+        else:
+            self.statusbar.showMessage('Recording...')
+            # Disable buttons
+            for btn in self.main_widget.findChildren(QPushButton):
+                btn.setDisabled(True)
+                
+            self.rec.record_init(duration = 3)
+            # Start the recording
+            if self.rec.record_start():
+                self.rec.rEmitter.recorddone.connect(self.stop_recording)
     
     # Stop the data recording and transfer the recorded data to main window    
     def stop_recording(self):
@@ -502,7 +523,8 @@ class LiveplotApp(QMainWindow):
         configs = []
         for cbox in self.configboxes:
             if type(cbox) is QComboBox:
-                configs.append(cbox.currentText())
+                #configs.append(cbox.currentText())
+                configs.append(cbox.currentIndex())
             else:
                 #notnumRegex = re.compile(r'(\D)+')
                 config_input = cbox.text().strip(' ')
