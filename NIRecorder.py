@@ -101,7 +101,14 @@ class Recorder(RecorderParent):
         read = pdaq.int32()
         self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
                            in_data,self.chunk_size*self.channels,pdaq.byref(read),None)
-        self.write_buffer(self.audiodata_to_array(in_data))
+        
+        data_array = self.audiodata_to_array(in_data)
+        self.write_buffer(data_array)
+        
+        # TODO: Add trigger check
+        if self.trigger:
+            self._trigger_check_threshold(data_array)
+        
         if self.recording:
             self.record_data()
         return 0
@@ -113,7 +120,7 @@ class Recorder(RecorderParent):
                 self.audio_stream = Task()
                 self.audio_stream.stream_audio_callback = self.stream_audio_callback
                 self.audio_stream.CreateAIVoltageChan(self.set_channels(),"",
-                                         pdaq.DAQmx_Val_RSE,-10.0,10.0,
+                                         pdaq.DAQmx_Val_Cfg_Default,-10.0,10.0,    #DAQmx_Val_RSE
                                          pdaq.DAQmx_Val_Volts,None)
                 self.audio_stream.CfgSampClkTiming("",self.rate,
                                       pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,
@@ -154,11 +161,52 @@ class Recorder(RecorderParent):
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         if self.audio_stream:
+            self.audio_stream.StopTask()
             self.audio_stream.ClearTask()
             self.audio_stream = None
             
     #---------------- RECORD TRIGGER METHODS ----------------------------------
     def trigger_init(self):
+        self.trigger = False
+        self.trigger_threshold = 0
+        self.trigger_channel = 0
+        self.ref_rms = 0
+    
+    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0):
+        if self.recording:
+            print('You are current recording. Please finish the recording before starting the trigger.')
+            return False
+        
+        if not self.trigger:
+            if not self._record_check():
+                return False
+            self.record_init(duration = duration)
+            self.trigger = True
+            self.trigger_threshold = threshold
+            self.trigger_channel = channel
+            self.ref_rms = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
+            print('Reference RMS: %.2f' % self.ref_rms)
+            print('Trigger Set!')
+            return True
+        else:
+            print('You have already started a trigger')
+            return False
+
+    def _trigger_check_threshold(self,data):
+        #Calculate RMS of chunk
+        norm_data = data[:,self.trigger_channel]
+        rms = np.sqrt(np.mean(norm_data ** 2))
+        print(abs(rms - self.ref_rms))
+        
+        if abs(rms - self.ref_rms) > self.trigger_threshold:
+            print('Triggered!')
+            self.recording = True
+            self.trigger = False
+    
+    
+    ''' I don't know anymore...'''
+    
+    '''def trigger_init(self):
         self.trigger = False
         self.pretrig_samples = self.chunk_size;
         self.posttrig_samples = 0;
@@ -173,8 +221,8 @@ class Recorder(RecorderParent):
                                pretrig_data,self.pretrig_samples*self.channels,pdaq.byref(read),None)
         except Exception as e:
             print(e)
-        finally:
-            self.recorded_data.append(pretrig_data)
+        #finally:
+            #self.recorded_data.append(pretrig_data)
                 
         posttrig_data = np.zeros(self.posttrig_samples*self.channels,dtype = np.int16)
         try:
@@ -183,12 +231,14 @@ class Recorder(RecorderParent):
                                posttrig_data,self.posttrig_samples*self.channels,pdaq.byref(read),None)
         except Exception as e:
             print(e)
-        finally:
-            self.recorded_data.append(posttrig_data)
-            
+        #finally:
+            #self.recorded_data.append(posttrig_data)
+        
+        
         try:
-            self.recorded_data.reshape((self.buffer.shape[0], self.buffer.shape[1],
-                           self.buffer.shape[2]))
+            self.recorded_data = np.vstack((pretrig_data,posttrig_data))
+            #self.recorded_data.reshape((self.buffer.shape[0], self.buffer.shape[1],
+             #              self.buffer.shape[2]))
         except Exception as e:
                 print(e)
             
@@ -203,6 +253,7 @@ class Recorder(RecorderParent):
         except Exception as e:
             print(e)
         
+        self._record_stop()
         print('Triggering done!')
         return 0
     
@@ -223,7 +274,7 @@ class Recorder(RecorderParent):
                 self.audio_stream.SetSampQuantSampPerChan(pdaq.uInt64(self.posttrig_samples));
                
                 trigger_channelname = '%s/ai%i' % (self.device_name, channel)
-                self.audio_stream.CfgAnlgEdgeRefTrig(trigger_channelname,
+                self.audio_stream.CfgDigEdgeRefTrig(trigger_channelname,
                                                      pdaq.DAQmx_Val_RisingSlope,
                                                      threshold,
                                                      self.pretrig_samples)
@@ -247,5 +298,5 @@ class Recorder(RecorderParent):
             return True
         else:
             print('You have already started a trigger')
-            return False
+            return False'''
         

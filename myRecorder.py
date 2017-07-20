@@ -101,7 +101,7 @@ class Recorder(RecorderParent):
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return np.frombuffer(data, dtype = np.int16).reshape((self.chunk_size,self.channels))
+        return np.frombuffer(data, dtype = np.int16).reshape((self.chunk_size,self.channels))/ 2**15
                            
 #---------------- STREAMING METHODS -----------------------------------
     # Callback function for audio streaming
@@ -177,6 +177,7 @@ class Recorder(RecorderParent):
         self.trigger = False
         self.trigger_threshold = 0
         self.trigger_channel = 0
+        self.ref_rms = 0
     
     def trigger_start(self,duration = 3, threshold = 0.2, channel = 0):
         if self.recording:
@@ -190,6 +191,8 @@ class Recorder(RecorderParent):
             self.trigger = True
             self.trigger_threshold = threshold
             self.trigger_channel = channel
+            self.ref_rms = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
+            print('Reference RMS: %.2f' % self.ref_rms)
             print('Trigger Set!')
             return True
         else:
@@ -198,14 +201,14 @@ class Recorder(RecorderParent):
 
     def _trigger_check_threshold(self,data):
         #Calculate RMS of chunk
-            norm_data = data[:,self.trigger_channel] / 2**15
-            rms = np.sqrt(np.mean(norm_data ** 2))
-            #print(rms)
-            
-            if rms > self.trigger_threshold:
-                print('Triggered!')
-                self.recording = True
-                self.trigger = False
+        norm_data = data[:,self.trigger_channel]
+        rms = np.sqrt(np.mean(norm_data ** 2))
+        print(rms)
+        
+        if abs(rms - self.ref_rms) > self.trigger_threshold:
+            print('Triggered!')
+            self.recording = True
+            self.trigger = False
             
         
         
