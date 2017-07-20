@@ -128,9 +128,13 @@ class RecorderParent(object):
                            self.buffer.shape[2]))
         
 #---------------- RECORDING METHODS -----------------------------------
-    def record_init(self,duration = 3):
-        # Calculate the number of recording chunks
-        self.total_rec_chunk = duration * self.rate // self.chunk_size
+    def record_init(self,samples = None,duration = 3):
+        if samples:
+            self.total_rec_chunk = samples // self.chunk_size
+        else:
+            # Calculate the number of recording chunks
+            self.total_rec_chunk = duration * self.rate // self.chunk_size
+            
         self.next_rec_chunk = 0
         
         self.initialised_record = True

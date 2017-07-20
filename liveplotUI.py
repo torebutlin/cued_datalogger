@@ -231,15 +231,33 @@ class LiveplotApp(QMainWindow):
         
     #---------------------------RECORDING WIDGET-------------------------------
         RecUI = QWidget(main_splitter)
-        reclayout = QVBoxLayout(RecUI)
+        reclayout = QHBoxLayout(RecUI)
+        
+        
+        
+        rec_settings_layout = QFormLayout()
+        
+        configs = ['Samples','Seconds','Pretrigger']
+        #rec_boxes = []
+        
+        for c in configs:
+            cbox = QLineEdit(configUI)
+            rec_settings_layout.addRow(QLabel(c,configUI),cbox)
+            #rec_boxes.append(cbox)  
+        reclayout.addLayout(rec_settings_layout)
+        
+        rec_buttons_layout = QVBoxLayout()
+        
         self.recordbtn = QPushButton('Record',RecUI)
         self.recordbtn.resize(self.recordbtn.sizeHint())
         self.recordbtn.pressed.connect(lambda: self.start_recording(False))
-        reclayout.addWidget(self.recordbtn)
+        rec_buttons_layout.addWidget(self.recordbtn)
         self.triggerbtn = QPushButton('Trigger',RecUI)
         self.triggerbtn.resize(self.triggerbtn.sizeHint())
         self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
-        reclayout.addWidget(self.triggerbtn)
+        rec_buttons_layout.addWidget(self.triggerbtn)
+        
+        reclayout.addLayout(rec_buttons_layout)
         
         data_tabs.addTab(RecUI,"Recording")
         
@@ -288,63 +306,11 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
         
         self.show()
-        #---------------UI ADJUSTMENTS-------------------------
+    #---------------UI ADJUSTMENTS-------------------------
         h = 600 - chans_settings_layout.geometry().height()
-        main_splitter.setSizes([h*0.4,h*0.4,h*0.2])
+        main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
         
-        
-        
-    def config_setup(self):
-        rb = self.typegroup.findChildren(QRadioButton)
-        if type(self.rec) is mR.Recorder:
-            rb[0].setChecked(True)
-        elif type(self.rec) is NIR.Recorder:
-            rb[1].setChecked(True)
-            
-        self.display_sources()
-        
-        info = [self.rec.rate,self.rec.channels,
-                self.rec.chunk_size,self.rec.num_chunk]
-        for cbox,i in zip(self.configboxes[1:],info):
-            cbox.setText(str(i))
-    
-    def display_sources(self):
-        # TODO: make use of the button input in callback
-        rb = self.typegroup.findChildren(QRadioButton)
-        if not NI_drivers and rb[1].isChecked():
-            print("You don't seem to have National Instrument drivers/modules")
-            rb[0].setChecked(True)
-            return 0
-        
-        if rb[0].isChecked():
-            selR = mR.Recorder()
-        elif rb[1].isChecked():
-            selR = NIR.Recorder()
-        else:
-            return 0
-        
-        source_box = self.configboxes[0]
-        source_box.clear()
-        
-        try:
-            full_device_name = []
-            s,b =  selR.available_devices()
-            for a,b in zip(s,b):
-                if type(b) is str:
-                    full_device_name.append(a + ' - ' + b)
-                else:
-                    full_device_name.append(a)
-                    
-            source_box.addItems(full_device_name)
-        except Exception as e:
-            print(e)
-            source_box.addItems(selR.available_devices()[0])
-            
-        if self.rec.device_name:
-            source_box.setCurrentText(self.rec.device_name)
-        
-        del selR
-         
+#-----------------------------UI CONSTRUCTION END---------------------------------------               
     # Center the window
     def center(self):
         pr = self.parent.frameGeometry()
@@ -374,7 +340,7 @@ class LiveplotApp(QMainWindow):
                 self.rec = mR.Recorder()
             elif Rtype[1]:
                 self.rec = NIR.Recorder()
-                
+            
             self.rec.set_device_by_name(self.rec.available_devices()[0][settings[0]])
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
@@ -512,7 +478,6 @@ class LiveplotApp(QMainWindow):
                 self.statusbar.showMessage('Trigger Set!')
                 for btn in self.main_widget.findChildren(QPushButton):
                     btn.setDisabled(True)
-            
         else:
             self.rec.record_init(duration = 3)
             # Start the recording
@@ -521,11 +486,6 @@ class LiveplotApp(QMainWindow):
                 # Disable buttons
                 for btn in self.main_widget.findChildren(QPushButton):
                     btn.setDisabled(True)
-                    
-                
-            
-                
-                
     
     # Stop the data recording and transfer the recorded data to main window    
     def stop_recording(self):
@@ -555,6 +515,58 @@ class LiveplotApp(QMainWindow):
                 self.statusbar.showMessage('Streaming')
             else:
                 self.statusbar.showMessage('Stream Paused')
+                
+    def config_setup(self):
+        rb = self.typegroup.findChildren(QRadioButton)
+        if type(self.rec) is mR.Recorder:
+            rb[0].setChecked(True)
+        elif type(self.rec) is NIR.Recorder:
+            rb[1].setChecked(True)
+            
+        self.display_sources()
+        
+        info = [self.rec.rate,self.rec.channels,
+                self.rec.chunk_size,self.rec.num_chunk]
+        for cbox,i in zip(self.configboxes[1:],info):
+            cbox.setText(str(i))
+    
+    def display_sources(self):
+        # TODO: make use of the button input in callback
+        rb = self.typegroup.findChildren(QRadioButton)
+        if not NI_drivers and rb[1].isChecked():
+            print("You don't seem to have National Instrument drivers/modules")
+            rb[0].setChecked(True)
+            return 0
+        
+        if rb[0].isChecked():
+            selR = mR.Recorder()
+        elif rb[1].isChecked():
+            selR = NIR.Recorder()
+        else:
+            return 0
+        
+        source_box = self.configboxes[0]
+        source_box.clear()
+        
+        try:
+            full_device_name = []
+            s,b =  selR.available_devices()
+            for a,b in zip(s,b):
+                if type(b) is str:
+                    full_device_name.append(a + ' - ' + b)
+                else:
+                    full_device_name.append(a)
+                    
+            source_box.addItems(full_device_name)
+        except Exception as e:
+            print(e)
+            source_box.addItems(selR.available_devices()[0])
+            
+        if self.rec.device_name:
+            source_box.setCurrentText(self.rec.device_name)
+        
+        del selR
+         
                 
     def config_status(self, *arg):
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]

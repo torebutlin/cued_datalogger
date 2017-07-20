@@ -22,7 +22,8 @@ class Recorder(RecorderParent):
              chunk_size = chunk_size,num_chunk = num_chunk)
         print('You are using National Instrument for recording')
         
-        self.device_name = self.set_device_by_name(device_name);
+        self.device_name = None
+        self.set_device_by_name(device_name);
                
         self.open_recorder()
         self.trigger_init()
@@ -42,7 +43,7 @@ class Recorder(RecorderParent):
             selected_device = name
             
         print('Selected devices: %s' % selected_device)
-        return selected_device
+        self.device_name = selected_device
     
      # Get audio device names 
     def available_devices(self):
@@ -124,14 +125,14 @@ class Recorder(RecorderParent):
             self.record_data()
         return 0
     
-    # TODO: Check for valid device, channels and all that before initialisation
+    # TODO: Check for valid device, channels and all that before initialisation #DAQmx_Val_Cfg_Default
     def stream_init(self, playback = False):
         if self.audio_stream == None:
             try:
                 self.audio_stream = Task()
                 self.audio_stream.stream_audio_callback = self.stream_audio_callback
                 self.audio_stream.CreateAIVoltageChan(self.set_channels(),"",
-                                         pdaq.DAQmx_Val_RSE,-10.0,10.0,    #DAQmx_Val_Cfg_Default
+                                         pdaq.DAQmx_Val_RSE,-10.0,10.0,    
                                          pdaq.DAQmx_Val_Volts,None)
                 self.audio_stream.CfgSampClkTiming("",self.rate,
                                       pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,
