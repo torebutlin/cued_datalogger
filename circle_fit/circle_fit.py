@@ -174,6 +174,9 @@ class CircleFitWidget(QWidget):
         # Recalculate circle
         self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
         self.x_c, self.y_c = plot_circle(self.x0, self.y0, self.R0)
+        wr, zr, c = self.find_vals()
+        self.f = to_dB(func(self.w_reg, wr, zr, c))
+        self.circle_plot.plot(self.f.real, self.f.imag)
 
         """ ITERATIVE METHOD: """
         # Recalculate circle
@@ -183,13 +186,13 @@ class CircleFitWidget(QWidget):
         self.fit_plot.plot(w, np.abs(to_dB(func(self.w, wr, zr, c))))
 
         # Update plot
-        self.circle_plot.clear()
+        #self.circle_plot.clear()
         # Plot the data
         self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
                               symbol='o', symbolPen=None, symbolBrush='r')
         # Plot the circle
-        self.circle_plot.plot(self.x_c, self.y_c,
-                              pen=pg.mkPen('w', width=2, style=QtCore.Qt.DashLine))
+        #self.circle_plot.plot(self.x_c, self.y_c,
+        #                      pen=pg.mkPen('w', width=2, style=QtCore.Qt.DashLine))
 
     def get_viewed_region(self):
         # Get just the peak we're looking at
@@ -263,6 +266,64 @@ class CircleFitWidget(QWidget):
         self.transfer_func_plot.plot(x=self.w, y=to_dB(np.abs(self.a)))
         self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)))
 
+    def find_vals(self):
+        self.get_viewed_region()
+        self.a_reg_abs = np.abs(self.a_reg)
+
+        # First guess of resonant frequency - the peak
+        i = np.where(self.a_reg_abs == np.abs(self.a_reg.max()))[0][0]
+
+        ## Resonant frequency and phase angle
+        # Four initial data points
+        w0, w1, w2, w3 = self.w_reg[i-2], self.w_reg[i-1], self.w_reg[i+1], self.w_reg[i+2]
+        t0, t1, t2, t3 = np.angle(self.a_reg[i-2]), np.angle(self.a_reg[i-1]), np.angle(self.a_reg[i+1]), np.angle(self.a_reg[i+2])
+
+        t0t1 = self.tAtB(t0, t1, w0, w1)
+        t0t1t2 = self.tAtBtC(t0, t1, t2, w0, w1, w2)
+        t0t1t2t3 = self.tAtBtCtD(t0, t1, t2, t3, w0, w1, w2, w3)
+
+        wr2 = (w0**2 + w1**2 + w2**2 - (t0t1t2 / t0t1t2t3)) / 3
+        wr = np.sqrt(wr2)
+        tr = t0 + (wr2 - w0**2)*t0t1 + (wr2 - w0**2)*(wr2 - w1**2)*t0t1t2 + (wr2 - w0**2)*(wr2 - w1**2)*(wr2 - w2**2)*t0t1t2t3
+
+        ## Damping factor
+        w1, w2, w3, w4, w5, w6 = self.w_reg[i-3], self.w_reg[i-2], self.w_reg[i-1], self.w_reg[i+1], self.w_reg[i+2], self.w_reg[i+3]
+        t1, t2, t3, t4, t5, t6 = np.angle(self.a_reg[i-3]), np.angle(self.a_reg[i-2]), np.angle(self.a_reg[i-1]), np.angle(self.a_reg[i+1]), np.angle(self.a_reg[i+2]), np.angle(self.a_reg[i+3])
+
+        # Take mean of points
+        #3,4
+        zr34 = self.calc_zr(wr, tr, w3, w4, t3, t4)
+
+        #2,5
+        zr25 = self.calc_zr(wr, tr, w2, w5, t2, t5)
+
+        #1,6
+        zr16 = self.calc_zr(wr, tr, w1, w6, t1, t6)
+
+        zr = (zr34 + zr25 + zr16)/3
+
+        ## Modal Constant
+        # Modulus:
+        C = 2*self.R0*wr2*zr
+
+        # Phase angle
+        xD = 0
+        yD = 0
+        phi = np.arctan((self.x0 - xD) / (self.y0 - yD))
+
+        return wr, zr, C*np.exp(1j*phi)
+
+    def tAtB(self, tA, tB, wA, wB):
+        return (tA - tB) / (wA**2 - wB**2)
+
+    def tAtBtC(self, tA, tB, tC, wA, wB, wC):
+        return (self.tAtB(tA, tB, wA, wB) - self.tAtB(tB, tC, wB, wC)) / (wA**2 - wC**2)
+
+    def tAtBtCtD(self, tA, tB, tC, tD, wA, wB, wC, wD):
+        return (self.tAtBtC(tA, tB, tC, wA, wB, wC) - self.tAtBtC(tB, tC, tD, wB, wC, wD)) / (wA**2 - wD**2)
+
+    def calc_zr(self, wr, tr, wb, wa, tb, ta):
+        return ((wa**2 - wb**2)/ (wr**2 * (np.tan(ta - tr) + np.tan(tr - tb))))/2
 
 def plot_this_peak(circle_fit_widget):
     wr, zr, c = circle_fit_widget.fit_peak()
@@ -281,6 +342,5 @@ if __name__ == '__main__':
     a = func(w, 10, 1e-2, 8e12) + func(w, 5, 1e-1, 8e12) + func(w, 20, 5e-2, 8e12) + func(w, 12, 2e-2, 8e12) + 5e10*np.random.normal(size=w.size)
 
     circle_fit_widget.set_data(w, a)
-    plt.figure()
 
     sys.exit(app.exec_())
