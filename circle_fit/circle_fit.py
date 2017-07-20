@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 import sys
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout
+
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
+# pg.setConfigOption('antialias', True)
+defaultpen = pg.mkPen('k')
 
 
 # External functions ----------------------------------------------------------
@@ -108,31 +113,27 @@ class CircleFitWidget(QWidget):
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_roi)
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
 
-        # # Nyquist plot
-        self.nyquist_plot_w = pg.PlotWidget(title="Nyquist plot",
-                                            labels={'bottom': ("Re"),
-                                                    'left': ("Im")})
-        self.nyquist_plot = self.nyquist_plot_w.getPlotItem()
-
         # # Circle plot
         self.circle_plot_w = pg.PlotWidget(title="Circle fit",
                                            labels={'bottom': ("Re"),
                                                    'left': ("Im")})
         self.circle_plot = self.circle_plot_w.getPlotItem()
+        self.circle_plot.setMouseEnabled(x=False, y=False)
+        self.circle_plot.setAspectLocked(lock=True, ratio=1)
 
         # # Fit plot
+
         self.fit_plot_w = pg.PlotWidget(title="Fitted peak",
                                         labels={'bottom': ("Frequency", "rad"),
-                                                          'left': ("Transfer Function", "dB")})
+                                                'left': ("Transfer Function", "dB")})
         self.fit_plot = self.fit_plot_w.getPlotItem()
-
+        self.fit_plot.setMouseEnabled(x=False, y=False)
         # # Layout
         plots = QGridLayout()
         plots.addWidget(self.transfer_func_plot_w, 0, 0)
         plots.addWidget(self.region_select_plot_w, 0, 1)
-        plots.addWidget(self.nyquist_plot_w, 1, 0)
-        plots.addWidget(self.circle_plot_w, 1, 1)
-        plots.addWidget(self.fit_plot_w, 2, 0, 1, 2)
+        plots.addWidget(self.circle_plot_w, 2, 1)
+        plots.addWidget(self.fit_plot_w, 2, 0)
         self.setLayout(plots)
 
         self.setWindowTitle('Circle fit')
@@ -155,6 +156,8 @@ class CircleFitWidget(QWidget):
         self.w_max, self.a_max = self.roi.pos() + self.roi.size()
         self.transfer_func_plot.setXRange(self.w_min, self.w_max, padding=0)
         self.transfer_func_plot.setYRange(self.a_min, self.a_max, padding=0)
+        self.fit_plot.setXRange(self.w_min, self.w_max, padding=0)
+        self.fit_plot.setYRange(self.a_min, self.a_max, padding=0)
 
     def update_roi(self):
         region = np.asarray(self.transfer_func_plot.getViewBox().viewRange())
@@ -166,33 +169,43 @@ class CircleFitWidget(QWidget):
         self.get_viewed_region()
 
         # Update Nyquist plot
+        """
         self.nyquist_plot.clear()
         self.nyquist_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
                                symbol='o', symbolPen=None, symbolBrush='r')
-
+        """
         """ TEMA METHOD: """
+        w_circle = np.linspace(0, self.w.max(), 1e5)
+        self.circle_plot.clear()
+        self.circle_plot.getViewBox().removeItem(self.circle_plot.legend)
+        self.circle_plot.addLegend()
         # Recalculate circle
         self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
         self.x_c, self.y_c = plot_circle(self.x0, self.y0, self.R0)
         wr, zr, c = self.find_vals()
-        self.f = to_dB(func(self.w_reg, wr, zr, c))
-        self.circle_plot.plot(self.f.real, self.f.imag)
-
-        """ ITERATIVE METHOD: """
-        # Recalculate circle
-        wr, zr, c = self.fit_peak()
-        self.fit_plot.clear()
-        self.fit_plot.plot(w, np.abs(to_dB(self.a)))
-        self.fit_plot.plot(w, np.abs(to_dB(func(self.w, wr, zr, c))))
+        self.f = func(w_circle, wr, zr, c)
+        self.circle_plot.plot(self.f.real, self.f.imag, pen='g',
+                              name="TEMA method")
 
         # Update plot
-        #self.circle_plot.clear()
         # Plot the data
         self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
-                              symbol='o', symbolPen=None, symbolBrush='r')
+                              symbol='o', symbolPen=None, symbolBrush='r',
+                              name="Data")
         # Plot the circle
-        #self.circle_plot.plot(self.x_c, self.y_c,
-        #                      pen=pg.mkPen('w', width=2, style=QtCore.Qt.DashLine))
+        self.circle_plot.plot(self.x_c, self.y_c,
+                              pen=pg.mkPen('k', width=2, style=QtCore.Qt.DashLine))
+
+        """ ITERATIVE METHOD: """
+        wr, zr, c = self.fit_peak()
+        self.f = func(w_circle, wr, zr, c)
+        self.circle_plot.plot(self.f.real, self.f.imag, pen='b',
+                              name="Iterative method")
+        self.fit_plot.clear()
+        self.fit_plot.plot(w, np.abs(to_dB(self.a)), pen=defaultpen)
+        self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='b')
+        wr, zr, c = self.find_vals()
+        self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='g')
 
     def get_viewed_region(self):
         # Get just the peak we're looking at
@@ -263,8 +276,11 @@ class CircleFitWidget(QWidget):
             self.w = w
         else:
             pass
-        self.transfer_func_plot.plot(x=self.w, y=to_dB(np.abs(self.a)))
-        self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)))
+        self.transfer_func_plot.plot(x=self.w, y=to_dB(np.abs(self.a)), pen=defaultpen)
+        self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)), pen=defaultpen)
+        self.update_plots()
+        self.circle_plot.autoRange(padding=0.1)
+        self.circle_plot.disableAutoRange()
 
     def find_vals(self):
         self.get_viewed_region()
@@ -304,7 +320,7 @@ class CircleFitWidget(QWidget):
 
         ## Modal Constant
         # Modulus:
-        C = 2*self.R0*wr2*zr
+        C = 2*self.R0*wr2*2*zr
 
         # Phase angle
         xD = 0
@@ -339,7 +355,7 @@ if __name__ == '__main__':
 
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
-    a = func(w, 10, 1e-2, 8e12) + func(w, 5, 1e-1, 8e12) + func(w, 20, 5e-2, 8e12) + func(w, 12, 2e-2, 8e12) + 5e10*np.random.normal(size=w.size)
+    a = func(w, 10, 1e-2, 8e12) + func(w, 5, 1e-1, 8e12) + func(w, 20, 5e-2, 8e12) + func(w, 12, 2e-2, 8e12) #+ 5e10*np.random.normal(size=w.size)
 
     circle_fit_widget.set_data(w, a)
 
