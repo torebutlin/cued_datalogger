@@ -11,7 +11,7 @@ from PyDAQmx import Task
 
 import numpy as np
 import pprint as pp
-
+import copy as cp
 
 class Recorder(RecorderParent):
 #---------------- INITIALISATION METHODS -----------------------------------
@@ -177,11 +177,11 @@ class Recorder(RecorderParent):
             self.audio_stream = None
             
     #---------------- RECORD TRIGGER METHODS ----------------------------------
-    def trigger_init(self):
+    '''def trigger_init(self):
         self.trigger = False
         self.trigger_threshold = 0
         self.trigger_channel = 0
-        self.ref_rms = 0
+        self.ref_rms = 0'''
     
     def trigger_start(self,duration = 3, threshold = 2.0, channel = 0):
         if self.recording:
@@ -195,8 +195,8 @@ class Recorder(RecorderParent):
             self.trigger = True
             self.trigger_threshold = threshold
             self.trigger_channel = channel
-            self.ref_rms = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
-            print('Reference RMS: %.2f' % self.ref_rms)
+            self.ref_level = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
+            print('Reference level: %.2f' % self.ref_level)
             print('Trigger Set!')
             return True
         else:
@@ -207,13 +207,13 @@ class Recorder(RecorderParent):
         #Calculate RMS of chunk
         norm_data = data[:,self.trigger_channel]
         rms = np.sqrt(np.mean(norm_data ** 2))
-        print(abs(rms - self.ref_rms))
+        print(abs(rms - self.ref_level))
         
-        if abs(rms - self.ref_rms) > self.trigger_threshold:
+        if abs(rms - self.ref_level) > self.trigger_threshold:
             print('Triggered!')
             self.recording = True
             self.trigger = False
-    
+            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,500:,:])
     
     ''' I don't know anymore...'''
     

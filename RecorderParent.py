@@ -61,6 +61,8 @@ class RecorderParent(object):
         self.allocate_buffer()
         self.show_stream_settings()
         
+        self.trigger_init()
+        
         # For pyQt implementations
         if QT_EMITTER:
             self.rEmitter = RecEmitter()
@@ -170,6 +172,7 @@ class RecorderParent(object):
         # Give a signal that recording is done
         print('Recording Done! Please flush the data with flush_record_data().')
         if self.rEmitter:
+            print('beep')
             self.rEmitter.recorddone.emit()
         
     
@@ -184,15 +187,18 @@ class RecorderParent(object):
         
     # Return the recorded data as 2D numpy array (similar to get_buffer)    
     def flush_record_data(self):
-        if type(self.recorded_data) is list:
-            flushed_data = np.array(self.recorded_data)
+        if self.recorded_data:
+            data =  np.array(self.recorded_data);
+            flushed_data = data.reshape((data.shape[0] * data.shape[1],
+                           data.shape[2]))
             self.recorded_data = []
-            return flushed_data.reshape((flushed_data.shape[0] * flushed_data.shape[1],
-                           flushed_data.shape[2]))
-        else:
-            flushed_data = cp.copy(self.recorded_data)
-            self.recorded_data = []
-            return flushed_data                     
+            print(flushed_data)
+            print(self.pretrig_data)
+            if self.pretrig_data.shape[0]:
+                flushed_data = np.vstack((self.pretrig_data,flushed_data))
+            
+            print(flushed_data)
+            return flushed_data               
                             
 
 #---------------- STREAMING METHODS -----------------------------------                                     
@@ -209,7 +215,13 @@ class RecorderParent(object):
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         pass
-
+#---------------- TRIGGER METHODS -----------------------------------
+    def trigger_init(self):
+        self.trigger = False
+        self.trigger_threshold = 0
+        self.trigger_channel = 0
+        self.ref_level = 0
+        self.pretrig_data = np.array([])
 #----------------- DECORATOR METHODS --------------------------------------
     @property
     def num_chunk(self):

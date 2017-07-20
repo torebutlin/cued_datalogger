@@ -51,7 +51,8 @@ class LiveplotApp(QMainWindow):
         # Set playback to False to not hear anything
         if self.rec.stream_init(playback = PLAYBACK):
             self.playing = True
-            
+        
+        self.rec.rEmitter.recorddone.connect(self.stop_recording)
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
@@ -100,6 +101,7 @@ class LiveplotApp(QMainWindow):
         scroll.setWidgetResizable(True)
         channel_box_layout.addWidget(scroll)
       
+        #Channel buttons
         sel_btn_layout = QVBoxLayout(self.main_widget)    
         sel_all_btn = QPushButton('Select All', self.channels_box)
         sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
@@ -372,7 +374,8 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot reset buttons')
-            
+        
+        self.rec.rEmitter.recorddone.connect(self.stop_recording)
         self.statusbar.clearMessage()
     
     def ResetXdata(self):
@@ -470,24 +473,25 @@ class LiveplotApp(QMainWindow):
     # Start the data recording        
     def start_recording(self, trigger):
         if trigger:
-            self.statusbar.showMessage('Trigger Set!')
-            for btn in self.main_widget.findChildren(QPushButton):
-                btn.setDisabled(True)
-            
             # Set up the trigger
             if self.rec.trigger_start():
-                self.rec.rEmitter.recorddone.connect(self.stop_recording)
+                self.statusbar.showMessage('Trigger Set!')
+                for btn in self.main_widget.findChildren(QPushButton):
+                    btn.setDisabled(True)
             
         else:
-            self.statusbar.showMessage('Recording...')
-            # Disable buttons
-            for btn in self.main_widget.findChildren(QPushButton):
-                btn.setDisabled(True)
-                
             self.rec.record_init(duration = 3)
             # Start the recording
             if self.rec.record_start():
-                self.rec.rEmitter.recorddone.connect(self.stop_recording)
+                self.statusbar.showMessage('Recording...')
+                # Disable buttons
+                for btn in self.main_widget.findChildren(QPushButton):
+                    btn.setDisabled(True)
+                    
+                
+            
+                
+                
     
     # Stop the data recording and transfer the recorded data to main window    
     def stop_recording(self):
