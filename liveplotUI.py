@@ -8,7 +8,7 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup)
+    QCheckBox,QButtonGroup,QTabWidget)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 #from PyQt5.QtGui import QImage
 import numpy as np
@@ -75,76 +75,71 @@ class LiveplotApp(QMainWindow):
             self.setFocus()
             self.show()
         
-     #---------------------- App construction methods-----------------------     
+#---------------------- APP CONSTRUCTION METHOD------------------------------     
     def initUI(self):
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QVBoxLayout(self.main_widget)
         
+    #---------------------CHANNEL TOGGLE UI----------------------------------        
         #Set up the channel tickboxes widget
-        self.channels_box = QWidget(self.main_widget)
-        channel_box_layout = QHBoxLayout(self.main_widget)
+        chans_settings_layout = QHBoxLayout()
         
+        # Make the button tickboxes scrollable
+        scroll = QScrollArea(self.main_widget)
+        
+        self.channels_box = QWidget(scroll)
         self.checkbox_layout = QGridLayout(self.channels_box)
         #Set up the QbuttonGroup to manage the signals
         self.chan_btn_group = QButtonGroup(self.channels_box)
         self.chan_btn_group.setExclusive(False)                
-        channel_box_layout.addLayout(self.checkbox_layout) 
         self.ResetChanBtns()
-        
         self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         
-        # Make the button tickboxes scrollable
-        scroll = QScrollArea(self.main_widget)
         #scroll.ensureVisible(50,50)
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
-        channel_box_layout.addWidget(scroll)
+        
+        chans_settings_layout.addWidget(scroll)
       
         #Channel buttons
-        sel_btn_layout = QVBoxLayout(self.main_widget)    
-        sel_all_btn = QPushButton('Select All', self.channels_box)
+        sel_btn_layout = QVBoxLayout()    
+        sel_all_btn = QPushButton('Select All', self.main_widget)
         sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        desel_all_btn = QPushButton('Deselect All',self.channels_box)
+        desel_all_btn = QPushButton('Deselect All',self.main_widget)
         desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        inv_sel_btn = QPushButton('Invert Selection',self.channels_box)
+        inv_sel_btn = QPushButton('Invert Selection',self.main_widget)
         inv_sel_btn.clicked.connect(self.invert_checkboxes)
         for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
             btn.resize(btn.sizeHint())
-            sel_btn_layout.addWidget(btn)        
-        channel_box_layout.addLayout(sel_btn_layout)
+            sel_btn_layout.addWidget(btn)
+            
+        chans_settings_layout.addLayout(sel_btn_layout)
         
+        main_layout.addLayout(chans_settings_layout,10)
         
-        main_layout.addLayout(channel_box_layout,10)
-        
-        
+    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
          # Set up the button layout to display horizontally
-        btn_layout = QHBoxLayout(self.main_widget)
+        btn_layout = QHBoxLayout()
         # Put the buttons in
         self.togglebtn = QPushButton('Pause',self.main_widget)
         self.togglebtn.resize(self.togglebtn.sizeHint())
         self.togglebtn.pressed.connect(self.toggle_rec)
         btn_layout.addWidget(self.togglebtn)
-        self.recordbtn = QPushButton('Record',self.main_widget)
-        self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.pressed.connect(lambda: self.start_recording(False))
-        btn_layout.addWidget(self.recordbtn)
-        self.triggerbtn = QPushButton('Trigger',self.main_widget)
-        self.triggerbtn.resize(self.triggerbtn.sizeHint())
-        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
-        btn_layout.addWidget(self.triggerbtn)
         self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         self.sshotbtn.pressed.connect(self.get_snapshot)
         btn_layout.addWidget(self.sshotbtn)
         # Put the layout into the nongraphUI widget
         main_layout.addLayout(btn_layout)
-        
+
+    #---------------------SPLITTER WIDGET------------------------------------
         # Set up the splitter, add to main layout
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter,90)
         
+    #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -154,7 +149,6 @@ class LiveplotApp(QMainWindow):
         self.timeplot.setMouseEnabled(x=False,y = True)
         main_splitter.addWidget(self.timeplotcanvas)
         
-        
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
         self.fftplot = self.fftplotcanvas.getPlotItem()
@@ -163,20 +157,34 @@ class LiveplotApp(QMainWindow):
         main_splitter.addWidget(self.fftplotcanvas)
         
         self.ResetPlots()
-            
+
+    #-----------------------ACQUISITION WIDGET---------------------------------
+        acqUI  = QWidget(main_splitter)        
+        acqUI_layout = QVBoxLayout(acqUI)
+        
+    #---------------------ACQUISITION TABS------------------------------------
         # Set the rest of the UI and add to splitter
-        nongraphUI = QWidget(main_splitter)
-        nongraphUI_layout = QVBoxLayout(nongraphUI)
+        scroll = QScrollArea(self.main_widget)
+        
+        data_tabs = QTabWidget(acqUI)
+        data_tabs.setTabsClosable (False)
+        
+        scroll.setWidget(data_tabs)
+        scroll.setWidgetResizable(True)
+        
+        acqUI_layout.addWidget(scroll)
+    #---------------------CONFIGURATION WIDGET---------------------------------   
+        configUI = QWidget(data_tabs)
         
         # Set up the Acquisition layout to display horizontally
-        config_layout = QHBoxLayout(nongraphUI)
+        config_layout = QHBoxLayout(configUI)
         
         # Set the Acquisition settings form
-        config_form = QFormLayout(nongraphUI)
-        #config_form.setSpacing (2)
+        config_form = QFormLayout()
+        config_form.setSpacing (2)
         
         # Set up the Acquisition type radiobuttons group
-        self.typegroup = QGroupBox('Input Type', nongraphUI)
+        self.typegroup = QGroupBox('Input Type', configUI)
         typelbox = QHBoxLayout(self.typegroup)
         pyaudio_button = QRadioButton('SoundCard',self.typegroup)
         NI_button = QRadioButton('NI',self.typegroup)
@@ -202,39 +210,57 @@ class LiveplotApp(QMainWindow):
         
         for c in configs:
             if c is 'Source':
-                cbox = QComboBox(nongraphUI)
-                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                cbox = QComboBox(configUI)
+                config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)
                 
             else:
-                cbox = QLineEdit(nongraphUI)
-                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                cbox = QLineEdit(configUI)
+                config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)  
             
         # Add the Acquisition form to the Acquisition layout
         config_layout.addLayout(config_form)
         
         # Add a button to Acquisition layout
-        config_button = QPushButton('Set Config', nongraphUI)
+        config_button = QPushButton('Set Config', configUI)
         config_button.clicked.connect(self.ResetRecording)
         config_layout.addWidget(config_button)
         
-        # Add Acquisition layout to nongraphUI widget
-        nongraphUI_layout.addLayout(config_layout,10)
+        data_tabs.addTab(configUI, "Setup")
         
+    #---------------------------RECORDING WIDGET-------------------------------
+        RecUI = QWidget(main_splitter)
+        reclayout = QVBoxLayout(RecUI)
+        self.recordbtn = QPushButton('Record',RecUI)
+        self.recordbtn.resize(self.recordbtn.sizeHint())
+        self.recordbtn.pressed.connect(lambda: self.start_recording(False))
+        reclayout.addWidget(self.recordbtn)
+        self.triggerbtn = QPushButton('Trigger',RecUI)
+        self.triggerbtn.resize(self.triggerbtn.sizeHint())
+        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
+        reclayout.addWidget(self.triggerbtn)
+        
+        data_tabs.addTab(RecUI,"Recording")
+        
+    #-------------------------STATUS BAR WIDGET--------------------------------
         # Set up the status bar and add to nongraphUI widget
-        self.statusbar = QStatusBar(nongraphUI)
+        self.statusbar = QStatusBar(acqUI)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
-        nongraphUI_layout.addWidget(self.statusbar)
+        acqUI_layout.addWidget(self.statusbar)
+
+
+    #--------------------------------------------------------------------------
+         # Add the tabs to splitter
+        main_splitter.addWidget(acqUI)
         
-        # Add nongraphUI widget to splitter
-        main_splitter.addWidget(nongraphUI)
-        main_splitter.setStretchFactor(0, 40)
-        main_splitter.setStretchFactor(1, 40)
+        #main_splitter.setSizes([])
+        main_splitter.setStretchFactor(0, 10)
+        main_splitter.setStretchFactor(1, 10)
         main_splitter.setStretchFactor(2, 0)
         
-        # Experimental styling
+    #-----------------------EXPERIMENTAL STYLING---------------------------- 
         main_splitter.setFrameShape(QFrame.Panel)
         main_splitter.setFrameShadow(QFrame.Sunken)
         self.main_widget.setStyleSheet('''
@@ -251,6 +277,7 @@ class LiveplotApp(QMainWindow):
                 background: solid green;
         }                   ''')#background-image: url(Handle_bar.png);
         
+    #-----------------------FINALISE---------------------------- 
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -259,6 +286,13 @@ class LiveplotApp(QMainWindow):
         self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
+        
+        self.show()
+        #---------------UI ADJUSTMENTS-------------------------
+        h = 600 - chans_settings_layout.geometry().height()
+        main_splitter.setSizes([h*0.4,h*0.4,h*0.2])
+        
+        
         
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
@@ -458,8 +492,8 @@ class LiveplotApp(QMainWindow):
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),)) + 1*i
             
-            fft_data = np.fft.rfft(plotdata)
-            psd_data = abs(fft_data)**2  + 1e2 * i
+            fft_data = np.fft.rfft(plotdata* window * weightage)
+            psd_data = abs(fft_data)  + 1e2 * i
             self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
             self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
     
