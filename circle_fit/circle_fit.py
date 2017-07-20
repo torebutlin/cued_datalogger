@@ -74,8 +74,10 @@ def circle_fit(data):
 
 def plot_circle(x0, y0, R0):
     theta = np.linspace(-np.pi, np.pi, 180)
-    x = x0[0] + R0[0]*np.cos(theta)
-    y = y0[0] + R0[0]*np.sin(theta)
+    x = x0 + R0[0]*np.cos(theta)
+    y = y0 + R0[0]*np.sin(theta)
+    #x = x0[0] + R0[0]*np.cos(theta)
+    #y = y0[0] + R0[0]*np.sin(theta)
     return x, y
 
 
@@ -168,12 +170,6 @@ class CircleFitWidget(QWidget):
         # Get zoomed in region
         self.get_viewed_region()
 
-        # Update Nyquist plot
-        """
-        self.nyquist_plot.clear()
-        self.nyquist_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
-                               symbol='o', symbolPen=None, symbolBrush='r')
-        """
         """ TEMA METHOD: """
         w_circle = np.linspace(0, self.w.max(), 1e5)
         self.circle_plot.clear()
@@ -189,6 +185,7 @@ class CircleFitWidget(QWidget):
 
         # Update plot
         # Plot the data
+        self.x_c, self.y_c = plot_circle(0, -np.sqrt(self.y0**2 + self.x0**2), self.R0)
         self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
                               symbol='o', symbolPen=None, symbolBrush='r',
                               name="Data")
@@ -279,8 +276,6 @@ class CircleFitWidget(QWidget):
         self.transfer_func_plot.plot(x=self.w, y=to_dB(np.abs(self.a)), pen=defaultpen)
         self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)), pen=defaultpen)
         self.update_plots()
-        self.circle_plot.autoRange(padding=0.1)
-        self.circle_plot.disableAutoRange()
 
     def find_vals(self):
         self.get_viewed_region()
@@ -327,7 +322,7 @@ class CircleFitWidget(QWidget):
         yD = 0
         phi = np.arctan((self.x0 - xD) / (self.y0 - yD))
 
-        return wr, zr, C*np.exp(1j*phi)
+        return wr, zr, C#*np.exp(1j*phi)
 
     def tAtB(self, tA, tB, wA, wB):
         return (tA - tB) / (wA**2 - wB**2)
