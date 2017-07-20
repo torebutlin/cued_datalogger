@@ -237,15 +237,19 @@ class LiveplotApp(QMainWindow):
         
         rec_settings_layout = QFormLayout()
         
-        configs = ['Samples','Seconds','Pretrigger']
-        #rec_boxes = []
+        configs = ['Samples','Seconds','Pretrigger','Ref. Channel']
+        default_values = ['4096','3', '200','0']
+        self.rec_boxes = []
         
-        for c in configs:
+        for c,v in zip(configs,default_values):
             cbox = QLineEdit(configUI)
+            cbox.setText(v)
             rec_settings_layout.addRow(QLabel(c,configUI),cbox)
-            #rec_boxes.append(cbox)  
+            self.rec_boxes.append(cbox)  
         reclayout.addLayout(rec_settings_layout)
-        
+        self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
+        self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
+        # TODO: Can use validator to validate inputs
         rec_buttons_layout = QVBoxLayout()
         
         self.recordbtn = QPushButton('Record',RecUI)
@@ -254,7 +258,9 @@ class LiveplotApp(QMainWindow):
         rec_buttons_layout.addWidget(self.recordbtn)
         self.triggerbtn = QPushButton('Trigger',RecUI)
         self.triggerbtn.resize(self.triggerbtn.sizeHint())
-        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
+        #self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
+        self.triggerbtn.pressed.connect(self.read_record_config)
+        
         rec_buttons_layout.addWidget(self.triggerbtn)
         
         reclayout.addLayout(rec_buttons_layout)
@@ -333,7 +339,7 @@ class LiveplotApp(QMainWindow):
                 
         try:    
             # Get Input from the Acquisition settings UI
-            Rtype, settings = self.config_status()
+            Rtype, settings = self.read_device_config()
             
             # Delete and reinitialise the recording object
             if Rtype[0]:
@@ -568,7 +574,7 @@ class LiveplotApp(QMainWindow):
         del selR
          
                 
-    def config_status(self, *arg):
+    def read_device_config(self, *arg):
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
         configs = []
         for cbox in self.configboxes:
@@ -582,6 +588,35 @@ class LiveplotApp(QMainWindow):
                     
         print(recType,configs)
         return(recType, configs)
+    
+    def read_record_config(self, *arg):
+        try:
+            rec_configs = []
+            for cbox in self.rec_boxes:
+                if type(cbox) is QComboBox:
+                    #configs.append(cbox.currentText())
+                    rec_configs.append(cbox.currentIndex())
+                else:
+                    #notnumRegex = re.compile(r'(\D)+')
+                    config_input = cbox.text().strip(' ')
+                    rec_configs.append(int(float(config_input)))
+                        
+            print(rec_configs)
+            return(rec_configs)
+        except Exception as e:
+            print(e)
+            return False
+        
+    def autoset_record_config(self, setting):
+        if setting == 'Samples':
+            duration = int(self.rec_boxes[0].text())/self.rec.rate
+            self.rec_boxes[1].setText(str(duration))
+            #print(setting, self.rec_boxes[0].text(),self.rec_boxes[1].text())
+        elif setting == "Time":
+            samples = float(self.rec_boxes[1].text())*self.rec.rate
+            self.rec_boxes[0].setText(str(int(samples)))
+            self.rec_boxes[1].setText(str(int(samples)/self.rec.rate))
+            #print(setting, self.rec_boxes[1].text(),self.rec_boxes[0].text())
     
     def display_channel_plots(self, *args):
         for btn in args:
