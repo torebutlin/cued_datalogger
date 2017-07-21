@@ -130,10 +130,10 @@ class RecorderParent(object):
 #---------------- RECORDING METHODS -----------------------------------
     def record_init(self,samples = None,duration = 3):
         if samples:
-            self.total_rec_chunk = samples // self.chunk_size
+            self.total_rec_chunk = (samples // self.chunk_size)+1
         else:
             # Calculate the number of recording chunks
-            self.total_rec_chunk = duration * self.rate // self.chunk_size
+            self.total_rec_chunk = (duration * self.rate // self.chunk_size)
             
         self.next_rec_chunk = 0
         
@@ -225,6 +225,7 @@ class RecorderParent(object):
         self.trigger_threshold = 0
         self.trigger_channel = 0
         self.ref_level = 0
+        self.pretrig_samples = 200
         self.pretrig_data = np.array([])
 #----------------- DECORATOR METHODS --------------------------------------
     @property

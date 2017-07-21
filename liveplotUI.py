@@ -41,7 +41,7 @@ class LiveplotApp(QMainWindow):
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,500,500,600)
+        self.setGeometry(500,300,500,600)
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
@@ -233,12 +233,10 @@ class LiveplotApp(QMainWindow):
         RecUI = QWidget(main_splitter)
         reclayout = QHBoxLayout(RecUI)
         
-        
-        
         rec_settings_layout = QFormLayout()
         
-        configs = ['Samples','Seconds','Pretrigger','Ref. Channel']
-        default_values = ['4096','3', '200','0']
+        configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
+        default_values = ['4096','3', '200','0','0.2']
         self.rec_boxes = []
         
         for c,v in zip(configs,default_values):
@@ -258,8 +256,8 @@ class LiveplotApp(QMainWindow):
         rec_buttons_layout.addWidget(self.recordbtn)
         self.triggerbtn = QPushButton('Trigger',RecUI)
         self.triggerbtn.resize(self.triggerbtn.sizeHint())
-        #self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
-        self.triggerbtn.pressed.connect(self.read_record_config)
+        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
+        #self.triggerbtn.pressed.connect(self.read_record_config)
         
         rec_buttons_layout.addWidget(self.triggerbtn)
         
@@ -478,14 +476,18 @@ class LiveplotApp(QMainWindow):
     
     # Start the data recording        
     def start_recording(self, trigger):
+        rec_configs = self.read_record_config()
         if trigger:
             # Set up the trigger
-            if self.rec.trigger_start():
+            if self.rec.trigger_start(duration = rec_configs[1],
+                                      pretrig = rec_configs[2],
+                                      channel = rec_configs[3],
+                                      threshold = rec_configs[4]):
                 self.statusbar.showMessage('Trigger Set!')
                 for btn in self.main_widget.findChildren(QPushButton):
                     btn.setDisabled(True)
         else:
-            self.rec.record_init(duration = 3)
+            self.rec.record_init(samples = rec_configs[0], duration = rec_configs[1])
             # Start the recording
             if self.rec.record_start():
                 self.statusbar.showMessage('Recording...')
@@ -592,14 +594,15 @@ class LiveplotApp(QMainWindow):
     def read_record_config(self, *arg):
         try:
             rec_configs = []
-            for cbox in self.rec_boxes:
+            data_type = [int,float,int,int,float]
+            for cbox,dt in zip(self.rec_boxes,data_type):
                 if type(cbox) is QComboBox:
                     #configs.append(cbox.currentText())
                     rec_configs.append(cbox.currentIndex())
                 else:
                     #notnumRegex = re.compile(r'(\D)+')
                     config_input = cbox.text().strip(' ')
-                    rec_configs.append(int(float(config_input)))
+                    rec_configs.append(dt(float(config_input)))
                         
             print(rec_configs)
             return(rec_configs)

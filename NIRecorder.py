@@ -184,7 +184,7 @@ class Recorder(RecorderParent):
         self.trigger_channel = 0
         self.ref_rms = 0'''
     
-    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0):
+    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0,pretrig = 200):
         if self.recording:
             print('You are current recording. Please finish the recording before starting the trigger.')
             return False
@@ -196,6 +196,7 @@ class Recorder(RecorderParent):
             self.trigger = True
             self.trigger_threshold = threshold
             self.trigger_channel = channel
+            self.pretrig_samples = pretrig
             self.ref_level = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
             print('Reference level: %.2f' % self.ref_level)
             print('Trigger Set!')
@@ -214,7 +215,9 @@ class Recorder(RecorderParent):
             print('Triggered!')
             self.recording = True
             self.trigger = False
-            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,500:,:])
+            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
+                                                    self.chunk_size - self.pretrig_samples:,
+                                                    :])
     
     ''' I don't know anymore...'''
     
