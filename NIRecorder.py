@@ -222,6 +222,7 @@ class Recorder(RecorderParent):
             self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
                                                     self.chunk_size - self.pretrig_samples:,
                                                     :])
+            self.rEmitter.triggered.emit()
     
     ''' I don't know anymore...'''
     

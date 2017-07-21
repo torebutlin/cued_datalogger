@@ -30,7 +30,6 @@ except ModuleNotFoundError:
 # Theo's channel implementation, will probably use it later
 from channel import DataSet, Channel, ChannelSet
 
-
 PLAYBACK = False
 MAX_SAMPLE = 1e6
 #--------------------- The LivePlotApp Class------------------------------------
@@ -51,7 +50,9 @@ class LiveplotApp(QMainWindow):
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         
-        self.rec.rEmitter.recorddone.connect(self.stop_recording)
+        self.connect_rec_signals()
+        
+        self.playing = False
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
@@ -263,7 +264,7 @@ class LiveplotApp(QMainWindow):
         #reclayout.addLayout(rec_settings_layout)
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
-        # TODO: Can use validator to validate inputs
+
         rec_buttons_layout = QHBoxLayout()
         
         self.recordbtn = QPushButton('Record',RecUI)
@@ -402,8 +403,8 @@ class LiveplotApp(QMainWindow):
             print(traceback.format_tb(tb))
             print('Cannot reset buttons')
         
-        self.rec.rEmitter.recorddone.connect(self.stop_recording)
-    
+        self.connect_rec_signals()
+        
     def ResetXdata(self):
         data = self.rec.get_buffer()
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
@@ -544,6 +545,7 @@ class LiveplotApp(QMainWindow):
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
         self.cancelbtn.setDisabled(True)
+        self.statusbar.clearMessage()
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
@@ -580,7 +582,7 @@ class LiveplotApp(QMainWindow):
             cbox.setText(str(i))
     
     def display_sources(self):
-        # TODO: make use of the button input in callback
+        # TODO: make use of the button input in callback?
         rb = self.typegroup.findChildren(QRadioButton)
         if not NI_drivers and rb[1].isChecked():
             print("You don't seem to have National Instrument drivers/modules")
@@ -704,6 +706,14 @@ class LiveplotApp(QMainWindow):
             self.togglebtn.setDisabled(True)
             self.toggle_rec(stop = True)
             self.statusbar.showMessage('Stream not initialised!')
+            
+    def connect_rec_signals(self):
+            self.rec.rEmitter.recorddone.connect(self.stop_recording)
+            self.rec.rEmitter.triggered.connect(self.trigger_message)
+            
+    def trigger_message(self):
+        self.statusbar.showMessage('Triggered! Recording...')
+        
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
