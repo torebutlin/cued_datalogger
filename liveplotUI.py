@@ -166,21 +166,23 @@ class LiveplotApp(QMainWindow):
         # Set the rest of the UI and add to splitter
         scroll = QScrollArea(self.main_widget)
         
-        data_tabs = QTabWidget(acqUI)
-        data_tabs.setTabsClosable (False)
+        settingsUI = QWidget(self.main_widget)
+        settings_layout = QHBoxLayout(settingsUI)
+        #data_tabs = QTabWidget(acqUI)
+        #data_tabs.setTabsClosable (False)
         
-        scroll.setWidget(data_tabs)
+        scroll.setWidget(settingsUI)
         scroll.setWidgetResizable(True)
         
         acqUI_layout.addWidget(scroll)
     #---------------------CONFIGURATION WIDGET---------------------------------   
-        configUI = QWidget(data_tabs)
+        configUI = QWidget(settingsUI)
         
         # Set up the Acquisition layout to display horizontally
-        config_layout = QHBoxLayout(configUI)
+        #config_layout = QHBoxLayout(configUI)
         
         # Set the Acquisition settings form
-        config_form = QFormLayout()
+        config_form = QFormLayout(configUI)
         config_form.setSpacing (2)
         
         # Set up the Acquisition type radiobuttons group
@@ -220,20 +222,22 @@ class LiveplotApp(QMainWindow):
                 self.configboxes.append(cbox)  
             
         # Add the Acquisition form to the Acquisition layout
-        config_layout.addLayout(config_form)
+        #config_layout.addLayout(config_form)
         
         # Add a button to Acquisition layout
         config_button = QPushButton('Set Config', configUI)
         config_button.clicked.connect(self.ResetRecording)
-        config_layout.addWidget(config_button)
+        #config_layout.addWidget(config_button)
+        config_form.addRow(config_button)
         
-        data_tabs.addTab(configUI, "Setup")
+        settings_layout.addWidget(configUI, stretch = 3)
+        #data_tabs.addTab(configUI, "Setup")
         
     #---------------------------RECORDING WIDGET-------------------------------
         RecUI = QWidget(main_splitter)
-        reclayout = QHBoxLayout(RecUI)
+        #reclayout = QHBoxLayout(RecUI)
         
-        rec_settings_layout = QFormLayout()
+        rec_settings_layout = QFormLayout(RecUI)
         
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
         default_values = ['4096','3', '200','0','0.2']
@@ -244,11 +248,11 @@ class LiveplotApp(QMainWindow):
             cbox.setText(v)
             rec_settings_layout.addRow(QLabel(c,configUI),cbox)
             self.rec_boxes.append(cbox)  
-        reclayout.addLayout(rec_settings_layout)
+        #reclayout.addLayout(rec_settings_layout)
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
         # TODO: Can use validator to validate inputs
-        rec_buttons_layout = QVBoxLayout()
+        rec_buttons_layout = QHBoxLayout()
         
         self.recordbtn = QPushButton('Record',RecUI)
         self.recordbtn.resize(self.recordbtn.sizeHint())
@@ -258,12 +262,13 @@ class LiveplotApp(QMainWindow):
         self.triggerbtn.resize(self.triggerbtn.sizeHint())
         self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
         #self.triggerbtn.pressed.connect(self.read_record_config)
-        
         rec_buttons_layout.addWidget(self.triggerbtn)
         
-        reclayout.addLayout(rec_buttons_layout)
+        #reclayout.addLayout(rec_buttons_layout)
+        rec_settings_layout.addRow(rec_buttons_layout)
         
-        data_tabs.addTab(RecUI,"Recording")
+        settings_layout.addWidget(RecUI, stretch = 1)
+        #data_tabs.addTab(RecUI,"Recording")
         
     #-------------------------STATUS BAR WIDGET--------------------------------
         # Set up the status bar and add to nongraphUI widget
