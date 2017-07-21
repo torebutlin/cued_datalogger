@@ -130,7 +130,7 @@ class RecorderParent(object):
 #---------------- RECORDING METHODS -----------------------------------
     def record_init(self,samples = None,duration = 3):
         if samples:
-            self.total_rec_chunk = (samples // self.chunk_size)+1
+            self.total_rec_chunk = samples // self.chunk_size
         else:
             # Calculate the number of recording chunks
             self.total_rec_chunk = (duration * self.rate // self.chunk_size)

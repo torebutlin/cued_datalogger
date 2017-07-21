@@ -8,7 +8,9 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTabWidget)
+    QCheckBox,QButtonGroup)
+
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 #from PyQt5.QtGui import QImage
 import numpy as np
@@ -31,6 +33,7 @@ from channel import DataSet, Channel, ChannelSet
 
 
 PLAYBACK = False
+MAX_SAMPLE = 1e6
 #--------------------- The LivePlotApp Class------------------------------------
 class LiveplotApp(QMainWindow):
     
@@ -230,7 +233,7 @@ class LiveplotApp(QMainWindow):
         #config_layout.addWidget(config_button)
         config_form.addRow(config_button)
         
-        settings_layout.addWidget(configUI, stretch = 3)
+        settings_layout.addWidget(configUI, stretch = 2)
         #data_tabs.addTab(configUI, "Setup")
         
     #---------------------------RECORDING WIDGET-------------------------------
@@ -240,14 +243,23 @@ class LiveplotApp(QMainWindow):
         rec_settings_layout = QFormLayout(RecUI)
         
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
-        default_values = ['4096','3', '200','0','0.2']
+        default_values = ['','1.0', '200','0','0.08']
+        validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
+                      QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                      QIntValidator(-1,self.rec.chunk_size),
+                      QIntValidator(0,self.rec.channels-1),
+                      QDoubleValidator(0,5,2)]
+        
         self.rec_boxes = []
         
-        for c,v in zip(configs,default_values):
+        for c,v,vd in zip(configs,default_values,validators):
             cbox = QLineEdit(configUI)
             cbox.setText(v)
+            cbox.setValidator(vd)
             rec_settings_layout.addRow(QLabel(c,configUI),cbox)
             self.rec_boxes.append(cbox)  
+            
+        self.autoset_record_config('Time')
         #reclayout.addLayout(rec_settings_layout)
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
@@ -275,8 +287,8 @@ class LiveplotApp(QMainWindow):
         self.statusbar = QStatusBar(acqUI)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
+        self.statusbar.clearMessage()
         acqUI_layout.addWidget(self.statusbar)
-
 
     #--------------------------------------------------------------------------
          # Add the tabs to splitter
@@ -343,7 +355,6 @@ class LiveplotApp(QMainWindow):
         try:    
             # Get Input from the Acquisition settings UI
             Rtype, settings = self.read_device_config()
-            
             # Delete and reinitialise the recording object
             if Rtype[0]:
                 self.rec = mR.Recorder()
@@ -366,18 +377,26 @@ class LiveplotApp(QMainWindow):
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
             self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
-        except Exception as e:
-            print(e)
+        except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot stream,restart the app')
-            
+        
+        try:
+            self.ResetRecConfigs()
+            self.autoset_record_config('Samples')
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            print('Cannot recording configs')
+        
         try:
             self.ResetChanBtns()
-        except Exception as e:
-            print(e)
+        except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
@@ -442,7 +461,15 @@ class LiveplotApp(QMainWindow):
                     self.checkbox_layout.removeWidget(chan_btn)
                     self.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
-                
+                    
+    def ResetRecConfigs(self):
+           validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
+                         QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                         QIntValidator(-1,self.rec.chunk_size),
+                         QIntValidator(0,self.rec.channels-1)]
+           
+           for cbox,vd in zip(self.rec_boxes[:-1],validators):
+                cbox.setValidator(vd)
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
@@ -616,15 +643,27 @@ class LiveplotApp(QMainWindow):
             return False
         
     def autoset_record_config(self, setting):
+        sample_validator = self.rec_boxes[0].validator()
+        time_validator = self.rec_boxes[1].validator()
+        
         if setting == 'Samples':
-            duration = int(self.rec_boxes[0].text())/self.rec.rate
+            samples = int(self.rec_boxes[0].text())
+            samples = samples//self.rec.chunk_size  *self.rec.chunk_size
+            duration = samples/self.rec.rate
+            self.rec_boxes[0].setText(str(samples))
             self.rec_boxes[1].setText(str(duration))
-            #print(setting, self.rec_boxes[0].text(),self.rec_boxes[1].text())
         elif setting == "Time":
-            samples = float(self.rec_boxes[1].text())*self.rec.rate
-            self.rec_boxes[0].setText(str(int(samples)))
-            self.rec_boxes[1].setText(str(int(samples)/self.rec.rate))
-            #print(setting, self.rec_boxes[1].text(),self.rec_boxes[0].text())
+            valid = time_validator.validate(self.rec_boxes[1].text(),0)[0]
+            if not valid == QValidator.Acceptable:
+                self.rec_boxes[1].setText(str(time_validator.bottom()))
+                
+            samples = int(float(self.rec_boxes[1].text())*self.rec.rate)
+            valid = sample_validator.validate(str(samples),0)[0]
+            if not valid == QValidator.Acceptable:
+                samples = sample_validator.top()
+                
+            self.rec_boxes[0].setText(str(samples))    
+            self.rec_boxes[1].setText(str(samples/self.rec.rate))
     
     def display_channel_plots(self, *args):
         for btn in args:
