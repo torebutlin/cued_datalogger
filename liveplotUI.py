@@ -14,7 +14,6 @@ from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 #from PyQt5.QtGui import QImage
 import numpy as np
-import re
 
 import pyqtgraph as pg
 import myRecorder as mR
@@ -656,13 +655,7 @@ class LiveplotApp(QMainWindow):
         sample_validator = self.rec_boxes[0].validator()
         time_validator = self.rec_boxes[1].validator()
         
-        if setting == 'Samples':
-            samples = int(self.rec_boxes[0].text())
-            samples = samples//self.rec.chunk_size  *self.rec.chunk_size
-            duration = samples/self.rec.rate
-            self.rec_boxes[0].setText(str(samples))
-            self.rec_boxes[1].setText(str(duration))
-        elif setting == "Time":
+        if setting == "Time":
             valid = time_validator.validate(self.rec_boxes[1].text(),0)[0]
             if not valid == QValidator.Acceptable:
                 self.rec_boxes[1].setText(str(time_validator.bottom()))
@@ -671,9 +664,13 @@ class LiveplotApp(QMainWindow):
             valid = sample_validator.validate(str(samples),0)[0]
             if not valid == QValidator.Acceptable:
                 samples = sample_validator.top()
-                
-            self.rec_boxes[0].setText(str(samples))    
-            self.rec_boxes[1].setText(str(samples/self.rec.rate))
+        elif setting == 'Samples':
+            samples = int(self.rec_boxes[0].text())        
+        
+        samples = samples//self.rec.chunk_size  *self.rec.chunk_size
+        duration = samples/self.rec.rate
+        self.rec_boxes[0].setText(str(samples))
+        self.rec_boxes[1].setText(str(duration))
     
     def display_channel_plots(self, *args):
         for btn in args:
