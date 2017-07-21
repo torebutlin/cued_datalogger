@@ -113,7 +113,7 @@ class RecorderParent(object):
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return data.reshape((-1,self.channels))
+        return data.reshape((-1,self.channels))/ 2**15
     
 #---------------- BUFFER METHODS -----------------------------------
     # Write the data obtained into buffer and move to the next chunk   
@@ -178,7 +178,12 @@ class RecorderParent(object):
         if self.rEmitter:
             print('beep')
             self.rEmitter.recorddone.emit()
-        
+            
+    def record_cancel(self):
+        print('Recording Cancel! Recorded data has been discarded!')
+        self.trigger = False
+        self.recording = False
+        self.recorded_data = []
     
     # Append the current chunk(which is before next_chunk) to recorded data            
     def record_data(self):
@@ -224,7 +229,7 @@ class RecorderParent(object):
         self.trigger = False
         self.trigger_threshold = 0
         self.trigger_channel = 0
-        self.ref_level = 0
+        self.ref_level = 0.08
         self.pretrig_samples = 200
         self.pretrig_data = np.array([])
 #----------------- DECORATOR METHODS --------------------------------------

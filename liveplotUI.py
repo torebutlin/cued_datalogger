@@ -51,9 +51,6 @@ class LiveplotApp(QMainWindow):
         self.rec = mR.Recorder(channels = 15,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
-        # Set playback to False to not hear anything
-        if self.rec.stream_init(playback = PLAYBACK):
-            self.playing = True
         
         self.rec.rEmitter.recorddone.connect(self.stop_recording)
         # Set up the TimeSeries and FreqSeries
@@ -72,11 +69,13 @@ class LiveplotApp(QMainWindow):
             print(traceback.format_tb(tb))
             self.close()
             
+        # Set playback to False to not hear anything
+        self.init_and_check_stream()
             
-             # Center and show window
-            self.center()
-            self.setFocus()
-            self.show()
+        # Center and show window
+        self.center()
+        self.setFocus()
+        self.show()
         
 #---------------------- APP CONSTRUCTION METHOD------------------------------     
     def initUI(self):
@@ -127,7 +126,7 @@ class LiveplotApp(QMainWindow):
         # Put the buttons in
         self.togglebtn = QPushButton('Pause',self.main_widget)
         self.togglebtn.resize(self.togglebtn.sizeHint())
-        self.togglebtn.pressed.connect(self.toggle_rec)
+        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
         btn_layout.addWidget(self.togglebtn)
         self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
@@ -228,10 +227,10 @@ class LiveplotApp(QMainWindow):
         #config_layout.addLayout(config_form)
         
         # Add a button to Acquisition layout
-        config_button = QPushButton('Set Config', configUI)
-        config_button.clicked.connect(self.ResetRecording)
+        self.config_button = QPushButton('Set Config', configUI)
+        self.config_button.clicked.connect(self.ResetRecording)
         #config_layout.addWidget(config_button)
-        config_form.addRow(config_button)
+        config_form.addRow(self.config_button)
         
         settings_layout.addWidget(configUI, stretch = 2)
         #data_tabs.addTab(configUI, "Setup")
@@ -243,7 +242,9 @@ class LiveplotApp(QMainWindow):
         rec_settings_layout = QFormLayout(RecUI)
         
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
-        default_values = ['','1.0', '200','0','0.08']
+        default_values = ['','1.0', str(self.rec.pretrig_samples),
+                          str(self.rec.trigger_channel),
+                          str(self.rec.trigger_threshold)]
         validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
                       QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
                       QIntValidator(-1,self.rec.chunk_size),
@@ -268,13 +269,13 @@ class LiveplotApp(QMainWindow):
         
         self.recordbtn = QPushButton('Record',RecUI)
         self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.pressed.connect(lambda: self.start_recording(False))
+        self.recordbtn.pressed.connect(self.start_recording)
         rec_buttons_layout.addWidget(self.recordbtn)
-        self.triggerbtn = QPushButton('Trigger',RecUI)
-        self.triggerbtn.resize(self.triggerbtn.sizeHint())
-        self.triggerbtn.pressed.connect(lambda: self.start_recording(True))
-        #self.triggerbtn.pressed.connect(self.read_record_config)
-        rec_buttons_layout.addWidget(self.triggerbtn)
+        self.cancelbtn = QPushButton('Cancel',RecUI)
+        self.cancelbtn.resize(self.cancelbtn.sizeHint())
+        self.cancelbtn.setDisabled(True)
+        self.cancelbtn.pressed.connect(self.cancel_recording)
+        rec_buttons_layout.addWidget(self.cancelbtn)
         
         #reclayout.addLayout(rec_buttons_layout)
         rec_settings_layout.addRow(rec_buttons_layout)
@@ -372,8 +373,7 @@ class LiveplotApp(QMainWindow):
         
         try:
         # Open the stream, plot and update
-            self.rec.stream_init(playback = PLAYBACK)
-            self.toggle_rec()
+            self.init_and_check_stream()
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
             self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
@@ -404,7 +404,6 @@ class LiveplotApp(QMainWindow):
             print('Cannot reset buttons')
         
         self.rec.rEmitter.recorddone.connect(self.stop_recording)
-        self.statusbar.clearMessage()
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
@@ -473,7 +472,10 @@ class LiveplotApp(QMainWindow):
         
     #------------- UI callback methods--------------------------------
     # Pause/Resume the stream       
-    def toggle_rec(self):
+    def toggle_rec(self,stop = None):
+        if not stop is None:
+            self.playing = stop
+            
         if self.playing:
             self.rec.stream_stop()
             self.togglebtn.setText('Resume')
@@ -507,9 +509,9 @@ class LiveplotApp(QMainWindow):
         self.statusbar.showMessage('Snapshot Captured!', 1500)
     
     # Start the data recording        
-    def start_recording(self, trigger):
+    def start_recording(self):
         rec_configs = self.read_record_config()
-        if trigger:
+        if rec_configs[2]>0:
             # Set up the trigger
             if self.rec.trigger_start(duration = rec_configs[1],
                                       pretrig = rec_configs[2],
@@ -524,17 +526,25 @@ class LiveplotApp(QMainWindow):
             if self.rec.record_start():
                 self.statusbar.showMessage('Recording...')
                 # Disable buttons
-                for btn in self.main_widget.findChildren(QPushButton):
+                for btn in [self.togglebtn, self.config_button, self.recordbtn]:
                     btn.setDisabled(True)
+                
+        self.cancelbtn.setEnabled(True)
     
     # Stop the data recording and transfer the recorded data to main window    
     def stop_recording(self):
         #self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+        self.cancelbtn.setDisabled(True)
         self.save_data(self.rec.flush_record_data()[:,0])
         self.statusbar.clearMessage()
     
+    def cancel_recording(self):
+        self.rec.record_cancel()
+        for btn in self.main_widget.findChildren(QPushButton):
+            btn.setEnabled(True)
+        self.cancelbtn.setDisabled(True)
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
@@ -687,6 +697,16 @@ class LiveplotApp(QMainWindow):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
+                
+    def init_and_check_stream(self):
+         if self.rec.stream_init(playback = PLAYBACK):
+            self.togglebtn.setEnabled(True)
+            self.toggle_rec(stop = False)
+            self.statusbar.showMessage('Streaming')
+         else:
+            self.togglebtn.setDisabled(True)
+            self.toggle_rec(stop = True)
+            self.statusbar.showMessage('Stream not initialised!')
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
@@ -696,4 +716,5 @@ class LiveplotApp(QMainWindow):
             self.parent.liveplot = None
             self.parent.liveplotbtn.setText('Open Oscilloscope')
             
- 
+            
+            

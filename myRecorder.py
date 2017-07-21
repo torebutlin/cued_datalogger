@@ -131,18 +131,20 @@ class Recorder(RecorderParent):
                                  frames_per_buffer = self.chunk_size,
                                  input_device_index = self.device_index,
                                  stream_callback = self.stream_audio_callback)
+                
+                self.stream_start()
+                print('Input latency: %.3e' % self.audio_stream.get_input_latency())
+                print('Output latency: %.3e' % self.audio_stream.get_output_latency())
+                print('Read Available: %i' % self.audio_stream.get_read_available())
+                print('Write Available: %i' % self.audio_stream.get_write_available())
+                return True
+            
             except Exception as e:
                 print(e)
                 self.audio_stream = None
                 return False
             
-            print('Input latency: %.3e' % self.audio_stream.get_input_latency())
-            print('Output latency: %.3e' % self.audio_stream.get_output_latency())
-            print('Read Available: %i' % self.audio_stream.get_read_available())
-            print('Write Available: %i' % self.audio_stream.get_write_available())
-            
-            self.stream_start()
-            return True
+
         else:
             return False
             
