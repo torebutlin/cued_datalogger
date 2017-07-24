@@ -9,12 +9,11 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup)
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-#from PyQt5.QtGui import QImage
-import numpy as np
-import re
-
 import pyqtgraph as pg
+import numpy as np
+
 import myRecorder as mR
 try:
     import NIRecorder as NIR
@@ -29,29 +28,33 @@ except ModuleNotFoundError:
 # Theo's channel implementation, will probably use it later
 from channel import DataSet, Channel, ChannelSet
 
-
+# GLOBAL CONSTANTS
 PLAYBACK = False
-#--------------------- The LivePlotApp Class------------------------------------
+MAX_SAMPLE = 1e6
+
+#++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
-    
+#-------------------------- METADATA ----------------------------------  
+    # Signal for when data has finished acquired
     dataSaved = pyqtSignal()
     
+#---------------------- CONSTRUCTOR METHOD------------------------------    
     def __init__(self,parent = None):
         super().__init__()
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,500,500,600)
+        self.setGeometry(500,300,500,600)
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
+        self.playing = False
         self.rec = mR.Recorder(channels = 15,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
-        # Set playback to False to not hear anything
-        if self.rec.stream_init(playback = PLAYBACK):
-            self.playing = True
-            
+        # Connect the recorder Signals
+        self.connect_rec_signals()
+        
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
@@ -67,78 +70,83 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             self.close()
-            
-            
-             # Center and show window
-            self.center()
-            self.setFocus()
-            self.show()
+            return
         
-     #---------------------- App construction methods-----------------------     
+        # Attempt to start streaming
+        self.init_and_check_stream()
+            
+        # Center and show window
+        self.center()
+        self.setFocus()
+        self.show()
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++        
+#++++++++++++++++++++++++ UI CONSTRUCTION START ++++++++++++++++++++++++++++++     
     def initUI(self):
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QVBoxLayout(self.main_widget)
         
-        #Set up the channel tickboxes widget
-        self.channels_box = QWidget(self.main_widget)
-        channel_box_layout = QHBoxLayout(self.main_widget)
-        
-        self.checkbox_layout = QGridLayout(self.channels_box)
-        #Set up the QbuttonGroup to manage the signals
-        self.chan_btn_group = QButtonGroup(self.channels_box)
-        self.chan_btn_group.setExclusive(False)                
-        channel_box_layout.addLayout(self.checkbox_layout) 
-        self.ResetChanBtns()
-        
-        self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+    #---------------------CHANNEL TOGGLE UI----------------------------------        
+        # Set up the channel tickboxes widget
+        chans_settings_layout = QHBoxLayout()
         
         # Make the button tickboxes scrollable
         scroll = QScrollArea(self.main_widget)
+        
+        self.channels_box = QWidget(scroll)
+        self.checkbox_layout = QGridLayout(self.channels_box)
+        
+        # Set up the QbuttonGroup to manage the Signals
+        self.chan_btn_group = QButtonGroup(self.channels_box)
+        self.chan_btn_group.setExclusive(False)                
+        self.ResetChanBtns()
+        self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+        
         #scroll.ensureVisible(50,50)
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
-        channel_box_layout.addWidget(scroll)
+        
+        chans_settings_layout.addWidget(scroll)
       
-        sel_btn_layout = QVBoxLayout(self.main_widget)    
-        sel_all_btn = QPushButton('Select All', self.channels_box)
+        # Set up the selection toggle buttons
+        sel_btn_layout = QVBoxLayout()    
+        sel_all_btn = QPushButton('Select All', self.main_widget)
         sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        desel_all_btn = QPushButton('Deselect All',self.channels_box)
+        desel_all_btn = QPushButton('Deselect All',self.main_widget)
         desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        inv_sel_btn = QPushButton('Invert Selection',self.channels_box)
+        inv_sel_btn = QPushButton('Invert Selection',self.main_widget)
         inv_sel_btn.clicked.connect(self.invert_checkboxes)
         for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
             btn.resize(btn.sizeHint())
-            sel_btn_layout.addWidget(btn)        
-        channel_box_layout.addLayout(sel_btn_layout)
+            sel_btn_layout.addWidget(btn)
+            
+        chans_settings_layout.addLayout(sel_btn_layout)
         
+        main_layout.addLayout(chans_settings_layout,10)
         
-        main_layout.addLayout(channel_box_layout,10)
-        
-        
-         # Set up the button layout to display horizontally
-        btn_layout = QHBoxLayout(self.main_widget)
+    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+        # Set up the button layout to display horizontally
+        btn_layout = QHBoxLayout()
         # Put the buttons in
         self.togglebtn = QPushButton('Pause',self.main_widget)
         self.togglebtn.resize(self.togglebtn.sizeHint())
-        self.togglebtn.pressed.connect(self.toggle_rec)
+        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
         btn_layout.addWidget(self.togglebtn)
-        self.recordbtn = QPushButton('Record',self.main_widget)
-        self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.pressed.connect(self.start_recording)
-        btn_layout.addWidget(self.recordbtn)
         self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         self.sshotbtn.pressed.connect(self.get_snapshot)
         btn_layout.addWidget(self.sshotbtn)
-        # Put the layout into the nongraphUI widget
+
         main_layout.addLayout(btn_layout)
-        
-        # Set up the splitter, add to main layout
+
+    #---------------------SPLITTER WIDGET------------------------------------
+        # Set up the splitter
         main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         main_splitter.setOpaqueResize(opaque = False)
         main_layout.addWidget(main_splitter,90)
         
+    #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
@@ -146,35 +154,43 @@ class LiveplotApp(QMainWindow):
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         self.timeplot.disableAutoRange(axis=None)
         self.timeplot.setMouseEnabled(x=False,y = True)
-        main_splitter.addWidget(self.timeplotcanvas)
-        
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
         self.fftplot = self.fftplotcanvas.getPlotItem()
         self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.fftplot.disableAutoRange(axis=None)
-        main_splitter.addWidget(self.fftplotcanvas)
         
         self.ResetPlots()
-            
-        # Set the rest of the UI and add to splitter
-        nongraphUI = QWidget(main_splitter)
-        nongraphUI_layout = QVBoxLayout(nongraphUI)
+        main_splitter.addWidget(self.timeplotcanvas)
+        main_splitter.addWidget(self.fftplotcanvas)
+
+    #-----------------------REMAINING UIs-------------------------------
+        acqUI  = QWidget(main_splitter)        
+        acqUI_layout = QVBoxLayout(acqUI)
+       
+    #-------------- DEVICE + RECORDING SETTINGS--------------------------
+        scroll = QScrollArea(self.main_widget)        
+        settingsUI = QWidget(self.main_widget)
+        settings_layout = QHBoxLayout(settingsUI)
         
-        # Set up the Acquisition layout to display horizontally
-        config_layout = QHBoxLayout(nongraphUI)
+        scroll.setWidget(settingsUI)
+        scroll.setWidgetResizable(True)
         
-        # Set the Acquisition settings form
-        config_form = QFormLayout(nongraphUI)
-        #config_form.setSpacing (2)
+        acqUI_layout.addWidget(scroll)
         
-        # Set up the Acquisition type radiobuttons group
-        self.typegroup = QGroupBox('Input Type', nongraphUI)
+    #----------------DEVICE CONFIGURATION WIDGET---------------------------   
+        configUI = QWidget(settingsUI)
+        
+        # Set the device settings form
+        config_form = QFormLayout(configUI)
+        config_form.setSpacing (2)
+        
+        # Set up the device type radiobuttons group
+        self.typegroup = QGroupBox('Input Type', configUI)
         typelbox = QHBoxLayout(self.typegroup)
         pyaudio_button = QRadioButton('SoundCard',self.typegroup)
         NI_button = QRadioButton('NI',self.typegroup)
-        # Put the radiobuttons horizontally
         typelbox.addWidget(pyaudio_button)
         typelbox.addWidget(NI_button)
         
@@ -182,12 +198,12 @@ class LiveplotApp(QMainWindow):
         self.typegroup.setLayout(typelbox)
         
         # TODO: Give id to the buttons
-        # Set up QbuttonGroup to manage the buttons' signals
+        # Set up QbuttonGroup to manage the buttons' Signals
         typebtngroup = QButtonGroup(self.typegroup)
         typebtngroup.addButton(pyaudio_button)
         typebtngroup.addButton(NI_button)
         typebtngroup.buttonReleased.connect(self.display_sources)
-        # Add the group to Acquisition settings form
+        
         config_form.addRow(self.typegroup)
         
         # Add the remaining settings to Acquisition settings form
@@ -196,39 +212,84 @@ class LiveplotApp(QMainWindow):
         
         for c in configs:
             if c is 'Source':
-                cbox = QComboBox(nongraphUI)
-                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                cbox = QComboBox(configUI)
+                config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)
                 
             else:
-                cbox = QLineEdit(nongraphUI)
-                config_form.addRow(QLabel(c,nongraphUI),cbox)
+                cbox = QLineEdit(configUI)
+                config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)  
-            
-        # Add the Acquisition form to the Acquisition layout
-        config_layout.addLayout(config_form)
         
-        # Add a button to Acquisition layout
-        config_button = QPushButton('Set Config', nongraphUI)
-        config_button.clicked.connect(self.ResetRecording)
-        config_layout.addWidget(config_button)
+        # Add a button to device setting form
+        self.config_button = QPushButton('Set Config', configUI)
+        self.config_button.clicked.connect(self.ResetRecording)
+        config_form.addRow(self.config_button)
         
-        # Add Acquisition layout to nongraphUI widget
-        nongraphUI_layout.addLayout(config_layout,10)
+        settings_layout.addWidget(configUI, stretch = 2)
         
-        # Set up the status bar and add to nongraphUI widget
-        self.statusbar = QStatusBar(nongraphUI)
+    #---------------------------RECORDING WIDGET-------------------------------
+        RecUI = QWidget(main_splitter)
+        
+        rec_settings_layout = QFormLayout(RecUI)
+        
+        # Add the recording setting UIs with the Validators
+        configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
+        default_values = ['','1.0', str(self.rec.pretrig_samples),
+                          str(self.rec.trigger_channel),
+                          str(self.rec.trigger_threshold)]
+        validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
+                      QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                      QIntValidator(-1,self.rec.chunk_size),
+                      QIntValidator(0,self.rec.channels-1),
+                      QDoubleValidator(0,5,2)]
+        
+        self.rec_boxes = []
+        for c,v,vd in zip(configs,default_values,validators):
+            cbox = QLineEdit(configUI)
+            cbox.setText(v)
+            cbox.setValidator(vd)
+            rec_settings_layout.addRow(QLabel(c,configUI),cbox)
+            self.rec_boxes.append(cbox)  
+        
+        # Connect the sample and time input check
+        self.autoset_record_config('Time')
+        self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
+        self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
+        
+        # Add the record and cancel buttons
+        rec_buttons_layout = QHBoxLayout()
+        
+        self.recordbtn = QPushButton('Record',RecUI)
+        self.recordbtn.resize(self.recordbtn.sizeHint())
+        self.recordbtn.pressed.connect(self.start_recording)
+        rec_buttons_layout.addWidget(self.recordbtn)
+        self.cancelbtn = QPushButton('Cancel',RecUI)
+        self.cancelbtn.resize(self.cancelbtn.sizeHint())
+        self.cancelbtn.setDisabled(True)
+        self.cancelbtn.pressed.connect(self.cancel_recording)
+        rec_buttons_layout.addWidget(self.cancelbtn)
+        
+        rec_settings_layout.addRow(rec_buttons_layout)
+        
+        settings_layout.addWidget(RecUI, stretch = 1)
+        
+    #-------------------------STATUS BAR WIDGET--------------------------------
+        # Set up the status bar
+        self.statusbar = QStatusBar(acqUI)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
-        nongraphUI_layout.addWidget(self.statusbar)
+        self.statusbar.clearMessage()
+        acqUI_layout.addWidget(self.statusbar)
+
+    #------------------------FINALISE THE SPLITTER-----------------------------
+        main_splitter.addWidget(acqUI)
         
-        # Add nongraphUI widget to splitter
-        main_splitter.addWidget(nongraphUI)
-        main_splitter.setStretchFactor(0, 40)
-        main_splitter.setStretchFactor(1, 40)
+        main_splitter.setStretchFactor(0, 10)
+        main_splitter.setStretchFactor(1, 10)
         main_splitter.setStretchFactor(2, 0)
         
-        # Experimental styling
+    #-----------------------EXPERIMENTAL STYLING---------------------------- 
         main_splitter.setFrameShape(QFrame.Panel)
         main_splitter.setFrameShadow(QFrame.Sunken)
         self.main_widget.setStyleSheet('''
@@ -243,8 +304,9 @@ class LiveplotApp(QMainWindow):
         }
         .QSplitter::handle:vertical{
                 background: solid green;
-        }                   ''')#background-image: url(Handle_bar.png);
+        }                   ''')
         
+    #-----------------------FINALISE THE MAIN WIDGET------------------------- 
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -254,6 +316,77 @@ class LiveplotApp(QMainWindow):
         self.plottimer.timeout.connect(self.update_line)
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
         
+        self.show()
+        
+    #---------------------------UI ADJUSTMENTS----------------------------
+        h = 600 - chans_settings_layout.geometry().height()
+        main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
+        
+#++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++        
+#+++++++++++++++++++++ UI CALLBACK METHODS +++++++++++++++++++++++++++++++++++
+    
+#---------------------CHANNEL TOGGLE UI----------------------------------    
+    def display_channel_plots(self, *args):
+        for btn in args:
+            chan_num = self.chan_btn_group.id(btn)
+            if btn.isChecked():
+                self.plotlines[2*chan_num].setPen('g')
+                self.plotlines[2*chan_num+1].setPen('y')
+            else:
+                self.plotlines[2*chan_num].setPen(None)
+                self.plotlines[2*chan_num+1].setPen(None)
+                
+    def invert_checkboxes(self):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            btn.click()
+         
+    def toggle_all_checkboxes(self,state):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            if not btn.checkState() == state:
+                btn.click()
+                
+#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+    # Pause/Resume the stream, unless explicitly specified to stop or not       
+    def toggle_rec(self,stop = None):
+        if not stop is None:
+            self.playing = stop
+            
+        if self.playing:
+            self.rec.stream_stop()
+            self.togglebtn.setText('Resume')
+            self.recordbtn.setDisabled(True)
+        else:
+            self.rec.stream_start()
+            self.togglebtn.setText('Pause')
+            self.recordbtn.setEnabled(True)
+        self.playing = not self.playing
+        # Clear the status, allow it to auto update itself
+        self.statusbar.clearMessage()
+   
+    # Get the current instantaneous plot and transfer to main window     
+    def get_snapshot(self):
+        snapshot = self.rec.get_buffer()
+        self.save_data(data = snapshot[:,0])
+        self.statusbar.showMessage('Snapshot Captured!', 1500)
+        
+#----------------------PLOT WIDGETS-----------------------------------        
+    # Updates the plots    
+    def update_line(self):
+        data = self.rec.get_buffer()
+        window = np.hanning(data.shape[0])
+        weightage = np.exp(2* self.timedata / self.timedata[-1])
+        for i in range(data.shape[1]):
+            plotdata = data[:,i].reshape((len(data[:,i]),)) + 1*i
+            
+            fft_data = np.fft.rfft(plotdata* window * weightage)
+            psd_data = abs(fft_data)  + 1e2 * i
+            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
+            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
+    
+#----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
         if type(self.rec) is mR.Recorder:
@@ -269,7 +402,7 @@ class LiveplotApp(QMainWindow):
             cbox.setText(str(i))
     
     def display_sources(self):
-        # TODO: make use of the button input in callback
+        # TODO: make use of the button input in callback?
         rb = self.typegroup.findChildren(QRadioButton)
         if not NI_drivers and rb[1].isChecked():
             print("You don't seem to have National Instrument drivers/modules")
@@ -285,12 +418,137 @@ class LiveplotApp(QMainWindow):
         
         source_box = self.configboxes[0]
         source_box.clear()
-        source_box.addItems(selR.available_devices()[0])
+        
+        try:
+            full_device_name = []
+            s,b =  selR.available_devices()
+            for a,b in zip(s,b):
+                if type(b) is str:
+                    full_device_name.append(a + ' - ' + b)
+                else:
+                    full_device_name.append(a)
+                    
+            source_box.addItems(full_device_name)
+        except Exception as e:
+            print(e)
+            source_box.addItems(selR.available_devices()[0])
+            
         if self.rec.device_name:
             source_box.setCurrentText(self.rec.device_name)
-        
         del selR
-         
+                
+    def read_device_config(self, *arg):
+        recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
+        configs = []
+        for cbox in self.configboxes:
+            if type(cbox) is QComboBox:
+                #configs.append(cbox.currentText())
+                configs.append(cbox.currentIndex())
+            else:
+                #notnumRegex = re.compile(r'(\D)+')
+                config_input = cbox.text().strip(' ')
+                configs.append(int(float(config_input)))
+                    
+        print(recType,configs)
+        return(recType, configs)
+    
+#---------------------------RECORDING WIDGET-------------------------------    
+    # Start the data recording        
+    def start_recording(self):
+        rec_configs = self.read_record_config()
+        
+        if rec_configs[2]>0:
+            # Set up the trigger
+            if self.rec.trigger_start(duration = rec_configs[1],
+                                      pretrig = rec_configs[2],
+                                      channel = rec_configs[3],
+                                      threshold = rec_configs[4]):
+                self.statusbar.showMessage('Trigger Set!')
+                for btn in self.main_widget.findChildren(QPushButton):
+                    btn.setDisabled(True)
+        else:
+            self.rec.record_init(samples = rec_configs[0], duration = rec_configs[1])
+            # Start the recording immediately
+            if self.rec.record_start():
+                self.statusbar.showMessage('Recording...')
+                # Disable buttons
+                for btn in [self.togglebtn, self.config_button, self.recordbtn]:
+                    btn.setDisabled(True)
+                
+        self.cancelbtn.setEnabled(True)
+    
+    # Stop the data recording and transfer the recorded data to main window    
+    def stop_recording(self):
+        #self.rec.recording = False
+        for btn in self.main_widget.findChildren(QPushButton):
+            btn.setEnabled(True)
+        self.cancelbtn.setDisabled(True)
+        self.save_data(self.rec.flush_record_data()[:,0])
+        self.statusbar.clearMessage()
+    
+    # Cancel the data recording
+    def cancel_recording(self):
+        self.rec.record_cancel()
+        for btn in self.main_widget.findChildren(QPushButton):
+            btn.setEnabled(True)
+        self.cancelbtn.setDisabled(True)
+        self.statusbar.clearMessage()
+        
+    # Read the recording setting inputs
+    def read_record_config(self, *arg):
+        try:
+            rec_configs = []
+            data_type = [int,float,int,int,float]
+            for cbox,dt in zip(self.rec_boxes,data_type):
+                if type(cbox) is QComboBox:
+                    #configs.append(cbox.currentText())
+                    rec_configs.append(cbox.currentIndex())
+                else:
+                    config_input = cbox.text().strip(' ')
+                    rec_configs.append(dt(float(config_input)))
+            print(rec_configs)
+            return(rec_configs)
+        
+        except Exception as e:
+            print(e)
+            return False
+    
+    # Auto set the time and samples based on recording limitations    
+    def autoset_record_config(self, setting):
+        sample_validator = self.rec_boxes[0].validator()
+        time_validator = self.rec_boxes[1].validator()
+        
+        if setting == "Time":
+            valid = time_validator.validate(self.rec_boxes[1].text(),0)[0]
+            if not valid == QValidator.Acceptable:
+                self.rec_boxes[1].setText(str(time_validator.bottom()))
+                
+            samples = int(float(self.rec_boxes[1].text())*self.rec.rate)
+            valid = sample_validator.validate(str(samples),0)[0]
+            if not valid == QValidator.Acceptable:
+                samples = sample_validator.top()
+        elif setting == 'Samples':
+            samples = int(self.rec_boxes[0].text())        
+        
+        samples = samples//self.rec.chunk_size  *self.rec.chunk_size
+        duration = samples/self.rec.rate
+        self.rec_boxes[0].setText(str(samples))
+        self.rec_boxes[1].setText(str(duration))
+
+#-------------------------STATUS BAR WIDGET--------------------------------
+    # Set the status message to the default messages if it is empty (ie when cleared)       
+    def default_status(self,*arg):
+        if not arg[0]:
+            if self.playing:
+                self.statusbar.showMessage('Streaming')
+            else:
+                self.statusbar.showMessage('Stream Paused')
+        
+#+++++++++++++++++++++++++ UI CALLBACKS END++++++++++++++++++++++++++++++++++++   
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
+
+#++++++++++++++++++++++++++ OTHER METHODS +++++++++++++++++++++++++++++++++++++        
+#----------------------- APP ADJUSTMENTS METHODS-------------------------------               
     # Center the window
     def center(self):
         pr = self.parent.frameGeometry()
@@ -301,7 +559,7 @@ class LiveplotApp(QMainWindow):
         self.move(pr.topLeft())
         self.move(qr.left() - qr.width(),qr.top())
         
-    #---------------- Reset Methods-----------------------------------    
+#--------------------------- RESET METHODS-------------------------------------    
     def ResetRecording(self):
         self.statusbar.showMessage('Resetting...')
         
@@ -313,13 +571,14 @@ class LiveplotApp(QMainWindow):
                 
         try:    
             # Get Input from the Acquisition settings UI
-            Rtype, settings = self.config_status()
-            
+            Rtype, settings = self.read_device_config()
             # Delete and reinitialise the recording object
             if Rtype[0]:
-                self.rec = mR.Recorder(device_name = settings[0])
+                self.rec = mR.Recorder()
             elif Rtype[1]:
-                self.rec = NIR.Recorder(device_name = settings[0])
+                self.rec = NIR.Recorder()
+            # Set the recorder parameters
+            self.rec.set_device_by_name(self.rec.available_devices()[0][settings[0]])
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
             self.rec.chunk_size = settings[3]
@@ -329,37 +588,41 @@ class LiveplotApp(QMainWindow):
             print('Cannot set up new recorder')
         
         try:
-        # Open the stream, plot and update
-            self.rec.stream_init(playback = PLAYBACK)
-            self.toggle_rec()
+            # Open the stream, plot and update
+            self.init_and_check_stream()
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
             self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
-        except Exception as e:
-            print(e)
+        except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot stream,restart the app')
-            
+        
         try:
+            # Reset recording configuration Validators and inputs checks
+            self.ResetRecConfigs()
+            self.autoset_record_config('Samples')
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            print('Cannot recording configs')
+        
+        try:
+            # Reset and change channel toggles
             self.ResetChanBtns()
-        except Exception as e:
-            print(e)
+        except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot reset buttons')
-            
-        self.statusbar.clearMessage()
-    
-    def ResetXdata(self):
-        data = self.rec.get_buffer()
-        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
-        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
-    
+        
+        self.connect_rec_signals()
+        
     def ResetPlots(self):
         try:
             n_plotlines = len(self.plotlines)
@@ -382,7 +645,12 @@ class LiveplotApp(QMainWindow):
         except Exception as e:
             print(e)
             print('Cannot reset plots')
-            
+    
+    def ResetXdata(self):
+        data = self.rec.get_buffer()
+        self.timedata = np.arange(data.shape[0]) /self.rec.rate 
+        self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+        
     def ResetChanBtns(self):
         for btn in self.chan_btn_group.buttons():
             btn.setCheckState(Qt.Checked)
@@ -410,65 +678,17 @@ class LiveplotApp(QMainWindow):
                     self.checkbox_layout.removeWidget(chan_btn)
                     self.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
-                
-        
-    #------------- UI callback methods--------------------------------
-    # Pause/Resume the stream       
-    def toggle_rec(self):
-        if self.playing:
-            self.rec.stream_stop()
-            self.togglebtn.setText('Resume')
-            self.recordbtn.setDisabled(True)
-        else:
-            self.rec.stream_start()
-            self.togglebtn.setText('Pause')
-            self.recordbtn.setEnabled(True)
-        self.playing = not self.playing
-        # Clear the status, allow it to auto update itself
-        self.statusbar.clearMessage()
-    
-    # Updates the plots    
-    def update_line(self):
-        data = self.rec.get_buffer()
-        window = np.hanning(data.shape[0])
-        weightage = np.exp(2* self.timedata / self.timedata[-1])
-        for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),)) + 1*i
-            
-            fft_data = np.fft.rfft(plotdata)
-            psd_data = abs(fft_data)**2  + 1e2 * i
-            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
-            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
-    
-    
-    # Get the current instantaneous plot and transfer to main window     
-    def get_snapshot(self):
-        snapshot = self.rec.get_buffer()
-        self.save_data(data = snapshot[:,0])
-        self.statusbar.showMessage('Snapshot Captured!', 1500)
-    
-    # Start the data recording        
-    def start_recording(self):
-        self.statusbar.showMessage('Recording...')
-        # Disable buttons
-        for btn in self.main_widget.findChildren(QPushButton):
-            btn.setDisabled(True)
-        # Start the recording
-        self.rec.recording = True
-        # Setup the timer to stop the recording
-        rec_timer = QTimer(self)
-        rec_timer.setSingleShot(True)
-        rec_timer.timeout.connect(self.stop_recording)
-        rec_timer.start(3000)
-    
-    # Stop the data recording and transfer the recorded data to main window    
-    def stop_recording(self):
-        self.rec.recording = False
-        for btn in self.main_widget.findChildren(QPushButton):
-            btn.setEnabled(True)
-        self.save_data(self.rec.flush_record_data()[:,0])
-        self.statusbar.clearMessage()
-    
+                    
+    def ResetRecConfigs(self):
+           validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
+                         QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                         QIntValidator(-1,self.rec.chunk_size),
+                         QIntValidator(0,self.rec.channels-1)]
+           
+           for cbox,vd in zip(self.rec_boxes[:-1],validators):
+                cbox.setValidator(vd)    
+   
+#----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
@@ -480,53 +700,26 @@ class LiveplotApp(QMainWindow):
         
         self.dataSaved.emit()        
         print('Data saved!')
+
+#-------------------------- STREAM METHODS ------------------------------------        
+    def init_and_check_stream(self):
+         if self.rec.stream_init(playback = PLAYBACK):
+            self.togglebtn.setEnabled(True)
+            self.toggle_rec(stop = False)
+            self.statusbar.showMessage('Streaming')
+         else:
+            self.togglebtn.setDisabled(True)
+            self.toggle_rec(stop = True)
+            self.statusbar.showMessage('Stream not initialised!')
+            
+    def connect_rec_signals(self):
+            self.rec.rEmitter.recorddone.connect(self.stop_recording)
+            self.rec.rEmitter.triggered.connect(self.trigger_message)
+            
+    def trigger_message(self):
+        self.statusbar.showMessage('Triggered! Recording...')
         
-    
-    # Set the status message to the default messages if it is empty       
-    def default_status(self,*arg):
-        if not arg[0]:
-            if self.playing:
-                self.statusbar.showMessage('Streaming')
-            else:
-                self.statusbar.showMessage('Stream Paused')
-                
-    def config_status(self, *arg):
-        recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
-        configs = []
-        for cbox in self.configboxes:
-            if type(cbox) is QComboBox:
-                configs.append(cbox.currentText())
-            else:
-                #notnumRegex = re.compile(r'(\D)+')
-                config_input = cbox.text().strip(' ')
-                configs.append(int(float(config_input)))
-                    
-        print(recType,configs)
-        return(recType, configs)
-    
-    def display_channel_plots(self, *args):
-        for btn in args:
-            #print(btn)
-            #print(self.channels_box.findChildren(QCheckBox))
-            #print(self.chan_btn_group.id(btn))
-            #print(btn.isChecked())
-            chan_num = self.chan_btn_group.id(btn)
-            if btn.isChecked():
-                self.plotlines[2*chan_num].setPen('g')
-                self.plotlines[2*chan_num+1].setPen('y')
-            else:
-                self.plotlines[2*chan_num].setPen(None)
-                self.plotlines[2*chan_num+1].setPen(None)
-                
-    def invert_checkboxes(self):
-        for btn in self.channels_box.findChildren(QCheckBox):
-            btn.click()
-         
-    def toggle_all_checkboxes(self,state):
-        for btn in self.channels_box.findChildren(QCheckBox):
-            if not btn.checkState() == state:
-                btn.click()
-    #----------------Overrding methods------------------------------------
+#----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
         self.rec.close()
@@ -535,4 +728,4 @@ class LiveplotApp(QMainWindow):
             self.parent.liveplot = None
             self.parent.liveplotbtn.setText('Open Oscilloscope')
             
- 
+           

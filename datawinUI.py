@@ -129,15 +129,6 @@ class DataWindow(QMainWindow):
         y = self.cs.chans[0].data('y')
         # Plot data
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='b')
-        try:    
-            exporter = pg.exporters.MatplotlibExporter(self.data_tabs.currentWidget().canvasplot)
-            exporter.export('testingmpl')
-        except Exception as e:
-            print(e)
-            t,v,tb = sys.exc_info()
-            print(t)
-            print(v)
-            print(traceback.format_tb(tb))
                 
         
     def plot_sonogram(self):

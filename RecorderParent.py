@@ -40,6 +40,13 @@ from abc import ABCMeta
 import numpy as np
 import copy as cp
 
+try:
+    from RecEmitter import RecEmitter
+    QT_EMITTER = True
+except Exception as e:
+    print(e)
+    QT_EMITTER = False
+
 class RecorderParent(object):
     __metaclass__ = ABCMeta
 #---------------- INITIALISATION METHODS -----------------------------------    
@@ -52,9 +59,21 @@ class RecorderParent(object):
         self.audio_stream = None
         
         self.allocate_buffer()
+        self.show_stream_settings()
+        
+        self.trigger_init()
+        
+        # For pyQt implementations
+        if QT_EMITTER:
+            self.rEmitter = RecEmitter()
+        else:
+            self.rEmitter = None
         
     def open_recorder(self):
         self.recording = False
+        self.initialised_record = False
+        self.next_rec_chunk = 0
+        self.total_rec_chunk = 0
         self.recorded_data = []
         
         # Set up the buffer         
@@ -71,7 +90,17 @@ class RecorderParent(object):
     # Close the audio object, to be called if streaming is no longer needed        
     def close(self):
         self.stream_close()
-    
+ 
+#---------------- DESTRUCTOR METHODS -----------------------------------     
+    def show_stream_settings(self):
+        print('Channels: %i' % self.channels)
+        print('Rate: %i' % self.rate)
+        print('Chunk size: %i' % self.chunk_size)
+        print('Number of chunks: %i' % self.num_chunk)
+        
+    def set_filename(self,filename):
+        self.filename = filename
+
     def set_device_by_name(self, name):
         pass
         
@@ -81,38 +110,105 @@ class RecorderParent(object):
     def current_device_info(self):
         pass
     
-    def set_filename(self,filename):
-        self.filename = filename
-        
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return data.reshape((-1,self.channels))
+        return data.reshape((-1,self.channels))/ 2**15
     
 #---------------- BUFFER METHODS -----------------------------------
     # Write the data obtained into buffer and move to the next chunk   
     def write_buffer(self,data):
-        self.buffer[self.next_chunk,:,:] = self.audiodata_to_array(data)
+        self.buffer[self.next_chunk,:,:] = data
         self.next_chunk = (self.next_chunk + 1) % self.num_chunk
     
     # Return the buffer data as a 2D array by stitching the chunks together  
     def get_buffer(self):
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
-                           self.buffer.shape[2])) / 2**15
+                           self.buffer.shape[2]))
         
 #---------------- RECORDING METHODS -----------------------------------
+    def record_init(self,samples = None,duration = 3):
+        if samples:
+            self.total_rec_chunk = samples // self.chunk_size
+        else:
+            # Calculate the number of recording chunks
+            self.total_rec_chunk = (duration * self.rate // self.chunk_size)
+            
+        self.next_rec_chunk = 0
+        
+        self.initialised_record = True
+        
+        print('Recording function is ready! Use record_start() to start')
+    # Function to check before recording
+    def _record_check(self):
+        if not self.audio_stream:
+            print('No recording stream initiated!')
+            return False
+        
+        # Check if the previous recorded data is flushed
+        if self.recorded_data:
+            print('Please flush your recorded data')
+            return False
+        
+        return True
+
+    # Function to initiate a normal recording
+    def record_start(self):
+        if not self._record_check():
+            return False
+                       
+        # Start the recording
+        if self.initialised_record: 
+            self.stream_start()
+            self.recording = True
+            print('Recording Start!')
+            return True
+        else:
+            print('Record not initialised! Use record_init(duration) first!')
+            return False
+        
+    
+     # TODO: Add a function to end a normal recording, (internal only)
+    def _record_stop(self):
+        # Stop the recording
+        self.recording = False
+        # Give a signal that recording is done
+        print('Recording Done! Please flush the data with flush_record_data().')
+        if self.rEmitter:
+            print('beep')
+            self.rEmitter.recorddone.emit()
+            
+    def record_cancel(self):
+        print('Recording Cancel! Recorded data has been discarded!')
+        self.trigger = False
+        self.recording = False
+        self.recorded_data = []
+    
     # Append the current chunk(which is before next_chunk) to recorded data            
     def record_data(self):
         data = cp.copy(self.buffer[self.next_chunk-1])
         self.recorded_data.append(data)
+        # Check to see whether recording is done
+        self.next_rec_chunk += 1
+        if self.next_rec_chunk == self.total_rec_chunk:
+            self._record_stop()
         
     # Return the recorded data as 2D numpy array (similar to get_buffer)    
     def flush_record_data(self):
-        flushed_data = np.array(self.recorded_data)
-        self.recorded_data = []
-        return flushed_data.reshape((flushed_data.shape[0] * flushed_data.shape[1],
-                           flushed_data.shape[2])) / 2**15
+        if self.recorded_data:
+            data =  np.array(self.recorded_data);
+            flushed_data = data.reshape((data.shape[0] * data.shape[1],
+                           data.shape[2]))
+            self.recorded_data = []
+            print(flushed_data)
+            print(self.pretrig_data)
+            if self.pretrig_data.shape[0]:
+                flushed_data = np.vstack((self.pretrig_data,flushed_data))
+            
+            print(flushed_data)
+            return flushed_data               
+                            
 
 #---------------- STREAMING METHODS -----------------------------------                                     
     def stream_init(self, playback = False):
@@ -128,7 +224,14 @@ class RecorderParent(object):
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         pass
-
+#---------------- TRIGGER METHODS -----------------------------------
+    def trigger_init(self):
+        self.trigger = False
+        self.trigger_threshold = 0
+        self.trigger_channel = 0
+        self.ref_level = 0.08
+        self.pretrig_samples = 200
+        self.pretrig_data = np.array([])
 #----------------- DECORATOR METHODS --------------------------------------
     @property
     def num_chunk(self):
@@ -146,6 +249,7 @@ class RecorderParent(object):
             #print(e)
             self._num_chunks = n
         
+        
     @property
     def chunk_size(self):
         return self._chunk_size
@@ -161,6 +265,7 @@ class RecorderParent(object):
         except Exception as e:
             #print(e)
             self._chunk_size = n
+
             
                                   
  
