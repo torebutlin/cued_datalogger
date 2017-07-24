@@ -129,6 +129,7 @@ class RecorderParent(object):
         
 #---------------- RECORDING METHODS -----------------------------------
     def record_init(self,samples = None,duration = 3):
+        self.pretrig_data = np.array([])
         if samples:
             self.total_rec_chunk = samples // self.chunk_size
         else:

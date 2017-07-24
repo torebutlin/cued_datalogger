@@ -31,6 +31,8 @@ from channel import DataSet, Channel, ChannelSet
 # GLOBAL CONSTANTS
 PLAYBACK = False
 MAX_SAMPLE = 1e6
+WIDTH = 900
+HEIGHT = 500
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
@@ -44,7 +46,7 @@ class LiveplotApp(QMainWindow):
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,300,500,600)
+        self.setGeometry(500,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
         
         # Set recorder object
@@ -85,14 +87,26 @@ class LiveplotApp(QMainWindow):
     def initUI(self):
         # Set up the main widget        
         self.main_widget = QWidget(self)
-        main_layout = QVBoxLayout(self.main_widget)
+        main_layout = QHBoxLayout(self.main_widget)
+        main_splitter = QSplitter(self.main_widget,orientation = Qt.Horizontal)
+        main_layout.addWidget(main_splitter)
         
-    #---------------------CHANNEL TOGGLE UI----------------------------------        
+    #-------------------- ALL SPLITTER ------------------------------
+        left_splitter = QSplitter(main_splitter,orientation = Qt.Vertical)
+        mid_splitter = QSplitter(main_splitter,orientation = Qt.Vertical)
+        right_splitter = QSplitter(main_splitter,orientation = Qt.Vertical)
+        
+        main_splitter.addWidget(left_splitter)
+        main_splitter.addWidget(mid_splitter)
+        main_splitter.addWidget(right_splitter)
+        
+    #---------------------CHANNEL TOGGLE UI----------------------------------
+        chanUI = QWidget(left_splitter)        
         # Set up the channel tickboxes widget
-        chans_settings_layout = QHBoxLayout()
+        chans_settings_layout = QVBoxLayout(chanUI)
         
         # Make the button tickboxes scrollable
-        scroll = QScrollArea(self.main_widget)
+        scroll = QScrollArea(left_splitter)
         
         self.channels_box = QWidget(scroll)
         self.checkbox_layout = QGridLayout(self.channels_box)
@@ -111,76 +125,22 @@ class LiveplotApp(QMainWindow):
       
         # Set up the selection toggle buttons
         sel_btn_layout = QVBoxLayout()    
-        sel_all_btn = QPushButton('Select All', self.main_widget)
+        sel_all_btn = QPushButton('Select All', left_splitter)
         sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        desel_all_btn = QPushButton('Deselect All',self.main_widget)
+        desel_all_btn = QPushButton('Deselect All',left_splitter)
         desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        inv_sel_btn = QPushButton('Invert Selection',self.main_widget)
+        inv_sel_btn = QPushButton('Invert Selection',left_splitter)
         inv_sel_btn.clicked.connect(self.invert_checkboxes)
         for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
             btn.resize(btn.sizeHint())
             sel_btn_layout.addWidget(btn)
             
         chans_settings_layout.addLayout(sel_btn_layout)
-        
-        main_layout.addLayout(chans_settings_layout,10)
-        
-    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
-        # Set up the button layout to display horizontally
-        btn_layout = QHBoxLayout()
-        # Put the buttons in
-        self.togglebtn = QPushButton('Pause',self.main_widget)
-        self.togglebtn.resize(self.togglebtn.sizeHint())
-        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
-        btn_layout.addWidget(self.togglebtn)
-        self.sshotbtn = QPushButton('Get Snapshot',self.main_widget)
-        self.sshotbtn.resize(self.sshotbtn.sizeHint())
-        self.sshotbtn.pressed.connect(self.get_snapshot)
-        btn_layout.addWidget(self.sshotbtn)
-
-        main_layout.addLayout(btn_layout)
-
-    #---------------------SPLITTER WIDGET------------------------------------
-        # Set up the splitter
-        main_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-        main_splitter.setOpaqueResize(opaque = False)
-        main_layout.addWidget(main_splitter,90)
-        
-    #----------------------PLOT WIDGETS------------------------------------        
-        self.plotlines = []
-        # Set up time domain plot, add to splitter
-        self.timeplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
-        self.timeplot = self.timeplotcanvas.getPlotItem()
-        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setMouseEnabled(x=False,y = True)
-        
-        # Set up FFT plot, add to splitter
-        self.fftplotcanvas = pg.PlotWidget(main_splitter, background = 'default')
-        self.fftplot = self.fftplotcanvas.getPlotItem()
-        self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
-        self.fftplot.disableAutoRange(axis=None)
-        
-        self.ResetPlots()
-        main_splitter.addWidget(self.timeplotcanvas)
-        main_splitter.addWidget(self.fftplotcanvas)
-
-    #-----------------------REMAINING UIs-------------------------------
-        acqUI  = QWidget(main_splitter)        
-        acqUI_layout = QVBoxLayout(acqUI)
-       
-    #-------------- DEVICE + RECORDING SETTINGS--------------------------
-        scroll = QScrollArea(self.main_widget)        
-        settingsUI = QWidget(self.main_widget)
-        settings_layout = QHBoxLayout(settingsUI)
-        
-        scroll.setWidget(settingsUI)
-        scroll.setWidgetResizable(True)
-        
-        acqUI_layout.addWidget(scroll)
+        #main_layout.addLayout(chans_settings_layout,10)
+        left_splitter.addWidget(chanUI)
         
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
-        configUI = QWidget(settingsUI)
+        configUI = QWidget(left_splitter)
         
         # Set the device settings form
         config_form = QFormLayout(configUI)
@@ -226,10 +186,37 @@ class LiveplotApp(QMainWindow):
         self.config_button.clicked.connect(self.ResetRecording)
         config_form.addRow(self.config_button)
         
-        settings_layout.addWidget(configUI, stretch = 2)
+        left_splitter.addWidget(configUI)
         
+    #----------------------PLOT WIDGETS------------------------------------        
+        self.plotlines = []
+        # Set up time domain plot, add to splitter
+        self.timeplotcanvas = pg.PlotWidget(mid_splitter, background = 'default')
+        self.timeplot = self.timeplotcanvas.getPlotItem()
+        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
+        self.timeplot.disableAutoRange(axis=None)
+        self.timeplot.setMouseEnabled(x=False,y = True)
+        
+        # Set up FFT plot, add to splitter
+        self.fftplotcanvas = pg.PlotWidget(mid_splitter, background = 'default')
+        self.fftplot = self.fftplotcanvas.getPlotItem()
+        self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
+        self.fftplot.disableAutoRange(axis=None)
+        
+        self.ResetPlots()
+        mid_splitter.addWidget(self.timeplotcanvas)
+        mid_splitter.addWidget(self.fftplotcanvas)
+        
+     #-------------------------STATUS BAR WIDGET--------------------------------
+        # Set up the status bar
+        self.statusbar = QStatusBar(mid_splitter)
+        self.statusbar.showMessage('Streaming')
+        self.statusbar.messageChanged.connect(self.default_status)
+        self.statusbar.clearMessage()
+        mid_splitter.addWidget(self.statusbar)    
+
     #---------------------------RECORDING WIDGET-------------------------------
-        RecUI = QWidget(main_splitter)
+        RecUI = QWidget(right_splitter)
         
         rec_settings_layout = QFormLayout(RecUI)
         
@@ -272,22 +259,36 @@ class LiveplotApp(QMainWindow):
         
         rec_settings_layout.addRow(rec_buttons_layout)
         
-        settings_layout.addWidget(RecUI, stretch = 1)
+        right_splitter.addWidget(RecUI)
         
-    #-------------------------STATUS BAR WIDGET--------------------------------
-        # Set up the status bar
-        self.statusbar = QStatusBar(acqUI)
-        self.statusbar.showMessage('Streaming')
-        self.statusbar.messageChanged.connect(self.default_status)
-        self.statusbar.clearMessage()
-        acqUI_layout.addWidget(self.statusbar)
+    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+        freeze_btns = QWidget(right_splitter)
+        # Set up the button layout to display horizontally
+        btn_layout = QHBoxLayout(freeze_btns)
+        # Put the buttons in
+        self.togglebtn = QPushButton('Pause',right_splitter)
+        self.togglebtn.resize(self.togglebtn.sizeHint())
+        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
+        btn_layout.addWidget(self.togglebtn)
+        self.sshotbtn = QPushButton('Get Snapshot',right_splitter)
+        self.sshotbtn.resize(self.sshotbtn.sizeHint())
+        self.sshotbtn.pressed.connect(self.get_snapshot)
+        btn_layout.addWidget(self.sshotbtn)
 
-    #------------------------FINALISE THE SPLITTER-----------------------------
-        main_splitter.addWidget(acqUI)
+        right_splitter.addWidget(freeze_btns)
         
-        main_splitter.setStretchFactor(0, 10)
-        main_splitter.setStretchFactor(1, 10)
+    #------------------------FINALISE THE SPLITTERS-----------------------------
+        #main_splitter.addWidget(acqUI)
+        
+        main_splitter.setSizes([WIDTH*0.1,WIDTH*0.8,WIDTH*0.1])        
+        main_splitter.setStretchFactor(0, 0)
+        main_splitter.setStretchFactor(1, 1)
         main_splitter.setStretchFactor(2, 0)
+        
+        
+        #left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
+        mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
+        right_splitter.setSizes([HEIGHT*0.95,HEIGHT*0.05])
         
     #-----------------------EXPERIMENTAL STYLING---------------------------- 
         main_splitter.setFrameShape(QFrame.Panel)
@@ -302,7 +303,7 @@ class LiveplotApp(QMainWindow):
             margin-bottom: 2px;
             border-radius: 4px;
         }
-        .QSplitter::handle:vertical{
+        .QSplitter::handle{
                 background: solid green;
         }                   ''')
         
@@ -319,8 +320,8 @@ class LiveplotApp(QMainWindow):
         self.show()
         
     #---------------------------UI ADJUSTMENTS----------------------------
-        h = 600 - chans_settings_layout.geometry().height()
-        main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
+        #h = 600 - chans_settings_layout.geometry().height()
+        #main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
         
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
