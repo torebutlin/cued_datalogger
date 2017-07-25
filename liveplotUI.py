@@ -207,13 +207,34 @@ class LiveplotApp(QMainWindow):
         mid_splitter.addWidget(self.timeplotcanvas)
         mid_splitter.addWidget(self.fftplotcanvas)
         
+    #-------------------------STATUS+PAUSE+SNAPSHOT----------------------------
+        stps = QWidget(mid_splitter)
+        stps_layout = QHBoxLayout(stps)
+        
      #-------------------------STATUS BAR WIDGET--------------------------------
         # Set up the status bar
-        self.statusbar = QStatusBar(mid_splitter)
+        self.statusbar = QStatusBar(stps)
         self.statusbar.showMessage('Streaming')
         self.statusbar.messageChanged.connect(self.default_status)
         self.statusbar.clearMessage()
-        mid_splitter.addWidget(self.statusbar)    
+        stps_layout.addWidget(self.statusbar)
+        
+    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+        #freeze_btns = QWidget(stps)
+        # Set up the button layout to display horizontally
+        #btn_layout = QHBoxLayout(freeze_btns)
+        # Put the buttons in
+        self.togglebtn = QPushButton('Pause',stps)
+        self.togglebtn.resize(self.togglebtn.sizeHint())
+        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
+        stps_layout.addWidget(self.togglebtn)
+        self.sshotbtn = QPushButton('Get Snapshot',stps)
+        self.sshotbtn.resize(self.sshotbtn.sizeHint())
+        self.sshotbtn.pressed.connect(self.get_snapshot)
+        stps_layout.addWidget(self.sshotbtn)
+
+        mid_splitter.addWidget(stps)
+        
 
     #---------------------------RECORDING WIDGET-------------------------------
         RecUI = QWidget(right_splitter)
@@ -261,22 +282,7 @@ class LiveplotApp(QMainWindow):
         
         right_splitter.addWidget(RecUI)
         
-    #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
-        freeze_btns = QWidget(right_splitter)
-        # Set up the button layout to display horizontally
-        btn_layout = QHBoxLayout(freeze_btns)
-        # Put the buttons in
-        self.togglebtn = QPushButton('Pause',right_splitter)
-        self.togglebtn.resize(self.togglebtn.sizeHint())
-        self.togglebtn.pressed.connect(lambda: self.toggle_rec())
-        btn_layout.addWidget(self.togglebtn)
-        self.sshotbtn = QPushButton('Get Snapshot',right_splitter)
-        self.sshotbtn.resize(self.sshotbtn.sizeHint())
-        self.sshotbtn.pressed.connect(self.get_snapshot)
-        btn_layout.addWidget(self.sshotbtn)
-
-        right_splitter.addWidget(freeze_btns)
-        
+   
     #------------------------FINALISE THE SPLITTERS-----------------------------
         #main_splitter.addWidget(acqUI)
         
@@ -380,12 +386,12 @@ class LiveplotApp(QMainWindow):
         window = np.hanning(data.shape[0])
         weightage = np.exp(2* self.timedata / self.timedata[-1])
         for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),)) + 1*i
+            plotdata = data[:,i].reshape((len(data[:,i]),))
             
             fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data)  + 1e2 * i
-            self.plotlines[2*i].setData(x = self.timedata, y = plotdata)
-            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5)
+            psd_data = abs(fft_data) 
+            self.plotlines[2*i].setData(x = self.timedata, y = plotdata + 1*i)
+            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5  + 1e2 * i)
     
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
