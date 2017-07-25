@@ -130,13 +130,13 @@ class Recorder(RecorderParent):
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
         self.rEmitter.newdata.emit()
-        
-        # Add trigger check
+       
+        if self.recording:
+            self.record_data()
+         # Add trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
         
-        if self.recording:
-            self.record_data()
         return 0
     
     # TODO: Check for valid device, channels and all that before initialisation #DAQmx_Val_Cfg_Default

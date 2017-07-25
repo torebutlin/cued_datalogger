@@ -130,8 +130,11 @@ class RecorderParent(object):
 #---------------- RECORDING METHODS -----------------------------------
     def record_init(self,samples = None,duration = 3):
         self.pretrig_data = np.array([])
+        self.part_posttrig_data = np.array([])
         if samples:
-            self.total_rec_chunk = samples // self.chunk_size
+            self.actual_rec_samples = samples
+            self.total_rec_chunk = (samples // self.chunk_size)+1
+            self.rec_samples = self.total_rec_chunk * self.chunk_size
         else:
             # Calculate the number of recording chunks
             self.total_rec_chunk = (duration * self.rate // self.chunk_size)
@@ -199,15 +202,21 @@ class RecorderParent(object):
     def flush_record_data(self):
         if self.recorded_data:
             data =  np.array(self.recorded_data);
-            flushed_data = data.reshape((data.shape[0] * data.shape[1],
-                           data.shape[2]))
+            data_array = data.reshape((self.rec_samples,self.channels))
+            if self.part_posttrig_data.shape[0]:
+                print('part post')
+                flushed_data = np.vstack((self.part_posttrig_data,data_array))
+            
+            print(flushed_data.shape)
+            print(flushed_data[0,:])
+            flushed_data = flushed_data[:self.actual_rec_samples,:]
+
             self.recorded_data = []
-            print(flushed_data)
-            print(self.pretrig_data)
+            print(flushed_data.shape)
             if self.pretrig_data.shape[0]:
                 flushed_data = np.vstack((self.pretrig_data,flushed_data))
-            
-            print(flushed_data)
+            print(flushed_data.shape)
+            #print(flushed_data)
             return flushed_data               
                             
 
@@ -233,8 +242,9 @@ class RecorderParent(object):
         self.ref_level = 0.08
         self.pretrig_samples = 200
         self.pretrig_data = np.array([])
+        self.part_posttrig_data = np.array([])
         
-    def trigger_start(self,duration = 3, threshold = 0.09, channel = 0,pretrig = 200):
+    def trigger_start(self,duration = 3, threshold = 0.09, channel = 0,pretrig = 200,posttrig = 5000):
         if self.recording:
             print('You are current recording. Please finish the recording before starting the trigger.')
             return False
@@ -242,7 +252,7 @@ class RecorderParent(object):
         if not self.trigger:
             if not self._record_check():
                 return False
-            self.record_init(duration = duration)
+            self.record_init(samples = posttrig)
             self.trigger = True
             self.trigger_threshold = threshold
             self.trigger_channel = channel
@@ -256,19 +266,28 @@ class RecorderParent(object):
             return False
 
     def _trigger_check_threshold(self,data):
+        norm_data = abs(data[:,self.trigger_channel])#- self.ref_level
+        
         #Calculate RMS of chunk
-        norm_data = data[:,self.trigger_channel]
+        maximum = np.amax(norm_data)
+        pos = np.argmax(norm_data)
+        print(maximum, pos)
         
-        maximum = np.amax(abs(norm_data))
-        print(maximum, np.argmax(abs(norm_data)))
-        
-        if abs(maximum - self.ref_level) > self.trigger_threshold:
+        if maximum > self.trigger_threshold:
             print('Triggered!')
             self.recording = True
             self.trigger = False
-            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
-                                                    self.chunk_size - self.pretrig_samples:,
-                                                    :])
+            try:
+                #buffer_copy = cp.copy(self.buffer)
+                self.part_posttrig_data =  cp.copy(self.buffer[self.next_chunk-1, pos:,:])
+                #print(self.part_posttrig_data[0,:],self.part_posttrig_data.shape)
+                temp = np.vstack((self.buffer[self.next_chunk-2,:,:],self.buffer[self.next_chunk-1,:pos,:]))
+                #print(temp.shape)
+                self.pretrig_data = temp[temp.shape[0]-self.pretrig_samples:,:]
+                #print(self.pretrig_data.shape)
+            except Exception as e:
+                print(e)
+                print('Cannot get trigger data')
             self.rEmitter.triggered.emit()
             
 #----------------- DECORATOR METHODS --------------------------------------

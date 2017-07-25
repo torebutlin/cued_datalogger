@@ -458,9 +458,10 @@ class LiveplotApp(QMainWindow):
     def start_recording(self):
         rec_configs = self.read_record_config()
         
-        if rec_configs[2]>0:
+        if rec_configs[2]>=0:
             # Set up the trigger
-            if self.rec.trigger_start(duration = rec_configs[1],
+            if self.rec.trigger_start(posttrig = rec_configs[0],
+                                      duration = rec_configs[1],
                                       pretrig = rec_configs[2],
                                       channel = rec_configs[3],
                                       threshold = rec_configs[4]):
@@ -484,7 +485,9 @@ class LiveplotApp(QMainWindow):
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
         self.cancelbtn.setDisabled(True)
-        self.save_data(self.rec.flush_record_data()[:,0])
+        data = self.rec.flush_record_data()
+        print(data[0,:])
+        self.save_data(data[:,0])
         self.statusbar.clearMessage()
     
     # Cancel the data recording
@@ -531,7 +534,7 @@ class LiveplotApp(QMainWindow):
         elif setting == 'Samples':
             samples = int(self.rec_boxes[0].text())        
         
-        samples = samples//self.rec.chunk_size  *self.rec.chunk_size
+        #samples = samples//self.rec.chunk_size  *self.rec.chunk_size
         duration = samples/self.rec.rate
         self.rec_boxes[0].setText(str(samples))
         self.rec_boxes[1].setText(str(duration))

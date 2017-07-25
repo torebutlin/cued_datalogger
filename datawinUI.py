@@ -127,8 +127,12 @@ class DataWindow(QMainWindow):
         self.data_tabs.setCurrentIndex(0)
         t = self.cs.chans[0].data('t')
         y = self.cs.chans[0].data('y')
+        d5y = np.gradient(y) * 1000
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=True, pen='b')
+        self.data_tabs.currentWidget().canvasplot.clear()
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=False, pen='b')
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y, clear=False, pen='y')
+        
                 
         
     def plot_sonogram(self):

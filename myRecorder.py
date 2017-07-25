@@ -111,12 +111,13 @@ class Recorder(RecorderParent):
         self.write_buffer(data_array)
         self.rEmitter.newdata.emit()
         
-        # Trigger check
+        if self.recording:
+            self.record_data()
+            
+         # Trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
             
-        if self.recording:
-            self.record_data()
             
         return(in_data,pyaudio.paContinue)
     
