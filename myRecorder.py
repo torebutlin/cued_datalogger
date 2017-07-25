@@ -109,8 +109,9 @@ class Recorder(RecorderParent):
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
+        self.rEmitter.newdata.emit()
         
-        # TODO: Add trigger check
+        # Trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
             

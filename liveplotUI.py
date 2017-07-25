@@ -313,9 +313,9 @@ class LiveplotApp(QMainWindow):
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
-        self.plottimer = QTimer(self)
-        self.plottimer.timeout.connect(self.update_line)
-        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
+        #self.plottimer = QTimer(self)
+        #self.plottimer.timeout.connect(self.update_line)
+        #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
         
         self.show()
         
@@ -566,7 +566,7 @@ class LiveplotApp(QMainWindow):
         
         # Stop the update and close the stream
         self.playing = False
-        self.plottimer.stop()
+        #self.plottimer.stop()
         self.rec.close()
         del self.rec
                 
@@ -593,7 +593,7 @@ class LiveplotApp(QMainWindow):
             self.init_and_check_stream()
             self.ResetPlots()
             print(self.rec.chunk_size*1000//self.rec.rate + 1)
-            self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
+            #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -649,6 +649,7 @@ class LiveplotApp(QMainWindow):
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
+        print(data.shape)
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
         
@@ -716,6 +717,7 @@ class LiveplotApp(QMainWindow):
     def connect_rec_signals(self):
             self.rec.rEmitter.recorddone.connect(self.stop_recording)
             self.rec.rEmitter.triggered.connect(self.trigger_message)
+            self.rec.rEmitter.newdata.connect(self.update_line)
             
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')

@@ -70,29 +70,42 @@ class Recorder(RecorderParent):
     def current_device_info(self):
         device_info = {}
         info = ('Category', 'Type','Product', 'Number',
-                'Analog Trigger','Analog Input Channels (ai)', 'Analog Output Channels (ao)',
-                'Minimum Rate(Hz)', 'Maximum Rate(Single)(Hz)', 'Maximum Rate(Multi)(Hz)')
+                'Analog Trigger Support','Analog Input Trigger Types','Analog Input Channels (ai)', 'Analog Output Channels (ao)', 
+                'ai Minimum Rate(Hz)', 'ai Maximum Rate(Single)(Hz)', 'ai Maximum Rate(Multi)(Hz)',
+                'Digital Trigger Support','Digital Input Trigger Types','Digital Ports', 'Digital Lines', 'Terminals')
         funcs = (pdaq.DAQmxGetDevProductCategory, pdaq.DAQmxGetDevProductType,
                  pdaq.DAQmxGetDevProductNum, pdaq.DAQmxGetDevSerialNum,
-                 pdaq.DAQmxGetDevAnlgTrigSupported, pdaq.DAQmxGetDevAIPhysicalChans,
-                 pdaq.DAQmxGetDevAOPhysicalChans, pdaq.DAQmxGetDevAIMinRate,
-                 pdaq.DAQmxGetDevAIMaxSingleChanRate, pdaq.DAQmxGetDevAIMaxMultiChanRate)
-        var_types = (pdaq.int32, str, pdaq.uInt32, pdaq.uInt32, pdaq.bool32,
-                    str,str, pdaq.float64, pdaq.float64, pdaq.float64)
+                 pdaq.DAQmxGetDevAnlgTrigSupported,  pdaq.DAQmxGetDevAITrigUsage,
+                 pdaq.DAQmxGetDevAIPhysicalChans,pdaq.DAQmxGetDevAOPhysicalChans, 
+                 pdaq.DAQmxGetDevAIMinRate, pdaq.DAQmxGetDevAIMaxSingleChanRate, pdaq.DAQmxGetDevAIMaxMultiChanRate,
+                 pdaq.DAQmxGetDevDigTrigSupported,pdaq.DAQmxGetDevDITrigUsage,
+                 pdaq.DAQmxGetDevDIPorts,pdaq.DAQmxGetDevDILines,
+                 pdaq.DAQmxGetDevTerminals)
+        var_types = (pdaq.int32, str, pdaq.uInt32, pdaq.uInt32, 
+                     pdaq.bool32,pdaq.int32,str,str, 
+                     pdaq.float64, pdaq.float64, pdaq.float64,
+                     pdaq.bool32,pdaq.int32,str,str,str)
         
         for i,f,v in zip(info,funcs,var_types):
-            if v == str:
-                nBytes = f(self.device_name,None,0)
-                string_ptr = pdaq.create_string_buffer(nBytes)
-                f(self.device_name,string_ptr,nBytes)
-                if 'Channels' in i:
-                    device_info[i] = len(string_ptr.value.decode().split(','))
+            try:
+                if v == str:
+                    nBytes = f(self.device_name,None,0)
+                    string_ptr = pdaq.create_string_buffer(nBytes)
+                    f(self.device_name,string_ptr,nBytes)
+                    if any( x in i for x in ('Channels','Ports')):
+                        device_info[i] = len(string_ptr.value.decode().split(','))
+                    else:
+                        device_info[i] = string_ptr.value.decode()
                 else:
-                    device_info[i] = string_ptr.value.decode()
-            else:
-                data = v()
-                f(self.device_name,data)
-                device_info[i] = data.value
+                    data = v()
+                    f(self.device_name,data)
+                    if 'Types' in i:
+                        device_info[i] = bin(data.value)[2:].zfill(6)
+                    else:
+                        device_info[i] = data.value
+            except Exception as e:
+                print(e)
+                device_info[i] = '-'
                            
         pp.pprint(device_info)
         
@@ -116,8 +129,9 @@ class Recorder(RecorderParent):
         
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
+        self.rEmitter.newdata.emit()
         
-        # TODO: Add trigger check
+        # Add trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
         

@@ -9,3 +9,4 @@ from PyQt5.QtCore import QObject, pyqtSignal
 class RecEmitter(QObject):
     recorddone = pyqtSignal()
     triggered = pyqtSignal()
+    newdata = pyqtSignal()
