@@ -182,7 +182,7 @@ class Recorder(RecorderParent):
         self.trigger_threshold = 0
         self.trigger_channel = 0
         self.ref_rms = 0'''
-    
+    '''
     def trigger_start(self,duration = 3, threshold = 0.09, channel = 0,pretrig = 200):
         if self.recording:
             print('You are current recording. Please finish the recording before starting the trigger.')
@@ -207,6 +207,19 @@ class Recorder(RecorderParent):
     def _trigger_check_threshold(self,data):
         #Calculate RMS of chunk
         norm_data = data[:,self.trigger_channel]
+        
+        maximum = np.amax(abs(norm_data))
+        print(maximum, np.argmax(abs(norm_data)))
+        
+        if abs(maximum - self.ref_level) > self.trigger_threshold:
+            print('Triggered!')
+            self.recording = True
+            self.trigger = False
+            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
+                                                    self.chunk_size - self.pretrig_samples:,
+                                                    :])
+            self.rEmitter.triggered.emit()
+        
         rms = np.sqrt(np.mean(norm_data ** 2))
         print(rms - self.ref_level)
         
@@ -218,7 +231,7 @@ class Recorder(RecorderParent):
                                                     self.chunk_size - self.pretrig_samples:,
                                                     :])
             self.rEmitter.triggered.emit()
-            
+            '''
         
         
             
