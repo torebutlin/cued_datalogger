@@ -202,10 +202,10 @@ class RecorderParent(object):
     def flush_record_data(self):
         if self.recorded_data:
             data =  np.array(self.recorded_data);
-            data_array = data.reshape((self.rec_samples,self.channels))
+            flushed_data = data.reshape((self.rec_samples,self.channels))
             if self.part_posttrig_data.shape[0]:
                 print('part post')
-                flushed_data = np.vstack((self.part_posttrig_data,data_array))
+                flushed_data = np.vstack((self.part_posttrig_data,flushed_data))
             
             print(flushed_data.shape)
             print(flushed_data[0,:])
