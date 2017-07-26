@@ -13,6 +13,7 @@ from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
+import functools as fct
 
 import myRecorder as mR
 try:
@@ -101,10 +102,10 @@ class LiveplotApp(QMainWindow):
         main_splitter.addWidget(right_splitter)
         
     #---------------------CHANNEL TOGGLE UI----------------------------------
-        chanUI = QWidget(left_splitter)
+        chantoggle_UI = QWidget(left_splitter)
         #chanUI_layout = QHBoxLayout(chanUI)        
         # Set up the channel tickboxes widget
-        chans_settings_layout = QVBoxLayout(chanUI)
+        chans_toggle_layout = QVBoxLayout(chantoggle_UI)
         
         # Make the button tickboxes scrollable
         scroll = QScrollArea(left_splitter)
@@ -114,7 +115,8 @@ class LiveplotApp(QMainWindow):
         
         # Set up the QbuttonGroup to manage the Signals
         self.chan_btn_group = QButtonGroup(self.channels_box)
-        self.chan_btn_group.setExclusive(False)                
+        self.chan_btn_group.setExclusive(False)
+                
         self.ResetChanBtns()
         self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         
@@ -122,7 +124,7 @@ class LiveplotApp(QMainWindow):
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
         
-        chans_settings_layout.addWidget(scroll)
+        chans_toggle_layout.addWidget(scroll)
       
         # Set up the selection toggle buttons
         sel_btn_layout = QVBoxLayout()    
@@ -136,36 +138,57 @@ class LiveplotApp(QMainWindow):
             btn.resize(btn.sizeHint())
             sel_btn_layout.addWidget(btn)
             
-        chans_settings_layout.addLayout(sel_btn_layout)
+        chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
         
         
         #main_layout.addLayout(chans_settings_layout,10)
-        left_splitter.addWidget(chanUI)
+        left_splitter.addWidget(chantoggle_UI)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
-        chanprop_UI = QWidget(left_splitter)
-        chans_prop_layout = QFormLayout(chanprop_UI)
+        chanconfig_UI = QWidget(left_splitter)
+        chans_prop_layout = QVBoxLayout(chanconfig_UI)
+        chans_prop_layout.setContentsMargins(5,5,5,5)
         
-        configs = ['Channel','XMove','YMove','Colour']
+        chan_num_sel_layout = QHBoxLayout()
+        self.chans_num_box = QComboBox(chanconfig_UI)
+        chan_num_sel_layout.addWidget(QLabel('Channel',chanconfig_UI))
+        chan_num_sel_layout.addWidget(self.chans_num_box)
+        self.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
+        chans_prop_layout.addLayout(chan_num_sel_layout)
+        
+        chan_settings_layout = QHBoxLayout()
+        chan_settings_layout.setSpacing(0)
+        
         self.chanprop_config = []
+        configs = ['Colour','XMove','YMove']
         
-        for c in configs:
-            if c is 'Colour':
-                cbox = pg.ColorButton(chanUI,(0,255,0))
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                #self.configboxes.append(cbox)
-            elif c is 'Channel':
-                cbox = QComboBox(chanUI)
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                self.chanprop_config.append(cbox)
-            else:
-                cbox = QLineEdit(chanUI)
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                self.chanprop_config.append(cbox)
+        # TODO: Maybe allow changeable step size
+        for set_type in ('Time','DFT'):
+            settings_gbox = QGroupBox(set_type, chanconfig_UI)
+            settings_gbox.setFlat(True)
+            gbox_layout = QFormLayout(settings_gbox)
+            for c in configs:
+                if c == 'Colour':
+                    cbox = pg.ColorButton(settings_gbox,(0,255,0))
+                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                    self.chanprop_config.append(cbox)
+                else:
+                    cbox = pg.SpinBox(parent= settings_gbox, value=0.0, bounds=[None, None],step = 0.1)
+                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                    if c == 'XMove':
+                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x',set_type))
+                    elif c == 'YMove':
+                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y',set_type))
+                    self.chanprop_config.append(cbox)
+                    
+            settings_gbox.setLayout(gbox_layout)
+            chan_settings_layout.addWidget(settings_gbox)
+             
+        chans_prop_layout.addLayout(chan_settings_layout)
+        self.ResetChanConfigs()
         
-        
-        left_splitter.addWidget(chanprop_UI)
+        left_splitter.addWidget(chanconfig_UI)
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         configUI = QWidget(left_splitter)
         
@@ -198,7 +221,7 @@ class LiveplotApp(QMainWindow):
         self.configboxes = []
         
         for c in configs:
-            if c is 'Source':
+            if c == 'Source':
                 cbox = QComboBox(configUI)
                 config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)
@@ -318,11 +341,12 @@ class LiveplotApp(QMainWindow):
         
         self.chanelvlplot = self.chanelvlcvs.getPlotItem()
         x = np.arange(10)
-        y = np.cos(x)
+        y = abs(np.cos(x))
         self.chanlvl_bar = pg.BarGraphItem(x=x, height=y, width=0.9, brush='r')
         
         self.chanelvlplot.addItem(self.chanlvl_bar)
-        self.chanlvl_bar.rotate(90)
+        self.chanlvl_bar.rotate(-90)
+        #self.chanlvl_bar.setData(x, y)
         #self.chanelvlplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.chanelvlplot.disableAutoRange(axis=None)
         #self.chanelvlplot.setMouseEnabled(x=False,y = True)
@@ -332,7 +356,7 @@ class LiveplotApp(QMainWindow):
     #------------------------FINALISE THE SPLITTERS-----------------------------
         #main_splitter.addWidget(acqUI)
         
-        main_splitter.setSizes([WIDTH*0.1,WIDTH*0.8,WIDTH*0.1])        
+        main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2])        
         main_splitter.setStretchFactor(0, 0)
         main_splitter.setStretchFactor(1, 1)
         main_splitter.setStretchFactor(2, 0)
@@ -357,7 +381,11 @@ class LiveplotApp(QMainWindow):
         }
         .QSplitter::handle{
                 background: solid green;
-        }                   ''')
+        }
+        .QGroupBox{
+                border: 1px solid black;
+        }                   
+        ''')
         
     #-----------------------FINALISE THE MAIN WIDGET------------------------- 
         #Set the main widget as central widget
@@ -401,10 +429,34 @@ class LiveplotApp(QMainWindow):
             if not btn.checkState() == state:
                 btn.click()
                 
+#----------------CHANNEL CONFIGURATION WIDGET---------------------------    
+    def display_chan_config(self, *arg):
+        num = arg[0]
+        self.chanprop_config[1].setValue(self.plot_xoffset[0,num])
+        self.chanprop_config[2].setValue(self.plot_yoffset[0,num])
+        self.chanprop_config[4].setValue(self.plot_xoffset[1,num])
+        self.chanprop_config[5].setValue(self.plot_yoffset[1,num])
+    
+    def set_plot_offset(self, offset,set_type, sp,num):
+        chan = self.chans_num_box.currentIndex()
+        if set_type == 'Time':
+            t = 0
+        elif set_type == 'DFT':
+            t = 1
+            
+        if offset == 'x':
+            self.plot_xoffset[t,chan] = num
+        elif offset == 'y':
+            self.plot_yoffset[t,chan] = num
+        
+    
+    def set_plot_colour(self):
+        pass
+     
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
     def toggle_rec(self,stop = None):
-        if not stop is None:
+        if not stop == None:
             self.playing = stop
             
         if self.playing:
@@ -436,15 +488,15 @@ class LiveplotApp(QMainWindow):
             
             fft_data = np.fft.rfft(plotdata* window * weightage)
             psd_data = abs(fft_data) 
-            self.plotlines[2*i].setData(x = self.timedata, y = plotdata + 1*i)
-            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5  + 1e2 * i)
+            self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[0,i], y = plotdata + self.plot_yoffset[0,i])
+            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data** 0.5  + self.plot_yoffset[1,i])
     
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
-        if type(self.rec) is mR.Recorder:
+        if type(self.rec) == mR.Recorder:
             rb[0].setChecked(True)
-        elif type(self.rec) is NIR.Recorder:
+        elif type(self.rec) == NIR.Recorder:
             rb[1].setChecked(True)
             
         self.display_sources()
@@ -476,7 +528,7 @@ class LiveplotApp(QMainWindow):
             full_device_name = []
             s,b =  selR.available_devices()
             for a,b in zip(s,b):
-                if type(b) is str:
+                if type(b) == str:
                     full_device_name.append(a + ' - ' + b)
                 else:
                     full_device_name.append(a)
@@ -494,7 +546,7 @@ class LiveplotApp(QMainWindow):
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
         configs = []
         for cbox in self.configboxes:
-            if type(cbox) is QComboBox:
+            if type(cbox) == QComboBox:
                 #configs.append(cbox.currentText())
                 configs.append(cbox.currentIndex())
             else:
@@ -556,7 +608,7 @@ class LiveplotApp(QMainWindow):
             rec_configs = []
             data_type = [int,float,int,int,float]
             for cbox,dt in zip(self.rec_boxes,data_type):
-                if type(cbox) is QComboBox:
+                if type(cbox) == QComboBox:
                     #configs.append(cbox.currentText())
                     rec_configs.append(cbox.currentIndex())
                 else:
@@ -670,6 +722,8 @@ class LiveplotApp(QMainWindow):
         try:
             # Reset and change channel toggles
             self.ResetChanBtns()
+            # Reset channel configs
+            self.ResetChanConfigs()
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -744,6 +798,20 @@ class LiveplotApp(QMainWindow):
            
            for cbox,vd in zip(self.rec_boxes[:-1],validators):
                 cbox.setValidator(vd)    
+                
+    def ResetChanConfigs(self):
+        self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
+        self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
+        
+        colbox  = self.chanprop_config[0]
+        
+        self.chans_num_box.clear()
+        self.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
+        self.chans_num_box.setCurrentIndex(0)
+        
+        self.display_chan_config(0)
+        
+        print(colbox)
    
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
@@ -780,6 +848,8 @@ class LiveplotApp(QMainWindow):
 #----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
+        #if self.plottimer.isActive():
+        #    self.plottimer.stop()
         self.rec.close()
         event.accept()
         if self.parent:
