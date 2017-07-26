@@ -101,7 +101,8 @@ class LiveplotApp(QMainWindow):
         main_splitter.addWidget(right_splitter)
         
     #---------------------CHANNEL TOGGLE UI----------------------------------
-        chanUI = QWidget(left_splitter)        
+        chanUI = QWidget(left_splitter)
+        #chanUI_layout = QHBoxLayout(chanUI)        
         # Set up the channel tickboxes widget
         chans_settings_layout = QVBoxLayout(chanUI)
         
@@ -136,9 +137,35 @@ class LiveplotApp(QMainWindow):
             sel_btn_layout.addWidget(btn)
             
         chans_settings_layout.addLayout(sel_btn_layout)
+        #chanUI_layout.addLayout(chans_settings_layout)
+        
+        
         #main_layout.addLayout(chans_settings_layout,10)
         left_splitter.addWidget(chanUI)
         
+    #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
+        chanprop_UI = QWidget(left_splitter)
+        chans_prop_layout = QFormLayout(chanprop_UI)
+        
+        configs = ['Channel','XMove','YMove','Colour']
+        self.chanprop_config = []
+        
+        for c in configs:
+            if c is 'Colour':
+                cbox = pg.ColorButton(chanUI,(0,255,0))
+                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
+                #self.configboxes.append(cbox)
+            elif c is 'Channel':
+                cbox = QComboBox(chanUI)
+                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
+                self.chanprop_config.append(cbox)
+            else:
+                cbox = QLineEdit(chanUI)
+                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
+                self.chanprop_config.append(cbox)
+        
+        
+        left_splitter.addWidget(chanprop_UI)
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         configUI = QWidget(left_splitter)
         
@@ -282,7 +309,26 @@ class LiveplotApp(QMainWindow):
         
         right_splitter.addWidget(RecUI)
         
-   
+    #-----------------------CHANNEL LEVELS WIDGET------------------------------
+        chanlevel_UI = QWidget(right_splitter)
+        chanlevel_UI_layout = QVBoxLayout(chanlevel_UI)
+        self.chanelvlcvs = pg.PlotWidget(mid_splitter, background = 'default')
+        
+        chanlevel_UI_layout.addWidget(self.chanelvlcvs)
+        
+        self.chanelvlplot = self.chanelvlcvs.getPlotItem()
+        x = np.arange(10)
+        y = np.cos(x)
+        self.chanlvl_bar = pg.BarGraphItem(x=x, height=y, width=0.9, brush='r')
+        
+        self.chanelvlplot.addItem(self.chanlvl_bar)
+        self.chanlvl_bar.rotate(90)
+        #self.chanelvlplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
+        #self.chanelvlplot.disableAutoRange(axis=None)
+        #self.chanelvlplot.setMouseEnabled(x=False,y = True)
+        
+        right_splitter.addWidget(chanlevel_UI)
+    
     #------------------------FINALISE THE SPLITTERS-----------------------------
         #main_splitter.addWidget(acqUI)
         
@@ -294,7 +340,7 @@ class LiveplotApp(QMainWindow):
         
         #left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
         mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
-        right_splitter.setSizes([HEIGHT*0.95,HEIGHT*0.05])
+        right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
         
     #-----------------------EXPERIMENTAL STYLING---------------------------- 
         main_splitter.setFrameShape(QFrame.Panel)
