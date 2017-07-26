@@ -102,10 +102,10 @@ class LiveplotApp(QMainWindow):
         main_splitter.addWidget(right_splitter)
         
     #---------------------CHANNEL TOGGLE UI----------------------------------
-        chanUI = QWidget(left_splitter)
+        chantoggle_UI = QWidget(left_splitter)
         #chanUI_layout = QHBoxLayout(chanUI)        
         # Set up the channel tickboxes widget
-        chans_settings_layout = QVBoxLayout(chanUI)
+        chans_toggle_layout = QVBoxLayout(chantoggle_UI)
         
         # Make the button tickboxes scrollable
         scroll = QScrollArea(left_splitter)
@@ -124,7 +124,7 @@ class LiveplotApp(QMainWindow):
         scroll.setWidget(self.channels_box)
         scroll.setWidgetResizable(True)
         
-        chans_settings_layout.addWidget(scroll)
+        chans_toggle_layout.addWidget(scroll)
       
         # Set up the selection toggle buttons
         sel_btn_layout = QVBoxLayout()    
@@ -138,42 +138,56 @@ class LiveplotApp(QMainWindow):
             btn.resize(btn.sizeHint())
             sel_btn_layout.addWidget(btn)
             
-        chans_settings_layout.addLayout(sel_btn_layout)
+        chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
         
         
         #main_layout.addLayout(chans_settings_layout,10)
-        left_splitter.addWidget(chanUI)
+        left_splitter.addWidget(chantoggle_UI)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
         chanconfig_UI = QWidget(left_splitter)
-        chans_prop_layout = QFormLayout(chanconfig_UI)
+        chans_prop_layout = QVBoxLayout(chanconfig_UI)
+        chans_prop_layout.setContentsMargins(5,5,5,5)
         
-        configs = ['Channel','XMove','YMove','Colour']
+        chan_num_sel_layout = QHBoxLayout()
+        self.chans_num_box = QComboBox(chanconfig_UI)
+        chan_num_sel_layout.addWidget(QLabel('Channel',chanconfig_UI))
+        chan_num_sel_layout.addWidget(self.chans_num_box)
+        self.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
+        chans_prop_layout.addLayout(chan_num_sel_layout)
+        
+        chan_settings_layout = QHBoxLayout()
+        chan_settings_layout.setSpacing(0)
+        
         self.chanprop_config = []
+        configs = ['Colour','XMove','YMove']
         
-        for c in configs:
-            if c == 'Colour':
-                cbox = pg.ColorButton(chanUI,(0,255,0))
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                self.chanprop_config.append(cbox)
-            elif c == 'Channel':
-                cbox = QComboBox(chanUI)
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                cbox.currentIndexChanged.connect(self.display_chan_config)
-                self.chanprop_config.append(cbox)
-            else:
-                cbox = pg.SpinBox(parent= chanUI, value=0.0, bounds=[None, None],step = 0.1)
-                chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                if c == 'XMove':
-                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x'))
-                elif c == 'YMove':
-                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y'))
-                self.chanprop_config.append(cbox)
-                
-            
-        
+        # TODO: Maybe allow changeable step size
+        for set_type in ('Time','DFT'):
+            settings_gbox = QGroupBox(set_type, chanconfig_UI)
+            settings_gbox.setFlat(True)
+            gbox_layout = QFormLayout(settings_gbox)
+            for c in configs:
+                if c == 'Colour':
+                    cbox = pg.ColorButton(settings_gbox,(0,255,0))
+                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                    self.chanprop_config.append(cbox)
+                else:
+                    cbox = pg.SpinBox(parent= settings_gbox, value=0.0, bounds=[None, None],step = 0.1)
+                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                    if c == 'XMove':
+                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x',set_type))
+                    elif c == 'YMove':
+                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y',set_type))
+                    self.chanprop_config.append(cbox)
+                    
+            settings_gbox.setLayout(gbox_layout)
+            chan_settings_layout.addWidget(settings_gbox)
+             
+        chans_prop_layout.addLayout(chan_settings_layout)
         self.ResetChanConfigs()
+        
         left_splitter.addWidget(chanconfig_UI)
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         configUI = QWidget(left_splitter)
@@ -342,7 +356,7 @@ class LiveplotApp(QMainWindow):
     #------------------------FINALISE THE SPLITTERS-----------------------------
         #main_splitter.addWidget(acqUI)
         
-        main_splitter.setSizes([WIDTH*0.1,WIDTH*0.7,WIDTH*0.2])        
+        main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2])        
         main_splitter.setStretchFactor(0, 0)
         main_splitter.setStretchFactor(1, 1)
         main_splitter.setStretchFactor(2, 0)
@@ -367,7 +381,11 @@ class LiveplotApp(QMainWindow):
         }
         .QSplitter::handle{
                 background: solid green;
-        }                   ''')
+        }
+        .QGroupBox{
+                border: 1px solid black;
+        }                   
+        ''')
         
     #-----------------------FINALISE THE MAIN WIDGET------------------------- 
         #Set the main widget as central widget
@@ -414,15 +432,22 @@ class LiveplotApp(QMainWindow):
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, *arg):
         num = arg[0]
-        self.chanprop_config[1].setValue(self.plot_xoffset[num])
-        self.chanprop_config[2].setValue(self.plot_yoffset[num])
+        self.chanprop_config[1].setValue(self.plot_xoffset[0,num])
+        self.chanprop_config[2].setValue(self.plot_yoffset[0,num])
+        self.chanprop_config[4].setValue(self.plot_xoffset[1,num])
+        self.chanprop_config[5].setValue(self.plot_yoffset[1,num])
     
-    def set_plot_offset(self, offset, sp,num):
-        chan = self.chanprop_config[0].currentIndex()
+    def set_plot_offset(self, offset,set_type, sp,num):
+        chan = self.chans_num_box.currentIndex()
+        if set_type == 'Time':
+            t = 0
+        elif set_type == 'DFT':
+            t = 1
+            
         if offset == 'x':
-            self.plot_xoffset[chan] = num
+            self.plot_xoffset[t,chan] = num
         elif offset == 'y':
-            self.plot_yoffset[chan] = num
+            self.plot_yoffset[t,chan] = num
         
     
     def set_plot_colour(self):
@@ -463,8 +488,8 @@ class LiveplotApp(QMainWindow):
             
             fft_data = np.fft.rfft(plotdata* window * weightage)
             psd_data = abs(fft_data) 
-            self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[i], y = plotdata + self.plot_yoffset[i])
-            self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5  + 1e2 * i)
+            self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[0,i], y = plotdata + self.plot_yoffset[0,i])
+            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data** 0.5  + self.plot_yoffset[1,i])
     
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
@@ -775,14 +800,14 @@ class LiveplotApp(QMainWindow):
                 cbox.setValidator(vd)    
                 
     def ResetChanConfigs(self):
-        self.plot_xoffset = np.zeros(shape = (self.rec.channels,))
-        self.plot_yoffset = np.arange(self.rec.channels)
+        self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
+        self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
         
-        chanbox, xoffbox, yoffbox, colbox = self.chanprop_config
+        colbox  = self.chanprop_config[0]
         
-        chanbox.clear()
-        chanbox.addItems([str(i) for i in range(self.rec.channels)])
-        chanbox.setCurrentIndex(0)
+        self.chans_num_box.clear()
+        self.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
+        self.chans_num_box.setCurrentIndex(0)
         
         self.display_chan_config(0)
         
