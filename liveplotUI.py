@@ -13,6 +13,7 @@ from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
+import functools as fct
 
 import myRecorder as mR
 try:
@@ -114,7 +115,8 @@ class LiveplotApp(QMainWindow):
         
         # Set up the QbuttonGroup to manage the Signals
         self.chan_btn_group = QButtonGroup(self.channels_box)
-        self.chan_btn_group.setExclusive(False)                
+        self.chan_btn_group.setExclusive(False)
+                
         self.ResetChanBtns()
         self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         
@@ -144,28 +146,35 @@ class LiveplotApp(QMainWindow):
         left_splitter.addWidget(chanUI)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
-        chanprop_UI = QWidget(left_splitter)
-        chans_prop_layout = QFormLayout(chanprop_UI)
+        chanconfig_UI = QWidget(left_splitter)
+        chans_prop_layout = QFormLayout(chanconfig_UI)
         
         configs = ['Channel','XMove','YMove','Colour']
         self.chanprop_config = []
         
         for c in configs:
-            if c is 'Colour':
+            if c == 'Colour':
                 cbox = pg.ColorButton(chanUI,(0,255,0))
                 chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
-                #self.configboxes.append(cbox)
-            elif c is 'Channel':
+                self.chanprop_config.append(cbox)
+            elif c == 'Channel':
                 cbox = QComboBox(chanUI)
                 chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
+                cbox.currentIndexChanged.connect(self.display_chan_config)
                 self.chanprop_config.append(cbox)
             else:
-                cbox = QLineEdit(chanUI)
+                cbox = pg.SpinBox(parent= chanUI, value=0.0, bounds=[None, None],step = 0.1)
                 chans_prop_layout.addRow(QLabel(c,chanUI),cbox)
+                if c == 'XMove':
+                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x'))
+                elif c == 'YMove':
+                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y'))
                 self.chanprop_config.append(cbox)
+                
+            
         
-        
-        left_splitter.addWidget(chanprop_UI)
+        self.ResetChanConfigs()
+        left_splitter.addWidget(chanconfig_UI)
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         configUI = QWidget(left_splitter)
         
@@ -198,7 +207,7 @@ class LiveplotApp(QMainWindow):
         self.configboxes = []
         
         for c in configs:
-            if c is 'Source':
+            if c == 'Source':
                 cbox = QComboBox(configUI)
                 config_form.addRow(QLabel(c,configUI),cbox)
                 self.configboxes.append(cbox)
@@ -318,11 +327,12 @@ class LiveplotApp(QMainWindow):
         
         self.chanelvlplot = self.chanelvlcvs.getPlotItem()
         x = np.arange(10)
-        y = np.cos(x)
+        y = abs(np.cos(x))
         self.chanlvl_bar = pg.BarGraphItem(x=x, height=y, width=0.9, brush='r')
         
         self.chanelvlplot.addItem(self.chanlvl_bar)
-        self.chanlvl_bar.rotate(90)
+        self.chanlvl_bar.rotate(-90)
+        #self.chanlvl_bar.setData(x, y)
         #self.chanelvlplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.chanelvlplot.disableAutoRange(axis=None)
         #self.chanelvlplot.setMouseEnabled(x=False,y = True)
@@ -332,7 +342,7 @@ class LiveplotApp(QMainWindow):
     #------------------------FINALISE THE SPLITTERS-----------------------------
         #main_splitter.addWidget(acqUI)
         
-        main_splitter.setSizes([WIDTH*0.1,WIDTH*0.8,WIDTH*0.1])        
+        main_splitter.setSizes([WIDTH*0.1,WIDTH*0.7,WIDTH*0.2])        
         main_splitter.setStretchFactor(0, 0)
         main_splitter.setStretchFactor(1, 1)
         main_splitter.setStretchFactor(2, 0)
@@ -401,10 +411,27 @@ class LiveplotApp(QMainWindow):
             if not btn.checkState() == state:
                 btn.click()
                 
+#----------------CHANNEL CONFIGURATION WIDGET---------------------------    
+    def display_chan_config(self, *arg):
+        num = arg[0]
+        self.chanprop_config[1].setValue(self.plot_xoffset[num])
+        self.chanprop_config[2].setValue(self.plot_yoffset[num])
+    
+    def set_plot_offset(self, offset, sp,num):
+        chan = self.chanprop_config[0].currentIndex()
+        if offset == 'x':
+            self.plot_xoffset[chan] = num
+        elif offset == 'y':
+            self.plot_yoffset[chan] = num
+        
+    
+    def set_plot_colour(self):
+        pass
+     
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
     def toggle_rec(self,stop = None):
-        if not stop is None:
+        if not stop == None:
             self.playing = stop
             
         if self.playing:
@@ -436,15 +463,15 @@ class LiveplotApp(QMainWindow):
             
             fft_data = np.fft.rfft(plotdata* window * weightage)
             psd_data = abs(fft_data) 
-            self.plotlines[2*i].setData(x = self.timedata, y = plotdata + 1*i)
+            self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[i], y = plotdata + self.plot_yoffset[i])
             self.plotlines[2*i+1].setData(x = self.freqdata, y = psd_data** 0.5  + 1e2 * i)
     
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
-        if type(self.rec) is mR.Recorder:
+        if type(self.rec) == mR.Recorder:
             rb[0].setChecked(True)
-        elif type(self.rec) is NIR.Recorder:
+        elif type(self.rec) == NIR.Recorder:
             rb[1].setChecked(True)
             
         self.display_sources()
@@ -476,7 +503,7 @@ class LiveplotApp(QMainWindow):
             full_device_name = []
             s,b =  selR.available_devices()
             for a,b in zip(s,b):
-                if type(b) is str:
+                if type(b) == str:
                     full_device_name.append(a + ' - ' + b)
                 else:
                     full_device_name.append(a)
@@ -494,7 +521,7 @@ class LiveplotApp(QMainWindow):
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
         configs = []
         for cbox in self.configboxes:
-            if type(cbox) is QComboBox:
+            if type(cbox) == QComboBox:
                 #configs.append(cbox.currentText())
                 configs.append(cbox.currentIndex())
             else:
@@ -556,7 +583,7 @@ class LiveplotApp(QMainWindow):
             rec_configs = []
             data_type = [int,float,int,int,float]
             for cbox,dt in zip(self.rec_boxes,data_type):
-                if type(cbox) is QComboBox:
+                if type(cbox) == QComboBox:
                     #configs.append(cbox.currentText())
                     rec_configs.append(cbox.currentIndex())
                 else:
@@ -670,6 +697,8 @@ class LiveplotApp(QMainWindow):
         try:
             # Reset and change channel toggles
             self.ResetChanBtns()
+            # Reset channel configs
+            self.ResetChanConfigs()
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -744,6 +773,20 @@ class LiveplotApp(QMainWindow):
            
            for cbox,vd in zip(self.rec_boxes[:-1],validators):
                 cbox.setValidator(vd)    
+                
+    def ResetChanConfigs(self):
+        self.plot_xoffset = np.zeros(shape = (self.rec.channels,))
+        self.plot_yoffset = np.arange(self.rec.channels)
+        
+        chanbox, xoffbox, yoffbox, colbox = self.chanprop_config
+        
+        chanbox.clear()
+        chanbox.addItems([str(i) for i in range(self.rec.channels)])
+        chanbox.setCurrentIndex(0)
+        
+        self.display_chan_config(0)
+        
+        print(colbox)
    
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
@@ -780,6 +823,8 @@ class LiveplotApp(QMainWindow):
 #----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
+        #if self.plottimer.isActive():
+        #    self.plottimer.stop()
         self.rec.close()
         event.accept()
         if self.parent:
