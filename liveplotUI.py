@@ -346,17 +346,13 @@ class LiveplotApp(QMainWindow):
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
         self.chanelvlplot = self.chanelvlcvs.getPlotItem()
-        x = np.arange(10)
-        y = abs(np.cos(x))
-        self.chanlvl_bar = pg.BarGraphItem(x=x, height=y, width=0.9, brush='r')
+        self.chanlvl_bars = pg.ErrorBarItem(x=0,y=0,beam = 0.2)
+        self.chanlvl_bars.rotate(-90)
+        self.chanelvlplot.addItem(self.chanlvl_bars)
+        self.chanlvl_pts = self.chanelvlplot.plot(symbol='o')
+        self.chanlvl_pts.rotate(-90)
         
-        self.chanelvlplot.addItem(self.chanlvl_bar)
-        self.chanlvl_bar.rotate(-90)
-        #self.chanlvl_bar.setData(x, y)
-        #self.chanelvlplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        #self.chanelvlplot.disableAutoRange(axis=None)
-        #self.chanelvlplot.setMouseEnabled(x=False,y = True)
-        
+        self.ResetChanLvls()
         right_splitter.addWidget(chanlevel_UI)
     
     #------------------------FINALISE THE SPLITTERS-----------------------------
@@ -503,13 +499,11 @@ class LiveplotApp(QMainWindow):
                 
             self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
             self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
-            
-            #self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[0,i], y = plotdata + self.plot_yoffset[0,i])
-            
+
             fft_data = np.fft.rfft(plotdata* window * weightage)
             psd_data = abs(fft_data)
             self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data** 0.5  + self.plot_yoffset[1,i])
-    
+
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
         rb = self.typegroup.findChildren(QRadioButton)
@@ -662,6 +656,14 @@ class LiveplotApp(QMainWindow):
         self.rec_boxes[0].setText(str(samples))
         self.rec_boxes[1].setText(str(duration))
 
+#-------------------------CHANNEL LEVELS WIDGET--------------------------------
+    def update_chanlvls(self):
+        data = self.rec.get_buffer()
+        rms = np.sqrt(np.mean(data ** 2,axis = 0))
+        maxs = np.amax(abs(data),axis = 0)
+        self.chanlvl_bars.setData(y=rms,top = maxs-rms,bottom = rms)
+        self.chanlvl_pts.setData(y = rms)
+        
 #-------------------------STATUS BAR WIDGET--------------------------------
     # Set the status message to the default messages if it is empty (ie when cleared)       
     def default_status(self,*arg):
@@ -718,7 +720,7 @@ class LiveplotApp(QMainWindow):
             # Open the stream, plot and update
             self.init_and_check_stream()
             self.ResetPlots()
-            print(self.rec.chunk_size*1000//self.rec.rate + 1)
+            self.ResetChanLvls()
             #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         except:
             t,v,tb = sys.exc_info()
@@ -753,7 +755,6 @@ class LiveplotApp(QMainWindow):
         self.connect_rec_signals()
         
     def ResetPlots(self):
-        try:
             n_plotlines = len(self.plotlines)
             self.ResetXdata()
             
@@ -770,16 +771,20 @@ class LiveplotApp(QMainWindow):
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**4))
             self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
             self.update_line()
-            
-        except Exception as e:
-            print(e)
-            print('Cannot reset plots')
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
-        print(data.shape)
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
+        
+    def ResetChanLvls(self):
+        #self.chanelvlplot.setLimits(xMin = -1, xMax = self.rec.channels,
+        #                       yMin = 0, yMax = 5)
+        self.chanlvl_bars.setData(x = np.arange(self.rec.channels),
+                                  y = np.arange(self.rec.channels))
+        self.chanlvl_pts.clear()
+        self.chanlvl_pts.setData(x = np.arange(self.rec.channels))
+        self.update_chanlvls()
         
     def ResetChanBtns(self):
         for btn in self.chan_btn_group.buttons():
@@ -860,6 +865,8 @@ class LiveplotApp(QMainWindow):
             self.rec.rEmitter.recorddone.connect(self.stop_recording)
             self.rec.rEmitter.triggered.connect(self.trigger_message)
             self.rec.rEmitter.newdata.connect(self.update_line)
+            self.rec.rEmitter.newdata.connect(self.update_chanlvls)
+            
             
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')
