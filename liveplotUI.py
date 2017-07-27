@@ -150,11 +150,17 @@ class LiveplotApp(QMainWindow):
         chans_prop_layout = QVBoxLayout(chanconfig_UI)
         chans_prop_layout.setContentsMargins(5,5,5,5)
         
+        self.sig_hold = [Qt.Unchecked]* self.rec.channels
+        
         chan_num_sel_layout = QHBoxLayout()
         self.chans_num_box = QComboBox(chanconfig_UI)
         chan_num_sel_layout.addWidget(QLabel('Channel',chanconfig_UI))
         chan_num_sel_layout.addWidget(self.chans_num_box)
         self.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
+        self.hold_tickbox = QCheckBox('Hold',chanconfig_UI)
+        self.hold_tickbox.stateChanged.connect(self.signal_hold)
+        chan_num_sel_layout.addWidget(self.hold_tickbox)
+        
         chans_prop_layout.addLayout(chan_num_sel_layout)
         
         chan_settings_layout = QHBoxLayout()
@@ -430,25 +436,28 @@ class LiveplotApp(QMainWindow):
                 btn.click()
                 
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
-    def display_chan_config(self, *arg):
-        num = arg[0]
+    def display_chan_config(self, num):
         self.chanprop_config[1].setValue(self.plot_xoffset[0,num])
         self.chanprop_config[2].setValue(self.plot_yoffset[0,num])
         self.chanprop_config[4].setValue(self.plot_xoffset[1,num])
         self.chanprop_config[5].setValue(self.plot_yoffset[1,num])
+        self.hold_tickbox.setCheckState(self.sig_hold[num])
     
     def set_plot_offset(self, offset,set_type, sp,num):
         chan = self.chans_num_box.currentIndex()
         if set_type == 'Time':
-            t = 0
+            data_type = 0
         elif set_type == 'DFT':
-            t = 1
+            data_type = 1
             
         if offset == 'x':
-            self.plot_xoffset[t,chan] = num
+            self.plot_xoffset[data_type,chan] = num
         elif offset == 'y':
-            self.plot_yoffset[t,chan] = num
+            self.plot_yoffset[data_type,chan] = num
         
+    def signal_hold(self,state):
+        chan = self.chans_num_box.currentIndex()
+        self.sig_hold[chan] = state
     
     def set_plot_colour(self):
         pass
@@ -470,7 +479,7 @@ class LiveplotApp(QMainWindow):
         self.playing = not self.playing
         # Clear the status, allow it to auto update itself
         self.statusbar.clearMessage()
-   
+        
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
         snapshot = self.rec.get_buffer()
@@ -486,9 +495,19 @@ class LiveplotApp(QMainWindow):
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),))
             
+            zc = 0
+            if self.sig_hold[i] == Qt.Checked:
+                zero_crossings = np.where(np.diff(np.sign(plotdata))>0)[0]
+                if zero_crossings.shape[0]:
+                    zc = zero_crossings[0]+1
+                
+            self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
+            self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
+            
+            #self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[0,i], y = plotdata + self.plot_yoffset[0,i])
+            
             fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data) 
-            self.plotlines[2*i].setData(x = self.timedata + self.plot_xoffset[0,i], y = plotdata + self.plot_yoffset[0,i])
+            psd_data = abs(fft_data)
             self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data** 0.5  + self.plot_yoffset[1,i])
     
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
