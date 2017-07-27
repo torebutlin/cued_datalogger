@@ -62,6 +62,8 @@ class LiveplotApp(QMainWindow):
         self.timedata = None 
         self.freqdata = None
         
+        self.plot_colourmap = self.gen_plot_col()
+        
         try:
             # Construct UI        
             self.initUI()
@@ -163,11 +165,21 @@ class LiveplotApp(QMainWindow):
         
         chans_prop_layout.addLayout(chan_num_sel_layout)
         
+        self.chanprop_config = []
+        
+        chan_col_sel_layout = QHBoxLayout()
+        colbox = pg.ColorButton(chanconfig_UI,(0,255,0))
+        chan_col_sel_layout.addWidget(QLabel('Colour',chanconfig_UI))
+        chan_col_sel_layout.addWidget(colbox)
+        self.chanprop_config.append(colbox)
+        chans_prop_layout.addLayout(chan_col_sel_layout)
+        
+        
         chan_settings_layout = QHBoxLayout()
         chan_settings_layout.setSpacing(0)
         
-        self.chanprop_config = []
-        configs = ['Colour','XMove','YMove']
+        
+        configs = ['XMove','YMove']
         
         # TODO: Maybe allow changeable step size
         for set_type in ('Time','DFT'):
@@ -175,18 +187,13 @@ class LiveplotApp(QMainWindow):
             settings_gbox.setFlat(True)
             gbox_layout = QFormLayout(settings_gbox)
             for c in configs:
-                if c == 'Colour':
-                    cbox = pg.ColorButton(settings_gbox,(0,255,0))
-                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
-                    self.chanprop_config.append(cbox)
-                else:
-                    cbox = pg.SpinBox(parent= settings_gbox, value=0.0, bounds=[None, None],step = 0.1)
-                    gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
-                    if c == 'XMove':
-                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x',set_type))
-                    elif c == 'YMove':
-                        cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y',set_type))
-                    self.chanprop_config.append(cbox)
+                cbox = pg.SpinBox(parent= settings_gbox, value=0.0, bounds=[None, None],step = 0.1)
+                gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                if c == 'XMove':
+                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x',set_type))
+                elif c == 'YMove':
+                    cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y',set_type))
+                self.chanprop_config.append(cbox)
                     
             settings_gbox.setLayout(gbox_layout)
             chan_settings_layout.addWidget(settings_gbox)
@@ -437,10 +444,11 @@ class LiveplotApp(QMainWindow):
                 
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, num):
+        self.chanprop_config[0].setColor(self.plot_colours[num])
         self.chanprop_config[1].setValue(self.plot_xoffset[0,num])
         self.chanprop_config[2].setValue(self.plot_yoffset[0,num])
-        self.chanprop_config[4].setValue(self.plot_xoffset[1,num])
-        self.chanprop_config[5].setValue(self.plot_yoffset[1,num])
+        self.chanprop_config[3].setValue(self.plot_xoffset[1,num])
+        self.chanprop_config[4].setValue(self.plot_yoffset[1,num])
         self.hold_tickbox.setCheckState(self.sig_hold[num])
     
     def set_plot_offset(self, offset,set_type, sp,num):
@@ -774,9 +782,9 @@ class LiveplotApp(QMainWindow):
                 line.clear()
                 del line
                 
-            for _ in range(self.rec.channels):
-                self.plotlines.append(self.timeplot.plot(pen = 'g'))
-                self.plotlines.append(self.fftplot.plot(pen = 'y'))
+            for i in range(self.rec.channels):
+                self.plotlines.append(self.timeplot.plot(pen = self.plot_colours[i]))
+                self.plotlines.append(self.fftplot.plot(pen = self.plot_colours[i]))
             
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1))
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**4))
@@ -837,17 +845,14 @@ class LiveplotApp(QMainWindow):
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
         self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
-        
-        colbox  = self.chanprop_config[0]
-        
+        self.plot_colours = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
+
         self.chans_num_box.clear()
         self.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
         self.chans_num_box.setCurrentIndex(0)
         
         self.display_chan_config(0)
-        
-        print(colbox)
-   
+    
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self,data = None):
@@ -881,6 +886,11 @@ class LiveplotApp(QMainWindow):
             
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')
+ #-------------------------- COLOUR METHODS ------------------------------------       
+    def gen_plot_col(self):
+        val = [0.0,0.5,1.0]
+        colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
+        return pg.ColorMap(val,colour)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
