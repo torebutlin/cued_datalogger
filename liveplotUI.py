@@ -320,6 +320,7 @@ class LiveplotApp(QMainWindow):
         self.autoset_record_config('Time')
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
+        self.rec_boxes[4].textEdited.connect(self.change_threshold)
         
         # Add the record and cancel buttons
         rec_buttons_layout = QHBoxLayout()
@@ -351,6 +352,9 @@ class LiveplotApp(QMainWindow):
         self.chanelvlplot.addItem(self.chanlvl_bars)
         self.chanlvl_pts = self.chanelvlplot.plot(symbol='o')
         self.chanlvl_pts.rotate(-90)
+        self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True)
+        self.threshold_line.sigPositionChanged.connect(self.change_threshold)
+        self.chanelvlplot.addItem(self.threshold_line)
         
         self.ResetChanLvls()
         right_splitter.addWidget(chanlevel_UI)
@@ -659,10 +663,17 @@ class LiveplotApp(QMainWindow):
 #-------------------------CHANNEL LEVELS WIDGET--------------------------------
     def update_chanlvls(self):
         data = self.rec.get_buffer()
-        rms = np.sqrt(np.mean(data ** 2,axis = 0))
-        maxs = np.amax(abs(data),axis = 0)
+        currentdata = data[len(data)-self.rec.chunk_size:,:]
+        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
+        maxs = np.amax(abs(currentdata),axis = 0)
         self.chanlvl_bars.setData(y=rms,top = maxs-rms,bottom = rms)
         self.chanlvl_pts.setData(y = rms)
+        
+    def change_threshold(self,arg):
+        if type(arg) == str:
+            self.threshold_line.setValue(float(arg))
+        else:
+            self.rec_boxes[4].setText('%.2f' % arg.value())
         
 #-------------------------STATUS BAR WIDGET--------------------------------
     # Set the status message to the default messages if it is empty (ie when cleared)       
@@ -719,6 +730,8 @@ class LiveplotApp(QMainWindow):
         try:
             # Open the stream, plot and update
             self.init_and_check_stream()
+            # Reset channel configs
+            self.ResetChanConfigs()
             self.ResetPlots()
             self.ResetChanLvls()
             #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
@@ -743,8 +756,6 @@ class LiveplotApp(QMainWindow):
         try:
             # Reset and change channel toggles
             self.ResetChanBtns()
-            # Reset channel configs
-            self.ResetChanConfigs()
         except:
             t,v,tb = sys.exc_info()
             print(t)

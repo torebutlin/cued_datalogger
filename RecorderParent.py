@@ -271,20 +271,15 @@ class RecorderParent(object):
         #Calculate RMS of chunk
         maximum = np.amax(norm_data)
         pos = np.argmax(norm_data)
-        print(maximum, pos)
         
         if maximum > self.trigger_threshold:
             print('Triggered!')
             self.recording = True
             self.trigger = False
             try:
-                #buffer_copy = cp.copy(self.buffer)
                 self.part_posttrig_data =  cp.copy(self.buffer[self.next_chunk-1, pos:,:])
-                #print(self.part_posttrig_data[0,:],self.part_posttrig_data.shape)
                 temp = np.vstack((self.buffer[self.next_chunk-2,:,:],self.buffer[self.next_chunk-1,:pos,:]))
-                #print(temp.shape)
                 self.pretrig_data = temp[temp.shape[0]-self.pretrig_samples:,:]
-                #print(self.pretrig_data.shape)
             except Exception as e:
                 print(e)
                 print('Cannot get trigger data')
