@@ -785,7 +785,7 @@ class LiveplotApp(QMainWindow):
             for _ in range(n_plotlines):
                 line = self.plotlines.pop()
                 line.clear()
-                del line
+                #del line
                 
             for i in range(self.rec.channels):
                 self.plotlines.append(self.timeplot.plot(pen = self.plot_colours[i]))
@@ -803,12 +803,12 @@ class LiveplotApp(QMainWindow):
         
     def ResetChanLvls(self): 
         self.chanlvl_pts.clear()
-        del self.chanlvl_pts
+        #del self.chanlvl_pts
         
         self.chanlvl_pts = self.chanelvlplot.plot(pen = None,symbol='o',
                                                   symbolBrush = self.plot_colours,
                                                   symbolPen = None)
-
+ 
         self.update_chanlvls()
         
     def ResetChanBtns(self):
