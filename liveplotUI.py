@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup)
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QBrush,QColor
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
@@ -354,14 +354,18 @@ class LiveplotApp(QMainWindow):
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
         self.chanelvlplot = self.chanelvlcvs.getPlotItem()
-        self.chanlvl_bars = pg.ErrorBarItem(x=0,y=0,beam = 0.2)
-        self.chanlvl_bars.rotate(-90)
+        self.chanlvl_pts = self.chanelvlplot.plot()
+        
+        self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(self.rec.channels),
+                                            y =np.arange(self.rec.channels),
+                                            pen = pg.mkPen(width = 5))
+        
         self.chanelvlplot.addItem(self.chanlvl_bars)
-        self.chanlvl_pts = self.chanelvlplot.plot(symbol='o')
-        self.chanlvl_pts.rotate(-90)
+        
         self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True)
         self.threshold_line.sigPositionChanged.connect(self.change_threshold)
         self.chanelvlplot.addItem(self.threshold_line)
+        
         
         self.ResetChanLvls()
         right_splitter.addWidget(chanlevel_UI)
@@ -427,8 +431,8 @@ class LiveplotApp(QMainWindow):
         for btn in args:
             chan_num = self.chan_btn_group.id(btn)
             if btn.isChecked():
-                self.plotlines[2*chan_num].setPen('g')
-                self.plotlines[2*chan_num+1].setPen('y')
+                self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
+                self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
             else:
                 self.plotlines[2*chan_num].setPen(None)
                 self.plotlines[2*chan_num+1].setPen(None)
@@ -674,8 +678,9 @@ class LiveplotApp(QMainWindow):
         currentdata = data[len(data)-self.rec.chunk_size:,:]
         rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
         maxs = np.amax(abs(currentdata),axis = 0)
-        self.chanlvl_bars.setData(y=rms,top = maxs-rms,bottom = rms)
-        self.chanlvl_pts.setData(y = rms)
+        
+        self.chanlvl_bars.setData(x = rms,right = maxs-rms,left = rms)
+        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels))
         
     def change_threshold(self,arg):
         if type(arg) == str:
@@ -796,13 +801,14 @@ class LiveplotApp(QMainWindow):
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
         
-    def ResetChanLvls(self):
-        #self.chanelvlplot.setLimits(xMin = -1, xMax = self.rec.channels,
-        #                       yMin = 0, yMax = 5)
-        self.chanlvl_bars.setData(x = np.arange(self.rec.channels),
-                                  y = np.arange(self.rec.channels))
+    def ResetChanLvls(self): 
         self.chanlvl_pts.clear()
-        self.chanlvl_pts.setData(x = np.arange(self.rec.channels))
+        del self.chanlvl_pts
+        
+        self.chanlvl_pts = self.chanelvlplot.plot(pen = None,symbol='o',
+                                                  symbolBrush = self.plot_colours,
+                                                  symbolPen = None)
+
         self.update_chanlvls()
         
     def ResetChanBtns(self):
@@ -845,7 +851,11 @@ class LiveplotApp(QMainWindow):
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
         self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
-        self.plot_colours = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
+        c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
+        self.plot_colours = []
+        for i in range(self.rec.channels):
+            r,g,b = c_list[i]
+            self.plot_colours.append(QColor(r,g,b))
 
         self.chans_num_box.clear()
         self.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
