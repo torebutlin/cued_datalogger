@@ -171,6 +171,7 @@ class LiveplotApp(QMainWindow):
         colbox = pg.ColorButton(chanconfig_UI,(0,255,0))
         chan_col_sel_layout.addWidget(QLabel('Colour',chanconfig_UI))
         chan_col_sel_layout.addWidget(colbox)
+        colbox.sigColorChanging.connect(self.set_plot_colour)
         self.chanprop_config.append(colbox)
         chans_prop_layout.addLayout(chan_col_sel_layout)
         
@@ -311,7 +312,7 @@ class LiveplotApp(QMainWindow):
                           str(self.rec.trigger_threshold)]
         validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
                       QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                      QIntValidator(-1,self.rec.chunk_size),
+                      QIntValidator(-1,MAX_SAMPLE),
                       QIntValidator(0,self.rec.channels-1),
                       QDoubleValidator(0,5,2)]
         
@@ -327,6 +328,7 @@ class LiveplotApp(QMainWindow):
         self.autoset_record_config('Time')
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
+        self.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.rec_boxes[2],-1,self.rec.chunk_size,int))
         self.rec_boxes[4].textEdited.connect(self.change_threshold)
         
         # Add the record and cancel buttons
@@ -472,7 +474,15 @@ class LiveplotApp(QMainWindow):
         self.sig_hold[chan] = state
     
     def set_plot_colour(self):
-        pass
+        chan = self.chans_num_box.currentIndex()
+        chan_btn = self.chan_btn_group.button(chan)
+        col = self.chanprop_config[0].color()
+        
+        self.plot_colours[chan] = col;
+        if chan_btn.isChecked():
+            self.plotlines[2*chan].setPen(col)
+            self.plotlines[2*chan+1].setPen(col)
+        self.chanlvl_pts.scatter.setBrush(self.plot_colours)
      
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
@@ -901,6 +911,12 @@ class LiveplotApp(QMainWindow):
         val = [0.0,0.5,1.0]
         colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
         return pg.ColorMap(val,colour)
+     
+    def set_input_limits(self,linebox,low,high,in_type):
+        val = in_type(linebox.text())
+        print(val)
+        linebox.setText( str(min(max(val,low),high)) )
+        
         
 #----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
