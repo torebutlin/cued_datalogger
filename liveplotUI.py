@@ -34,6 +34,7 @@ PLAYBACK = False
 MAX_SAMPLE = 1e6
 WIDTH = 900
 HEIGHT = 500
+CHANLVL_FACTOR = 0.1
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
@@ -151,32 +152,34 @@ class LiveplotApp(QMainWindow):
         chanconfig_UI = QWidget(left_splitter)
         chans_prop_layout = QVBoxLayout(chanconfig_UI)
         chans_prop_layout.setContentsMargins(5,5,5,5)
+        #chans_prop_layout.setSpacing(10)
         
         self.sig_hold = [Qt.Unchecked]* self.rec.channels
         
-        chan_num_sel_layout = QHBoxLayout()
+        chan_num_col_layout = QGridLayout()
+        
         self.chans_num_box = QComboBox(chanconfig_UI)
-        chan_num_sel_layout.addWidget(QLabel('Channel',chanconfig_UI))
-        chan_num_sel_layout.addWidget(self.chans_num_box)
         self.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
         self.hold_tickbox = QCheckBox('Hold',chanconfig_UI)
         self.hold_tickbox.stateChanged.connect(self.signal_hold)
-        chan_num_sel_layout.addWidget(self.hold_tickbox)
-        
-        chans_prop_layout.addLayout(chan_num_sel_layout)
+        chan_num_col_layout.addWidget(QLabel('Channel',chanconfig_UI),0,0)
+        chan_num_col_layout.addWidget(self.chans_num_box,0,1)
+        chan_num_col_layout.addWidget(self.hold_tickbox,0,2)
         
         self.chanprop_config = []
         
-        chan_col_sel_layout = QHBoxLayout()
         colbox = pg.ColorButton(chanconfig_UI,(0,255,0))
-        chan_col_sel_layout.addWidget(QLabel('Colour',chanconfig_UI))
-        chan_col_sel_layout.addWidget(colbox)
-        colbox.sigColorChanging.connect(self.set_plot_colour)
+        defcol_btn = QPushButton('Reset Colour',chanconfig_UI)
+        colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
+        defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
         self.chanprop_config.append(colbox)
-        chans_prop_layout.addLayout(chan_col_sel_layout)
+        chan_num_col_layout.addWidget(QLabel('Colour',chanconfig_UI),1,0)
+        chan_num_col_layout.addWidget(colbox,1,1)
+        chan_num_col_layout.addWidget(defcol_btn,1,2)
         
+        chans_prop_layout.addLayout(chan_num_col_layout)
         
-        chan_settings_layout = QHBoxLayout()
+        chan_settings_layout = QVBoxLayout()
         chan_settings_layout.setSpacing(0)
         
         
@@ -259,7 +262,25 @@ class LiveplotApp(QMainWindow):
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setMouseEnabled(x=False,y = True)
+        self.timeplot.setMouseEnabled(x=True,y = True)
+        
+        print('-------PLOT TEST-------')
+        try:
+            con_menu = self.timeplot.getViewBox().menu
+            #con_menu.axes = None
+            #con_menu.removeAction(con_menu.viewAll)
+            con_menu.removeAction(con_menu.leftMenu.menuAction())
+            self.timeplotcanvas.sceneObj.contextMenu = []
+            
+            ext_menu = self.timeplot.ctrlMenu
+            ext_submenus = self.timeplot.subMenus
+            ext_menu.removeAction(ext_submenus[1].menuAction())
+            ext_menu.removeAction(ext_submenus[2].menuAction())
+            ext_menu.removeAction(ext_submenus[3].menuAction())
+            ext_menu.removeAction(ext_submenus[5].menuAction())
+        except Exception as e:
+            print(e)
+        print('-------PLOT TEST-------')
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(mid_splitter, background = 'default')
@@ -356,13 +377,19 @@ class LiveplotApp(QMainWindow):
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
         self.chanelvlplot = self.chanelvlcvs.getPlotItem()
+        self.chanelvlplot.setLabels(title="Channel Levels", bottom = 'Amplitude')
+        self.chanelvlplot.hideAxis('left')
         self.chanlvl_pts = self.chanelvlplot.plot()
         
         self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(self.rec.channels),
-                                            y =np.arange(self.rec.channels),
-                                            pen = pg.mkPen(width = 5))
+                                            y =np.arange(self.rec.channels)*0.1,
+                                            beam = CHANLVL_FACTOR/2,
+                                            pen = pg.mkPen(width = 3))
         
         self.chanelvlplot.addItem(self.chanlvl_bars)
+        
+        baseline = pg.InfiniteLine(pos = 0.0, movable = False)
+        self.chanelvlplot.addItem(baseline)
         
         self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True)
         self.threshold_line.sigPositionChanged.connect(self.change_threshold)
@@ -403,7 +430,12 @@ class LiveplotApp(QMainWindow):
         }
         .QGroupBox{
                 border: 1px solid black;
-        }                   
+                margin-top: 0.5em;
+        }
+        .QGroupBox::title {
+                top: -6px;
+                left: 10px;
+}                   
         ''')
         
     #-----------------------FINALISE THE MAIN WIDGET------------------------- 
@@ -473,10 +505,15 @@ class LiveplotApp(QMainWindow):
         chan = self.chans_num_box.currentIndex()
         self.sig_hold[chan] = state
     
-    def set_plot_colour(self):
+    def set_plot_colour(self,reset = False):
         chan = self.chans_num_box.currentIndex()
         chan_btn = self.chan_btn_group.button(chan)
-        col = self.chanprop_config[0].color()
+            
+        if reset:
+            col = self.def_colours[chan]
+            self.chanprop_config[0].setColor(col)
+        else:
+            col = self.chanprop_config[0].color()
         
         self.plot_colours[chan] = col;
         if chan_btn.isChecked():
@@ -690,7 +727,7 @@ class LiveplotApp(QMainWindow):
         maxs = np.amax(abs(currentdata),axis = 0)
         
         self.chanlvl_bars.setData(x = rms,right = maxs-rms,left = rms)
-        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels))
+        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
         
     def change_threshold(self,arg):
         if type(arg) == str:
@@ -801,8 +838,9 @@ class LiveplotApp(QMainWindow):
                 self.plotlines.append(self.timeplot.plot(pen = self.plot_colours[i]))
                 self.plotlines.append(self.fftplot.plot(pen = self.plot_colours[i]))
             
-            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1))
-            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 2**4))
+            self.timeplot.setLimits(xMin = 0,xMax = self.timedata[-1])
+            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1*self.rec.channels))
+            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
             self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
             self.update_line()
     
@@ -813,12 +851,11 @@ class LiveplotApp(QMainWindow):
         
     def ResetChanLvls(self): 
         self.chanlvl_pts.clear()
-        #del self.chanlvl_pts
-        
         self.chanlvl_pts = self.chanelvlplot.plot(pen = None,symbol='o',
                                                   symbolBrush = self.plot_colours,
                                                   symbolPen = None)
- 
+        self.chanelvlplot.setRange(xRange = (0,1.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
+        self.chanelvlplot.setLimits(xMin = -0.1,xMax = 1.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
         self.update_chanlvls()
         
     def ResetChanBtns(self):
@@ -863,9 +900,11 @@ class LiveplotApp(QMainWindow):
         self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
         c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
         self.plot_colours = []
+        self.def_colours = []
         for i in range(self.rec.channels):
             r,g,b = c_list[i]
             self.plot_colours.append(QColor(r,g,b))
+            self.def_colours.append(QColor(r,g,b))
 
         self.chans_num_box.clear()
         self.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
