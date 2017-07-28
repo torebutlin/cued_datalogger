@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup)
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QBrush,QColor
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
@@ -189,16 +189,22 @@ class LiveplotApp(QMainWindow):
         for set_type in ('Time','DFT'):
             settings_gbox = QGroupBox(set_type, chanconfig_UI)
             settings_gbox.setFlat(True)
-            gbox_layout = QFormLayout(settings_gbox)
+            gbox_layout = QGridLayout(settings_gbox)
+            i = 0
             for c in configs:
                 cbox = pg.SpinBox(parent= settings_gbox, value=0.0, bounds=[None, None],step = 0.1)
-                gbox_layout.addRow(QLabel(c,chanconfig_UI),cbox)
+                stepbox = pg.SpinBox(parent= settings_gbox, value=0.1, bounds=[None, None],step = 0.001)
+                stepbox.valueChanged.connect(fct.partial(self.set_offset_step,cbox))
+                
+                gbox_layout.addWidget(QLabel(c,chanconfig_UI),i,0)
+                gbox_layout.addWidget(cbox,i,1)
+                gbox_layout.addWidget(stepbox,i,2)
                 if c == 'XMove':
                     cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'x',set_type))
                 elif c == 'YMove':
                     cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'y',set_type))
                 self.chanprop_config.append(cbox)
-                    
+                i += 1   
             settings_gbox.setLayout(gbox_layout)
             chan_settings_layout.addWidget(settings_gbox)
              
@@ -512,6 +518,9 @@ class LiveplotApp(QMainWindow):
             self.plot_xoffset[data_type,chan] = num
         elif offset == 'y':
             self.plot_yoffset[data_type,chan] = num
+            
+    def set_offset_step(self,cbox,num):
+        cbox.setSingleStep(num)
         
     def signal_hold(self,state):
         chan = self.chans_num_box.currentIndex()
@@ -899,15 +908,15 @@ class LiveplotApp(QMainWindow):
                     chan_btn.deleteLater()
                     
     def ResetRecConfigs(self):
-           self.rec_boxes[3].clear()
-           self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
-        
-           validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
-                         QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                         QIntValidator(-1,self.rec.chunk_size)]
-           
-           for cbox,vd in zip(self.rec_boxes[:-2],validators):
-                cbox.setValidator(vd)    
+        self.rec_boxes[3].clear()
+        self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
+    
+        validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
+                     QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                     QIntValidator(-1,self.rec.chunk_size)]
+       
+        for cbox,vd in zip(self.rec_boxes[:-2],validators):
+            cbox.setValidator(vd)    
                 
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
