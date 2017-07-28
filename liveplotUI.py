@@ -185,7 +185,6 @@ class LiveplotApp(QMainWindow):
         
         configs = ['XMove','YMove']
         
-        # TODO: Maybe allow changeable step size
         for set_type in ('Time','DFT'):
             settings_gbox = QGroupBox(set_type, chanconfig_UI)
             settings_gbox.setFlat(True)
@@ -230,7 +229,7 @@ class LiveplotApp(QMainWindow):
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
         
-        # TODO: Give id to the buttons
+        # TODO: Give id to the buttons?
         # Set up QbuttonGroup to manage the buttons' Signals
         typebtngroup = QButtonGroup(self.typegroup)
         typebtngroup.addButton(pyaudio_button)
@@ -499,14 +498,20 @@ class LiveplotApp(QMainWindow):
                 btn.click()
                 
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
-    def display_chan_config(self, num):
+    def display_chan_config(self, arg):
+        if type(arg) == pg.PlotDataItem:
+            num = arg.name()
+            self.chans_num_box.setCurrentIndex(num)
+        else:
+            num = arg
+        
         self.chanprop_config[0].setColor(self.plot_colours[num])
         self.chanprop_config[1].setValue(self.plot_xoffset[0,num])
         self.chanprop_config[2].setValue(self.plot_yoffset[0,num])
         self.chanprop_config[3].setValue(self.plot_xoffset[1,num])
         self.chanprop_config[4].setValue(self.plot_yoffset[1,num])
         self.hold_tickbox.setCheckState(self.sig_hold[num])
-    
+        
     def set_plot_offset(self, offset,set_type, sp,num):
         chan = self.chans_num_box.currentIndex()
         if set_type == 'Time':
@@ -853,11 +858,19 @@ class LiveplotApp(QMainWindow):
             for _ in range(n_plotlines):
                 line = self.plotlines.pop()
                 line.clear()
-                #del line
+                del line
                 
             for i in range(self.rec.channels):
-                self.plotlines.append(self.timeplot.plot(pen = self.plot_colours[i]))
-                self.plotlines.append(self.fftplot.plot(pen = self.plot_colours[i]))
+                tplot = self.timeplot.plot(pen = self.plot_colours[i],name = i)
+                tplot.curve.setClickable(True,width = 4)
+                tplot.sigClicked.connect(self.display_chan_config)
+                self.plotlines.append(tplot)
+                
+                fplot = self.fftplot.plot(pen = self.plot_colours[i],name = i)
+                fplot.curve.setClickable(True,width = 4)
+                fplot.sigClicked.connect(self.display_chan_config)
+                self.plotlines.append(fplot)
+                
             
             self.timeplot.setLimits(xMin = 0,xMax = self.timedata[-1])
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1*self.rec.channels))
