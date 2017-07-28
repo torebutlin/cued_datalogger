@@ -326,6 +326,11 @@ class LiveplotApp(QMainWindow):
         
         rec_settings_layout = QFormLayout(RecUI)
         
+        rec_title = QLabel('Recording Settings', RecUI)
+        rec_title.setStyleSheet('''
+                                font: 18pt;
+                                ''')
+        rec_settings_layout.addRow(rec_title)
         # Add the recording setting UIs with the Validators
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
         default_values = ['','1.0', str(self.rec.pretrig_samples),
@@ -334,15 +339,20 @@ class LiveplotApp(QMainWindow):
         validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
                       QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
                       QIntValidator(-1,MAX_SAMPLE),
-                      QIntValidator(0,self.rec.channels-1),
+                      '',
                       QDoubleValidator(0,5,2)]
         
         self.rec_boxes = []
         for c,v,vd in zip(configs,default_values,validators):
-            cbox = QLineEdit(configUI)
-            cbox.setText(v)
-            cbox.setValidator(vd)
-            rec_settings_layout.addRow(QLabel(c,configUI),cbox)
+            if c == 'Ref. Channel':
+                cbox = QComboBox(RecUI)
+                cbox.addItems([str(i) for i in range(self.rec.channels)])
+            else:
+                cbox = QLineEdit(RecUI)
+                cbox.setText(v)
+                cbox.setValidator(vd)
+                
+            rec_settings_layout.addRow(QLabel(c,RecUI),cbox)
             self.rec_boxes.append(cbox)  
         
         # Connect the sample and time input check
@@ -350,8 +360,9 @@ class LiveplotApp(QMainWindow):
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
         self.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.rec_boxes[2],-1,self.rec.chunk_size,int))
+        self.rec_boxes[2].textEdited.connect(self.toggle_trigger)
         self.rec_boxes[4].textEdited.connect(self.change_threshold)
-        
+
         # Add the record and cancel buttons
         rec_buttons_layout = QHBoxLayout()
         
@@ -426,11 +437,12 @@ class LiveplotApp(QMainWindow):
             border-radius: 4px;
         }
         .QSplitter::handle{
-                background: solid green;
+                background: #737373;
         }
         .QGroupBox{
                 border: 1px solid black;
                 margin-top: 0.5em;
+                font: italic;
         }
         .QGroupBox::title {
                 top: -6px;
@@ -887,12 +899,14 @@ class LiveplotApp(QMainWindow):
                     chan_btn.deleteLater()
                     
     def ResetRecConfigs(self):
+           self.rec_boxes[3].clear()
+           self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
+        
            validators = [QIntValidator(self.rec.chunk_size,MAX_SAMPLE),
                          QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                         QIntValidator(-1,self.rec.chunk_size),
-                         QIntValidator(0,self.rec.channels-1)]
+                         QIntValidator(-1,self.rec.chunk_size)]
            
-           for cbox,vd in zip(self.rec_boxes[:-1],validators):
+           for cbox,vd in zip(self.rec_boxes[:-2],validators):
                 cbox.setValidator(vd)    
                 
     def ResetChanConfigs(self):
@@ -955,7 +969,19 @@ class LiveplotApp(QMainWindow):
         val = in_type(linebox.text())
         print(val)
         linebox.setText( str(min(max(val,low),high)) )
+    
+    def toggle_trigger(self,string):
+        try:
+            val = int(string)
+        except:
+            val = -1
         
+        if val == -1:
+            self.rec_boxes[3].setEnabled(False)
+            self.rec_boxes[4].setEnabled(False)
+        else:
+            self.rec_boxes[3].setEnabled(True)
+            self.rec_boxes[4].setEnabled(True)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
     # The method to call when the mainWindow is being close       
