@@ -30,12 +30,14 @@ except ModuleNotFoundError:
 # Theo's channel implementation, will probably use it later
 from channel import DataSet, Channel, ChannelSet
 
+import math
 # GLOBAL CONSTANTS
 PLAYBACK = False
 MAX_SAMPLE = 1e6
 WIDTH = 900
 HEIGHT = 500
 CHANLVL_FACTOR = 0.1
+LEVEL_DECAY = 0.005
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
@@ -401,6 +403,8 @@ class LiveplotApp(QMainWindow):
         self.chanelvlplot.setLabels(title="Channel Levels", bottom = 'Amplitude')
         self.chanelvlplot.hideAxis('left')
         self.chanlvl_pts = self.chanelvlplot.plot()
+        
+        self.peak_plots = []
         
         self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(self.rec.channels),
                                             y =np.arange(self.rec.channels)*0.1,
@@ -780,6 +784,17 @@ class LiveplotApp(QMainWindow):
         self.chanlvl_bars.setData(x = rms,right = maxs-rms,left = rms)
         self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
         
+        for i in range(self.rec.channels):
+            self.peak_levels[i] = max(self.peak_levels[i]*math.exp(-self.peak_decays[i]),0)
+            self.peak_decays[i] += LEVEL_DECAY
+            if self.peak_levels[i]<maxs[i]:
+                self.peak_levels[i] = maxs[i]
+                self.peak_decays[i] = 0
+                
+            self.peak_plots[i].setData(x = [self.peak_levels[i],self.peak_levels[i]],
+                           y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
+                
+            
     def change_threshold(self,arg):
         if type(arg) == str:
             self.threshold_line.setValue(float(arg))
@@ -913,6 +928,19 @@ class LiveplotApp(QMainWindow):
         self.chanlvl_pts = self.chanelvlplot.plot(pen = None,symbol='o',
                                                   symbolBrush = self.plot_colours,
                                                   symbolPen = None)
+        
+        for _ in range(len(self.peak_plots)):
+            line = self.peak_plots.pop()
+            line.clear()
+            del line
+        
+        self.peak_levels = np.zeros(self.rec.channels)
+        self.peak_decays = np.zeros(self.rec.channels)
+                
+        for i in range(self.rec.channels):
+            self.peak_plots.append(self.chanelvlplot.plot(x = [self.peak_levels[i],self.peak_levels[i]],
+                                                          y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 
+        
         self.chanelvlplot.setRange(xRange = (0,1.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
         self.chanelvlplot.setLimits(xMin = -0.1,xMax = 1.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
         self.update_chanlvls()
