@@ -399,10 +399,10 @@ class LiveplotApp(QMainWindow):
         
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
-        self.chanelvlplot = self.chanelvlcvs.getPlotItem()
-        self.chanelvlplot.setLabels(title="Channel Levels", bottom = 'Amplitude')
-        self.chanelvlplot.hideAxis('left')
-        self.chanlvl_pts = self.chanelvlplot.plot()
+        self.channelvlplot = self.chanelvlcvs.getPlotItem()
+        self.channelvlplot.setLabels(title="Channel Levels", bottom = 'Amplitude')
+        self.channelvlplot.hideAxis('left')
+        self.chanlvl_pts = self.channelvlplot.plot()
         
         self.peak_plots = []
         
@@ -411,15 +411,14 @@ class LiveplotApp(QMainWindow):
                                             beam = CHANLVL_FACTOR/2,
                                             pen = pg.mkPen(width = 3))
         
-        self.chanelvlplot.addItem(self.chanlvl_bars)
+        self.channelvlplot.addItem(self.chanlvl_bars)
         
         baseline = pg.InfiniteLine(pos = 0.0, movable = False)
-        self.chanelvlplot.addItem(baseline)
+        self.channelvlplot.addItem(baseline)
         
         self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True)
         self.threshold_line.sigPositionChanged.connect(self.change_threshold)
-        self.chanelvlplot.addItem(self.threshold_line)
-        
+        self.channelvlplot.addItem(self.threshold_line)
         
         self.ResetChanLvls()
         right_splitter.addWidget(chanlevel_UI)
@@ -611,7 +610,8 @@ class LiveplotApp(QMainWindow):
             
             zc = 0
             if self.sig_hold[i] == Qt.Checked:
-                zero_crossings = np.where(np.diff(np.sign(plotdata))>0)[0]
+                avg = np.mean(plotdata);
+                zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
                 if zero_crossings.shape[0]:
                     zc = zero_crossings[0]+1
                 
@@ -785,13 +785,13 @@ class LiveplotApp(QMainWindow):
         self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
         
         for i in range(self.rec.channels):
-            self.peak_levels[i] = max(self.peak_levels[i]*math.exp(-self.peak_decays[i]),0)
+            self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
             self.peak_decays[i] += LEVEL_DECAY
-            if self.peak_levels[i]<maxs[i]:
-                self.peak_levels[i] = maxs[i]
+            if self.peak_trace[i]<maxs[i]:
+                self.peak_trace[i] = maxs[i]
                 self.peak_decays[i] = 0
                 
-            self.peak_plots[i].setData(x = [self.peak_levels[i],self.peak_levels[i]],
+            self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
                            y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
                 
             
@@ -844,14 +844,18 @@ class LiveplotApp(QMainWindow):
             elif Rtype[1]:
                 self.rec = NIR.Recorder()
             # Set the recorder parameters
-            self.rec.set_device_by_name(self.rec.available_devices()[0][settings[0]])
+            dev_name = self.rec.available_devices()[0]
+            sel_ind = min(settings[0],len(dev_name)-1)
+            self.rec.set_device_by_name(dev_name[sel_ind])
             self.rec.rate = settings[1]
             self.rec.channels = settings[2]
             self.rec.chunk_size = settings[3]
             self.rec.num_chunk = settings[4]
+            self.configboxes[0].setCurrentIndex(dev_name.index(self.rec.device_name))
         except Exception as e:
             print(e)
             print('Cannot set up new recorder')
+            
         
         try:
             # Open the stream, plot and update
@@ -925,7 +929,7 @@ class LiveplotApp(QMainWindow):
         
     def ResetChanLvls(self): 
         self.chanlvl_pts.clear()
-        self.chanlvl_pts = self.chanelvlplot.plot(pen = None,symbol='o',
+        self.chanlvl_pts = self.channelvlplot.plot(pen = None,symbol='o',
                                                   symbolBrush = self.plot_colours,
                                                   symbolPen = None)
         
@@ -934,15 +938,15 @@ class LiveplotApp(QMainWindow):
             line.clear()
             del line
         
-        self.peak_levels = np.zeros(self.rec.channels)
+        self.peak_trace = np.zeros(self.rec.channels)
         self.peak_decays = np.zeros(self.rec.channels)
                 
         for i in range(self.rec.channels):
-            self.peak_plots.append(self.chanelvlplot.plot(x = [self.peak_levels[i],self.peak_levels[i]],
+            self.peak_plots.append(self.channelvlplot.plot(x = [self.peak_trace[i],self.peak_trace[i]],
                                                           y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 
         
-        self.chanelvlplot.setRange(xRange = (0,1.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
-        self.chanelvlplot.setLimits(xMin = -0.1,xMax = 1.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
+        self.channelvlplot.setRange(xRange = (0,1.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
+        self.channelvlplot.setLimits(xMin = -0.1,xMax = 1.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
         self.update_chanlvls()
         
     def ResetChanBtns(self):
