@@ -8,13 +8,14 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup)
+    QCheckBox,QButtonGroup,QTextEdit )
 from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
 import functools as fct
 
+from ChanLineText import ChanLineText
 import myRecorder as mR
 try:
     import NIRecorder as NIR
@@ -130,17 +131,21 @@ class LiveplotApp(QMainWindow):
         chans_toggle_layout.addWidget(scroll)
       
         # Set up the selection toggle buttons
-        sel_btn_layout = QVBoxLayout()    
-        sel_all_btn = QPushButton('Select All', left_splitter)
+        sel_btn_layout = QGridLayout()    
+        sel_all_btn = QPushButton('Select All', chantoggle_UI)
         sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        desel_all_btn = QPushButton('Deselect All',left_splitter)
+        desel_all_btn = QPushButton('Deselect All',chantoggle_UI)
         desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        inv_sel_btn = QPushButton('Invert Selection',left_splitter)
+        inv_sel_btn = QPushButton('Invert Selection',chantoggle_UI)
         inv_sel_btn.clicked.connect(self.invert_checkboxes)
         for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
             btn.resize(btn.sizeHint())
-            sel_btn_layout.addWidget(btn)
-            
+            sel_btn_layout.addWidget(btn,y,0)
+        
+        self.chan_text = ChanLineText(chantoggle_UI)
+        sel_btn_layout.addWidget(self.chan_text,0,1,-1,-1)
+        self.chan_text.validedit.connect(self.chan_line_toggle)
+        
         chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
         
@@ -496,7 +501,27 @@ class LiveplotApp(QMainWindow):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
-                
+     
+    def chan_line_toggle(self,in_list):
+        print(in_list)
+        self.toggle_all_checkboxes(Qt.Unchecked)
+        all_selected_chan = [];
+        for val in in_list:
+            index = [int(s) for s in val.split('-') if not s == '']
+            if index:
+                if len(index) == 1 and index[0]<self.rec.channels:
+                    all_selected_chan.append(index[0])
+                else:
+                    all_selected_chan.extend(range(min(index),min(max(index)+1,self.rec.channels-1)))
+                  
+        print(all_selected_chan)
+        print(list(set(all_selected_chan)))
+        for chan in list(set(all_selected_chan)):
+            if chan < self.rec.channels:
+                self.chan_btn_group.button(chan).click()
+                    
+            
+         
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
         if type(arg) == pg.PlotDataItem:
@@ -977,7 +1002,6 @@ class LiveplotApp(QMainWindow):
             self.rec.rEmitter.triggered.connect(self.trigger_message)
             self.rec.rEmitter.newdata.connect(self.update_line)
             self.rec.rEmitter.newdata.connect(self.update_chanlvls)
-            
             
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')
