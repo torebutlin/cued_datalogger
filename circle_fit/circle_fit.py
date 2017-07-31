@@ -1,3 +1,6 @@
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout
+
 import numpy as np
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -6,12 +9,10 @@ import matplotlib.pyplot as plt
 
 import sys
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
-# pg.setConfigOption('antialias', True)
+pg.setConfigOption('antialias', True)
 defaultpen = pg.mkPen('k')
 
 
@@ -85,6 +86,9 @@ def find_closest_value(array, value):
     return array[idx]
 
 
+
+
+
 # Circle Fit window -----------------------------------------------------------
 class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
@@ -118,16 +122,17 @@ class CircleFitWidget(QWidget):
                                            labels={'bottom': ("Re"),
                                                    'left': ("Im")})
         self.circle_plot = self.circle_plot_w.getPlotItem()
-        self.circle_plot.setMouseEnabled(x=False, y=False)
+        #self.circle_plot.setMouseEnabled(x=False, y=False)
         self.circle_plot.setAspectLocked(lock=True, ratio=1)
+        self.circle_plot.showGrid(x=True, y=True)
 
         # # Fit plot
-
         self.fit_plot_w = pg.PlotWidget(title="Fitted peak",
                                         labels={'bottom': ("Frequency", "rad"),
                                                 'left': ("Transfer Function", "dB")})
         self.fit_plot = self.fit_plot_w.getPlotItem()
         self.fit_plot.setMouseEnabled(x=False, y=False)
+
         # # Layout
         plots = QGridLayout()
         plots.addWidget(self.transfer_func_plot_w, 0, 0)
@@ -168,44 +173,53 @@ class CircleFitWidget(QWidget):
         # Get zoomed in region
         self.get_viewed_region()
 
-        """ TEMA METHOD: """
-        w_circle = np.linspace(0, self.w.max(), 1e5)
+        # Clear the current plots
         self.circle_plot.clear()
+        self.fit_plot.clear()
         self.circle_plot.getViewBox().removeItem(self.circle_plot.legend)
         self.circle_plot.addLegend()
-        # Recalculate circle
-        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
-        self.x_c, self.y_c = plot_circle(self.x0, self.y0, self.R0)
-        wr, zr, c = self.find_vals()
-        self.f = func(w_circle, wr, zr, c)
-        self.circle_plot.plot(self.f.real, self.f.imag, pen='g',
-                              name="TEMA method")
 
         # Update plot
         # Plot the data
+        self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
+                              symbol='o', symbolPen=None, symbolBrush='r',
+                              name="Data")
+        self.fit_plot.plot(w, np.abs(to_dB(self.a)), pen=defaultpen)
+        # Plot the circle (geometric fit)
+        # Recalculate circle
+        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
         # Discard phase information
         #self.x_c, self.y_c = plot_circle(0, -np.sqrt(self.y0**2 + self.x0**2), self.R0)
         # Include phase information
         self.x_c, self.y_c = plot_circle(self.x0, self.y0, self.R0)
 
-        self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
-                              symbol='o', symbolPen=None, symbolBrush='r',
-                              name="Data")
-        # Plot the circle
         self.circle_plot.plot(self.x_c, self.y_c,
                               pen=pg.mkPen('k', width=2, style=QtCore.Qt.DashLine))
 
+        """ TEMA METHOD: """
+        w_circle = np.linspace(0, self.w.max(), 1e5)
+        wr, zr, c = self.find_vals()
+        print("TEMA: wr {}, zr {}, c{}".format(wr, zr, c))
+        self.f = func(w_circle, wr, zr, c)
+        self.circle_plot.plot(self.f.real, self.f.imag, pen='g',
+                              name="TEMA method")
+        self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='g')
+
         """ ITERATIVE METHOD: """
         wr, zr, c = self.fit_peak()
+        print("Iter: wr {}, zr {}, c{}".format(wr, zr, c))
         self.f = func(w_circle, wr, zr, c)
         self.circle_plot.plot(self.f.real, self.f.imag, pen='b',
                               name="Iterative method")
-        self.fit_plot.clear()
-        self.fit_plot.plot(w, np.abs(to_dB(self.a)), pen=defaultpen)
         self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='b')
-        wr, zr, c = self.find_vals()
-        self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='g')
-        #self.jim = self.do_a_jim()
+
+        """JIMS METHOD"""
+        wr, zr, c = self.jim_it()
+        print("Jim: wr {}, zr {}, c{}".format(wr, zr, c))
+        self.f = func(w_circle, wr, zr, c)
+        self.circle_plot.plot(self.f.real, self.f.imag, pen='m',
+                              name="Jims method")
+        self.fit_plot.plot(w_circle, np.abs(to_dB(self.f)), pen='m')
 
     def get_viewed_region(self):
         # Get just the peak we're looking at
@@ -269,6 +283,10 @@ class CircleFitWidget(QWidget):
         """A modal peak - magnitude"""
         return np.abs(c / (wr**2 - w**2 + 2j * zr * wr**2))
 
+    def jims_sdof_optimisation_function(self, w, phi, wr, zr, cr):
+        f = self.x0 + 1j*self.y0 - self.R0 * np.exp(1j*phi) + func(w, wr, zr, cr)
+        return np.real(f * f.conjugate())
+
     def set_data(self, w=None, a=None):
         if a is not None:
             self.a = a
@@ -325,7 +343,7 @@ class CircleFitWidget(QWidget):
         yD = 0
         phi = np.arctan((self.x0 - xD) / (self.y0 - yD))
 
-        return wr, zr, C#*np.exp(1j*phi)
+        return wr, zr, C*np.exp(1j*phi)
 
     def tAtB(self, tA, tB, wA, wB):
         return (tA - tB) / (wA**2 - wB**2)
@@ -339,11 +357,21 @@ class CircleFitWidget(QWidget):
     def calc_zr(self, wr, tr, wb, wa, tb, ta):
         return ((wa**2 - wb**2)/ (wr**2 * (np.tan(ta - tr) + np.tan(tr - tb))))/2
 
-def plot_this_peak(circle_fit_widget):
-    wr, zr, c = circle_fit_widget.fit_peak()
-    plt.plot(w, to_dB(a))
-    plt.plot(w, to_dB(func(w, wr, zr, c)))
+    def jim_it(self):
+        zr0 = 0.02
+        i = np.where(self.a_reg_abs == self.a_reg_abs.max())[0][0]
+        wr0 = self.w_reg[i]
+        phi0 = 0
+        cr0 = self.a_reg_abs[i]
 
+        popts, pconv = curve_fit(self.jims_sdof_optimisation_function, self.w_reg, np.real(self.a_reg * self.a_reg.conjugate()), [phi0, wr0, zr0, cr0])
+
+        phi = popts[0]
+        wr = popts[1]
+        zr = popts[2]
+        cr = popts[3]
+
+        return wr, zr, cr*np.exp(1j*phi)
 
 if __name__ == '__main__':
     app = 0
