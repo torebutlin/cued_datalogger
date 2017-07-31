@@ -1,7 +1,7 @@
 import numpy as np
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, fmin
 import matplotlib.pyplot as plt
 
 import sys
@@ -76,8 +76,6 @@ def plot_circle(x0, y0, R0):
     theta = np.linspace(-np.pi, np.pi, 180)
     x = x0 + R0[0]*np.cos(theta)
     y = y0 + R0[0]*np.sin(theta)
-    #x = x0[0] + R0[0]*np.cos(theta)
-    #y = y0[0] + R0[0]*np.sin(theta)
     return x, y
 
 
@@ -185,7 +183,11 @@ class CircleFitWidget(QWidget):
 
         # Update plot
         # Plot the data
-        self.x_c, self.y_c = plot_circle(0, -np.sqrt(self.y0**2 + self.x0**2), self.R0)
+        # Discard phase information
+        #self.x_c, self.y_c = plot_circle(0, -np.sqrt(self.y0**2 + self.x0**2), self.R0)
+        # Include phase information
+        self.x_c, self.y_c = plot_circle(self.x0, self.y0, self.R0)
+
         self.circle_plot.plot(self.a_reg.real, self.a_reg.imag, pen=None,
                               symbol='o', symbolPen=None, symbolBrush='r',
                               name="Data")
@@ -203,6 +205,7 @@ class CircleFitWidget(QWidget):
         self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='b')
         wr, zr, c = self.find_vals()
         self.fit_plot.plot(w_circle, np.abs(to_dB(func(w_circle, wr, zr, c))), pen='g')
+        #self.jim = self.do_a_jim()
 
     def get_viewed_region(self):
         # Get just the peak we're looking at
