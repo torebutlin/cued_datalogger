@@ -1,3 +1,6 @@
+from PyQt5.QtCore import Qt, QObject
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout
+
 import numpy as np
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -6,8 +9,7 @@ import matplotlib.pyplot as plt
 
 import sys
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout
+
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
