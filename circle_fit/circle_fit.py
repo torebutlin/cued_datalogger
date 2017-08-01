@@ -1,4 +1,5 @@
 from PyQt5.QtCore import Qt
+from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox)
 
@@ -101,13 +102,14 @@ class CircleFitWidget(QWidget):
                                                           ("Transfer Function",
                                                            "dB")})
         self.region_select_plot = self.region_select_plot_w.getPlotItem()
-        # Region of interest selector
-        self.init_roi()
-        self.region_select_plot.addItem(self.roi)
 
-        self.roi.sigRegionChanged.connect(self.update_zoom)
-        self.roi.sigRegionChanged.connect(self.update_plots)
-        self.transfer_func_plot.sigXRangeChanged.connect(self.update_roi)
+        self.region_select = pg.LinearRegionItem()
+        self.region_select.setZValue(-10)
+        self.region_select_plot.addItem(self.region_select)
+
+        self.region_select.sigRegionChanged.connect(self.update_zoom)
+        self.region_select.sigRegionChanged.connect(self.update_plots)
+        self.transfer_func_plot.sigXRangeChanged.connect(self.update_region)
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
 
         # # Circle plot
@@ -133,24 +135,19 @@ class CircleFitWidget(QWidget):
         self.setWindowTitle('Circle fit')
         self.show()
 
-    def init_roi(self):
-        self.roi = pg.ROI([0, 0], pen='r')
-        # Horizontal scale handles
-        self.roi.addScaleHandle([1, 0.5], [0, 0.5])
-        self.roi.addScaleHandle([0, 0.5], [1, 0.5])
-        # Vertical scale handles
-        self.roi.addScaleHandle([0.5, 0], [0.5, 1])
-        self.roi.addScaleHandle([0.5, 1], [0.5, 0])
-        # Corner scale handles
-        self.roi.addScaleHandle([1, 1], [0, 0])
-        self.roi.addScaleHandle([0, 0], [1, 1])
-
     def init_table(self):
         self.tableWidget = QTableWidget(self)
+
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
                                                     "Damping ratio",
                                                     "Amplitude (dB)", "Phase (rad)"])
+        header = self.tableWidget.horizontalHeader()
+        header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+        header.setResizeMode(1, QtGui.QHeaderView.Stretch)
+        header.setResizeMode(2, QtGui.QHeaderView.Stretch)
+        header.setResizeMode(3, QtGui.QHeaderView.Stretch)
+        header.setResizeMode(4, QtGui.QHeaderView.Stretch)
 
         self.row_list = []
         self.modal_peaks = []
@@ -222,15 +219,10 @@ class CircleFitWidget(QWidget):
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
-        self.w_min, self.a_min = self.roi.pos()
-        self.w_max, self.a_max = self.roi.pos() + self.roi.size()
-        self.transfer_func_plot.setXRange(self.w_min, self.w_max, padding=0)
-        self.transfer_func_plot.setYRange(self.a_min, self.a_max, padding=0)
+        self.transfer_func_plot.setXRange(*self.region_select.getRegion(), padding=0)
 
-    def update_roi(self):
-        region = np.asarray(self.transfer_func_plot.getViewBox().viewRange())
-        self.roi.setPos(region[:, 0])
-        self.roi.setSize(region[:, 1] - region[:, 0])
+    def update_region(self):
+        self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
 
     def get_viewed_region(self):
         # Get just the peak we're looking at
