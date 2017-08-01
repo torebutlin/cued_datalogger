@@ -102,6 +102,7 @@ class CircleFitWidget(QWidget):
                                                           ("Transfer Function",
                                                            "dB")})
         self.region_select_plot = self.region_select_plot_w.getPlotItem()
+        self.region_select_plot.setMouseEnabled(x=False, y=False)
 
         self.region_select = pg.LinearRegionItem()
         self.region_select.setZValue(-10)
@@ -215,6 +216,8 @@ class CircleFitWidget(QWidget):
                                      pen=defaultpen)
         self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)),
                                      pen=defaultpen)
+        self.region_select_plot.autoRange()
+        self.region_select_plot.disableAutoRange()
         self.update_plots()
 
     # Update functions --------------------------------------------------------
@@ -250,12 +253,16 @@ class CircleFitWidget(QWidget):
         self.w_reg = self.w[lower:upper]
 
     def update_plots(self):
+        self.region_select.setBounds((self.w.min(), self.w.max()))
+
         # Get zoomed in region
         self.get_viewed_region()
 
         # Clear the current plots
         self.circle_plot.clear()
         self.transfer_func_plot.clear()
+        self.region_select_plot.clear()
+        self.region_select_plot.addItem(self.region_select)
         # Delete the old legend and make a new one
         # self.circle_plot.getViewBox().removeItem(self.circle_plot.legend)
         # self.circle_plot.addLegend()
@@ -265,6 +272,7 @@ class CircleFitWidget(QWidget):
                               symbol='o', symbolPen=None, symbolBrush='r',
                               name="Data")
         self.transfer_func_plot.plot(w, np.abs(to_dB(self.a)), pen=defaultpen)
+        self.region_select_plot.plot(w, np.abs(to_dB(self.a)), pen=defaultpen)
 
         # Plot the circle (geometric fit)
         # Recalculate circle
@@ -294,6 +302,9 @@ class CircleFitWidget(QWidget):
                               name="Jim's method")
 
         self.transfer_func_plot.plot(self.w_circle,
+                                     np.abs(to_dB(self.modal_peaks[-1]["data"])),
+                                     pen='m')
+        self.region_select_plot.plot(self.w_circle,
                                      np.abs(to_dB(self.modal_peaks[-1]["data"])),
                                      pen='m')
 
