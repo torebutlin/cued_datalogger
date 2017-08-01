@@ -31,13 +31,15 @@ except ModuleNotFoundError:
 from channel import DataSet, Channel, ChannelSet
 
 import math
+
 # GLOBAL CONSTANTS
-PLAYBACK = False
-MAX_SAMPLE = 1e6
-WIDTH = 900
-HEIGHT = 500
-CHANLVL_FACTOR = 0.1
-LEVEL_DECAY = 0.005
+PLAYBACK = False    # Whether to playback the stream
+MAX_SAMPLE = 1e6    # Recording Sample max size limit
+WIDTH = 900         # Window width
+HEIGHT = 500        # Window height
+CHANLVL_FACTOR = 0.1# The gap between each channel level (seems useless)
+TRACE_DECAY = 0.005 # Increment size for decaying trace
+TRACE_DURATION = 2  # Duration for a holding trace
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
@@ -416,7 +418,7 @@ class LiveplotApp(QMainWindow):
         baseline = pg.InfiniteLine(pos = 0.0, movable = False)
         self.channelvlplot.addItem(baseline)
         
-        self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True)
+        self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True,bounds = [0,1])
         self.threshold_line.sigPositionChanged.connect(self.change_threshold)
         self.channelvlplot.addItem(self.threshold_line)
         
@@ -528,7 +530,7 @@ class LiveplotApp(QMainWindow):
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
         if type(arg) == pg.PlotDataItem:
-            num = arg.name()
+            num = self.plotlines.index(arg) // 2
             self.chans_num_box.setCurrentIndex(num)
         else:
             num = arg
@@ -778,6 +780,7 @@ class LiveplotApp(QMainWindow):
     def update_chanlvls(self):
         data = self.rec.get_buffer()
         currentdata = data[len(data)-self.rec.chunk_size:,:]
+        currentdata -= np.mean(currentdata)
         rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
         maxs = np.amax(abs(currentdata),axis = 0)
         
@@ -785,11 +788,15 @@ class LiveplotApp(QMainWindow):
         self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
         
         for i in range(self.rec.channels):
-            self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
-            self.peak_decays[i] += LEVEL_DECAY
+            if self.trace_counter[i]>self.trace_countlimit:
+                self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
+                self.peak_decays[i] += TRACE_DECAY
+            self.trace_counter[i] += 1
+            
             if self.peak_trace[i]<maxs[i]:
                 self.peak_trace[i] = maxs[i]
                 self.peak_decays[i] = 0
+                self.trace_counter[i] = 0
                 
             self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
                            y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
@@ -905,12 +912,12 @@ class LiveplotApp(QMainWindow):
                 del line
                 
             for i in range(self.rec.channels):
-                tplot = self.timeplot.plot(pen = self.plot_colours[i],name = i)
+                tplot = self.timeplot.plot(pen = self.plot_colours[i])
                 tplot.curve.setClickable(True,width = 4)
                 tplot.sigClicked.connect(self.display_chan_config)
                 self.plotlines.append(tplot)
                 
-                fplot = self.fftplot.plot(pen = self.plot_colours[i],name = i)
+                fplot = self.fftplot.plot(pen = self.plot_colours[i])
                 fplot.curve.setClickable(True,width = 4)
                 fplot.sigClicked.connect(self.display_chan_config)
                 self.plotlines.append(fplot)
@@ -940,7 +947,9 @@ class LiveplotApp(QMainWindow):
         
         self.peak_trace = np.zeros(self.rec.channels)
         self.peak_decays = np.zeros(self.rec.channels)
-                
+        self.trace_counter = np.zeros(self.rec.channels)
+        self.trace_countlimit = TRACE_DURATION *self.rec.rate//self.rec.chunk_size  
+        
         for i in range(self.rec.channels):
             self.peak_plots.append(self.channelvlplot.plot(x = [self.peak_trace[i],self.peak_trace[i]],
                                                           y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 

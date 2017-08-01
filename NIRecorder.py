@@ -120,11 +120,15 @@ class Recorder(RecorderParent):
         return channelname
             
 #---------------- STREAMING METHODS -----------------------------------
+    # Convert data obtained into a proper array
+    def audiodata_to_array(self,data):
+        return data.reshape((-1,self.channels))
+    
     # Callback function for audio streaming
     def stream_audio_callback(self):
-        in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)
+        in_data = np.zeros(self.chunk_size*self.channels,dtype = np.float64)
         read = pdaq.int32()
-        self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
+        self.audio_stream.ReadAnalogF64(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
                            in_data,self.chunk_size*self.channels,pdaq.byref(read),None)
         
         data_array = self.audiodata_to_array(in_data)
