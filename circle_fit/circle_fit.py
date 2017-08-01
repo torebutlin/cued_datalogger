@@ -1,7 +1,8 @@
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
-                             QDoubleSpinBox, QCheckBox)
+                             QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
+                             QVBoxLayout, QHBoxLayout)
 
 import numpy as np
 from pyqtgraph.Qt import QtCore
@@ -125,11 +126,36 @@ class CircleFitWidget(QWidget):
         # # Table of results
         self.init_table()
 
+        # # Additional controls
+        self.add_peak_btn = QPushButton(self)
+        self.add_peak_btn.setText("Add new peak")
+        self.add_peak_btn.clicked.connect(self.add_sdof_row)
+
+        self.delete_selected_btn = QPushButton(self)
+        self.delete_selected_btn.setText("Delete selected")
+        self.delete_selected_btn.clicked.connect(self.delete_selected)
+
+        controls = QGridLayout()
+        spacer_hbox = QHBoxLayout()
+        spacer_hbox.addStretch(1)
+        controls.addWidget(self.delete_selected_btn, 0, 0)
+        controls.addLayout(spacer_hbox, 0, 1)
+        controls.addWidget(self.add_peak_btn, 0, 2)
+
+        self.groupbox = QGroupBox(self)
+        self.groupbox.setTitle("Results")
+
+        self.groupbox_vbox = QVBoxLayout()
+        self.groupbox_vbox.addWidget(self.tableWidget)
+        self.groupbox_vbox.addLayout(controls)
+
+        self.groupbox.setLayout(self.groupbox_vbox)
+
         # # Layout
         layout = QGridLayout()
         layout.addWidget(self.transfer_func_plot_w, 0, 0)
         layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addWidget(self.tableWidget, 2, 0)
+        layout.addWidget(self.groupbox, 2, 0)
         layout.addWidget(self.circle_plot_w, 2, 1)
         self.setLayout(layout)
 
@@ -139,71 +165,103 @@ class CircleFitWidget(QWidget):
     def init_table(self):
         self.tableWidget = QTableWidget(self)
 
-        self.tableWidget.setColumnCount(5)
+        self.tableWidget.setColumnCount(6)
         self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
                                                     "Damping ratio",
-                                                    "Amplitude (dB)", "Phase (rad)"])
+                                                    "Amplitude (dB)", "Phase (rad)", ""])
         header = self.tableWidget.horizontalHeader()
         header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
         header.setResizeMode(1, QtGui.QHeaderView.Stretch)
         header.setResizeMode(2, QtGui.QHeaderView.Stretch)
         header.setResizeMode(3, QtGui.QHeaderView.Stretch)
         header.setResizeMode(4, QtGui.QHeaderView.Stretch)
+        header.setResizeMode(5, QtGui.QHeaderView.ResizeToContents)
 
         self.row_list = []
         self.modal_peaks = []
 
         self.add_sdof_row()
 
+    # Interaction functions ---------------------------------------------------
     def add_sdof_row(self):
-        self.new_row_index = self.tableWidget.currentRow() + 1
-
-        # Add a new row
-        self.tableWidget.insertRow(self.new_row_index)
+        # Add the new row at the end
+        self.tableWidget.insertRow(self.tableWidget.rowCount())
         # Go to the new row
-        self.tableWidget.setCurrentCell(self.new_row_index, 0)
+        self.tableWidget.setCurrentCell(self.tableWidget.rowCount()-1, 0)
 
         # Create a new dict in the list of rows to store the
         # widgets for this row in
         self.row_list.append({})
+
         # Create a new dict in the list of modal peaks to store the
         # values for this peak in
         self.modal_peaks.append({})
+
+        # Create the plot item for this peak
+        self.modal_peaks[-1]["plot1"] = pg.PlotDataItem()
+        self.modal_peaks[-1]["plot2"] = pg.PlotDataItem()
+        self.transfer_func_plot.addItem(self.modal_peaks[-1]["plot1"])
+        self.region_select_plot.addItem(self.modal_peaks[-1]["plot2"])
+
         # Create a load of widgets to fill the row - store them in the new dict
-        self.row_list[-1]["select"] = QCheckBox()
-        self.row_list[-1]["freq"] = QDoubleSpinBox()
-        self.row_list[-1]["freq"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["freq"].setSingleStep(0.01)
-        self.row_list[-1]["freq"].setRange(0, 4096*2*np.pi)
-        #self.row_list[-1]["q"] = QDoubleSpinBox()
-        #self.row_list[-1]["q"].setSingleStep(0.01)
-        self.row_list[-1]["z"] = QDoubleSpinBox()
-        self.row_list[-1]["z"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["z"].setSingleStep(0.0001)
-        self.row_list[-1]["z"].setRange(0, 10)
-        self.row_list[-1]["z"].setDecimals(4)
-        self.row_list[-1]["amp"] = QDoubleSpinBox()
-        self.row_list[-1]["amp"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["amp"].setSingleStep(0.1)
-        self.row_list[-1]["amp"].setRange(0, 1e3)
-        self.row_list[-1]["phase"] = QDoubleSpinBox()
-        self.row_list[-1]["phase"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["phase"].setSingleStep(0.01)
-        self.row_list[-1]["phase"].setRange(-np.pi, np.pi)
+        self.row_list[-1]["selectbox"] = QCheckBox()
+        self.row_list[-1]["selectbox"].stateChanged.connect(self.select_peak)
+        self.row_list[-1]["selectbox"].stateChanged.connect(self.set_active_row)
+        self.row_list[-1]["freqbox"] = QDoubleSpinBox()
+        self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
+        self.row_list[-1]["freqbox"].valueChanged.connect(self.set_active_row)
+        self.row_list[-1]["freqbox"].setSingleStep(0.01)
+        self.row_list[-1]["freqbox"].setRange(0, 4096*2*np.pi)
+        self.row_list[-1]["zbox"] = QDoubleSpinBox()
+        self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
+        self.row_list[-1]["zbox"].valueChanged.connect(self.set_active_row)
+        self.row_list[-1]["zbox"].setSingleStep(0.0001)
+        self.row_list[-1]["zbox"].setRange(0, 10)
+        self.row_list[-1]["zbox"].setDecimals(4)
+        self.row_list[-1]["ampbox"] = QDoubleSpinBox()
+        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
+        self.row_list[-1]["ampbox"].valueChanged.connect(self.set_active_row)
+        self.row_list[-1]["ampbox"].setSingleStep(0.1)
+        self.row_list[-1]["ampbox"].setRange(0, 1e3)
+        self.row_list[-1]["phasebox"] = QDoubleSpinBox()
+        self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
+        self.row_list[-1]["phasebox"].valueChanged.connect(self.set_active_row)
+        self.row_list[-1]["phasebox"].setSingleStep(0.01)
+        self.row_list[-1]["phasebox"].setRange(-np.pi, np.pi)
+        self.row_list[-1]["lockbtn"] = QPushButton()
+        self.row_list[-1]["lockbtn"].setText("Lock")
+        self.row_list[-1]["lockbtn"].setCheckable(True)
+        self.row_list[-1]["lockbtn"].clicked[bool].connect(self.lock_peak)
+        self.row_list[-1]["lockbtn"].clicked.connect(self.set_active_row)
+
 
         # Fill the row with widgets
-        self.tableWidget.setCellWidget(self.new_row_index, 0,
-                                       self.row_list[-1]["select"])
-        self.tableWidget.setCellWidget(self.new_row_index, 1,
-                                       self.row_list[-1]["freq"])
-        #self.tableWidget.setCellWidget(self.new_row_index, 2,
-        #                               self.row_list[-1]["q"])
-        self.tableWidget.setCellWidget(self.new_row_index, 2,
-                                       self.row_list[-1]["z"])
-        self.tableWidget.setCellWidget(self.new_row_index, 3,
-                                       self.row_list[-1]["amp"])
-        self.tableWidget.setCellWidget(self.new_row_index, 4,
-                                       self.row_list[-1]["phase"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 0,
+                                       self.row_list[-1]["selectbox"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 1,
+                                       self.row_list[-1]["freqbox"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 2,
+                                       self.row_list[-1]["zbox"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 3,
+                                       self.row_list[-1]["ampbox"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 4,
+                                       self.row_list[-1]["phasebox"])
+        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
+                                       self.row_list[-1]["lockbtn"])
+
+    def select_peak(self):
+        pass
+
+    def lock_peak(self, clicked):
+        pass
+
+    def delete_selected(self):
+        pass
+
+    def set_active_row(self):
+        for i, row in enumerate(self.row_list):
+            if self.sender() in row.values():
+                self.tableWidget.setCurrentCell(i, 0)
 
     def set_data(self, w=None, a=None):
         if a is not None:
@@ -213,22 +271,22 @@ class CircleFitWidget(QWidget):
         else:
             pass
         # Plot the transfer function
-        self.transfer_func_plot.plot(x=self.w, y=to_dB(np.abs(self.a)),
+        self.transfer_function1 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
                                      pen=defaultpen)
-        self.region_select_plot.plot(x=self.w, y=to_dB(np.abs(self.a)),
+        self.transfer_func_plot.addItem(self.transfer_function1)
+        self.transfer_function2 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
                                      pen=defaultpen)
+        self.region_select_plot.addItem(self.transfer_function2)
+
+        self.transfer_func_plot.autoRange()
+        self.transfer_func_plot.disableAutoRange()
+
         self.region_select_plot.autoRange()
         self.region_select_plot.disableAutoRange()
 
         # Create the plot items for the modal peak fit
         self.circle_plot_modal_peak = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_modal_peak)
-
-        self.transfer_func_plot_modal_peak = pg.PlotDataItem()
-        self.transfer_func_plot.addItem(self.transfer_func_plot_modal_peak)
-
-        self.region_select_plot_modal_peak = pg.PlotDataItem()
-        self.region_select_plot.addItem(self.region_select_plot_modal_peak)
 
         # Create the plot items for the data points
         self.circle_plot_points = pg.PlotDataItem()
@@ -271,70 +329,70 @@ class CircleFitWidget(QWidget):
 
     def update_plots(self, value=None):
         self.region_select.setBounds((self.w.min(), self.w.max()))
-
         # Get zoomed in region
         self.get_viewed_region()
 
-        # Recalculate the geometric circle fit
-        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
-        self.w_circle = np.linspace(0, self.w.max(), 1e5)
+        # If the current peak is not locked
+        if not self.row_list[self.tableWidget.currentRow()]["lockbtn"].isChecked():
+            # Recalculate the geometric circle fit
+            self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
+            self.w_circle = np.linspace(0, self.w.max(), 1e5)
 
-        if self.sender() == self.transfer_func_plot or self.sender() == self.region_select:
-            self.update_plot_from_plot()
-            # Update what is displayed in the table
-            self.update_row_from_plot()
-        else:
-            self.update_plot_from_row(value)
+            if self.sender() == self.transfer_func_plot or self.sender() == self.region_select:
+                self.update_plot_from_plot()
+                # Update what is displayed in the table
+                self.update_row_from_plot()
+            else:
+                self.update_plot_from_row(value)
 
-        # Plot the raw data
-        self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
-                              symbol='o', symbolPen=None, symbolBrush='k',
-                              symbolSize=6)
+            # Plot the raw data
+            self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
+                                  symbol='o', symbolPen=None, symbolBrush='k',
+                                  symbolSize=6)
 
 
-        # Recalculate the fitted modal peak
-        self.modal_peaks[-1]["data"] = sdof_modal_peak(self.w_circle,
-                                                       self.modal_peaks[-1]["wr"],
-                                                       self.modal_peaks[-1]["zr"],
-                                                       self.modal_peaks[-1]["cr"],
-                                                       self.modal_peaks[-1]["phi"])
+            # Recalculate the fitted modal peak
+            self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_circle,
+                                                           self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                                           self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                                           self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                                           self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
-        # Plot the fitted modal peak
-        self.circle_plot_modal_peak.setData(self.modal_peaks[-1]["data"].real + self.x0,
-                                            self.modal_peaks[-1]["data"].imag,
-                                            pen=pg.mkPen('m', width=1.5))
+            # Plot the fitted modal peak
+            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real + self.x0,
+                                                self.modal_peaks[self.tableWidget.currentRow()]["data"].imag,
+                                                pen=pg.mkPen('m', width=1.5))
 
-        self.transfer_func_plot_modal_peak.setData(self.w_circle,
-                                                   np.abs(to_dB(self.modal_peaks[-1]["data"])),
-                                                   pen='m')
+            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_circle,
+                                                       np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                       pen='m')
+            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_circle,
+                                                       np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                       pen='m')
 
-        self.region_select_plot_modal_peak.setData(self.w_circle,
-                                                   np.abs(to_dB(self.modal_peaks[-1]["data"])),
-                                                   pen='m')
 
     def update_row_from_plot(self):
-        self.row_list[-1]["freq"].setValue(self.modal_peaks[-1]["wr"])
-        # self.row_list[-1]["q"].setValue(1 / (2*self.modal_peaks[-1]["zr"]))
-        self.row_list[-1]["z"].setValue(self.modal_peaks[-1]["zr"])
-        self.row_list[-1]["amp"].setValue(to_dB(self.modal_peaks[-1]["cr"]))
-        self.row_list[-1]["phase"].setValue(self.modal_peaks[-1]["phi"])
+        self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
+        self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
+        self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["cr"]))
+        self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
     def update_plot_from_row(self, value):
-        if self.sender() == self.row_list[-1]["freq"]:
-            self.modal_peaks[-1]["wr"] = value
-        if self.sender() == self.row_list[-1]["z"]:
-            self.modal_peaks[-1]["zr"] = value
-        if self.sender() == self.row_list[-1]["amp"]:
-            self.modal_peaks[-1]["cr"] = from_dB(value)
-        if self.sender() == self.row_list[-1]["phase"]:
-            self.modal_peaks[-1]["phi"] = value
+        if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
+            self.modal_peaks[self.tableWidget.currentRow()]["wr"] = value
+        if self.sender() == self.row_list[self.tableWidget.currentRow()]["zbox"]:
+            self.modal_peaks[self.tableWidget.currentRow()]["zr"] = value
+        if self.sender() == self.row_list[self.tableWidget.currentRow()]["ampbox"]:
+            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = from_dB(value)
+        if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
+            self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
 
     def update_plot_from_plot(self):
         # Fit a modal peak circle to the geometric circle
-        self.modal_peaks[-1]["wr"], \
-         self.modal_peaks[-1]["zr"], \
-         self.modal_peaks[-1]["cr"], \
-         self.modal_peaks[-1]["phi"] = self.sdof_get_parameters()
+        self.modal_peaks[self.tableWidget.currentRow()]["wr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["zr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["cr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["phi"] = self.sdof_get_parameters()
 
 # Fitting functions -----------------------------------------------------------
     def sdof_modal_peak_optimisation_function(self, w, phi, wr, zr, cr):
@@ -383,7 +441,6 @@ if __name__ == '__main__':
         + sdof_modal_peak(w, 10, 0.008, 8e12, np.pi/2) \
         + sdof_modal_peak(w, 12, 0.003, -8e12, 0) \
         + sdof_modal_peak(w, 20, 0.01, 22e12, 0) \
-
         # + 5e10*np.random.normal(size=w.size)
 
     c.set_data(w, a)
