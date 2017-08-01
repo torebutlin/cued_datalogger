@@ -27,6 +27,8 @@ class Recorder(RecorderParent):
                
         self.open_recorder()
         self.trigger_init()
+        
+        self.max_value = 10;
             
 #---------------- DEVICE SETTING METHODS -----------------------------------
     def set_device_by_name(self, name):
@@ -122,13 +124,13 @@ class Recorder(RecorderParent):
 #---------------- STREAMING METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return data.reshape((-1,self.channels))
+        return data.reshape((-1,self.channels))/2**15 *10.0
     
     # Callback function for audio streaming
     def stream_audio_callback(self):
-        in_data = np.zeros(self.chunk_size*self.channels,dtype = np.float64)
+        in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)
         read = pdaq.int32()
-        self.audio_stream.ReadAnalogF64(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
+        self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
                            in_data,self.chunk_size*self.channels,pdaq.byref(read),None)
         
         data_array = self.audiodata_to_array(in_data)

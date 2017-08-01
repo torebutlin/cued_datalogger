@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit )
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 import pyqtgraph as pg
 import numpy as np
@@ -55,6 +55,7 @@ class LiveplotApp(QMainWindow):
         # Set window parameter
         self.setGeometry(500,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
+        self.center()
         
         # Set recorder object
         self.playing = False
@@ -68,7 +69,7 @@ class LiveplotApp(QMainWindow):
         self.timedata = None 
         self.freqdata = None
         
-        self.plot_colourmap = self.gen_plot_col()
+        self.gen_plot_col()
         
         try:
             # Construct UI        
@@ -87,7 +88,7 @@ class LiveplotApp(QMainWindow):
         self.init_and_check_stream()
             
         # Center and show window
-        self.center()
+        
         self.setFocus()
         self.show()
 
@@ -146,9 +147,9 @@ class LiveplotApp(QMainWindow):
             btn.resize(btn.sizeHint())
             sel_btn_layout.addWidget(btn,y,0)
         
-        self.chan_text = ChanLineText(chantoggle_UI)
-        sel_btn_layout.addWidget(self.chan_text,0,1,-1,-1)
-        self.chan_text.validedit.connect(self.chan_line_toggle)
+        self.chan_text = QLineEdit(chantoggle_UI)
+        sel_btn_layout.addWidget(self.chan_text,0,1)
+        self.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
         
         chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
@@ -477,9 +478,60 @@ class LiveplotApp(QMainWindow):
         
         self.show()
         
-    #---------------------------UI ADJUSTMENTS----------------------------
+    #---------------------------Additional UIs----------------------------
         #h = 600 - chans_settings_layout.geometry().height()
         #main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
+        #'''
+        print('--------- Frame Test------------')
+        #frame = QWidget(self.main_widget)
+        frame = QFrame(self.main_widget)
+        frame.setFrameStyle(QFrame.Box)
+        
+        lay = QVBoxLayout()
+        lay2 = QHBoxLayout()
+        self.chan_text2 = QTextEdit(self.main_widget)
+        lay.addWidget(self.chan_text2)
+        lay2.addWidget(QLabel('Results'))
+        lay2.addWidget(QPushButton('Execute'))
+        lay2.addWidget(QPushButton('<<'))
+        lay.addLayout(lay2)
+        frame.setLayout(lay)
+        frame.show()
+        
+        tlpoint = self.chan_text.geometry().topLeft()
+        #newp = self.chan_text.mapTo(self.main_widget,tlpoint)
+        w = self.chan_text.width() * 3
+        h = self.chan_text.height() * 10
+        
+        
+        frame.setGeometry(tlpoint.x()+10,tlpoint.y()+10,w,h)
+        #frame.setFrameRect(frec)
+        
+        print(frame.getContentsMargins())
+        #lay.setContentsMargins(0,0,0,0)
+        #frame.setSpacing(0)
+        '''
+        pal = frame.palette()
+        pal.setColor(QPalette.Window,QColor(255,0,0,255))
+        frame.setPalette(pal)
+        frame.setAutoFillBackground(True)
+        '''
+        lay.setSpacing(0)
+        ntlpoint = frame.frameGeometry().topLeft()
+        print(ntlpoint.x(),ntlpoint.y())
+        print(tlpoint.x(),tlpoint.y())
+        print(frame.x(),sel_btn_layout.spacing())
+        print(self.main_widget.geometry().left())
+        print(main_splitter.geometry().left())
+        print(chantoggle_UI.geometry().left())
+        print(left_splitter.geometry().left())
+        print('--------- Frame Test------------')
+        
+        # '''
+        
+        #self.chan_text = QLineEdit(chantoggle_UI)
+        #sel_btn_layout.addWidget(self.chan_text,0,1,-1,-1)
+        #self.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
         
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -507,25 +559,41 @@ class LiveplotApp(QMainWindow):
             if not btn.checkState() == state:
                 btn.click()
      
-    def chan_line_toggle(self,in_list):
-        print(in_list)
+    def chan_line_toggle(self,UI):
+        print(UI)
+        if type(UI) == QLineEdit:
+            try:
+                all_selected_chan = eval(UI.text())
+            except:
+                t,v,_ = sys.exc_info()
+                print(t)
+                print(v)
+                print('Invalid expression')
+                return False
+        elif UI == QTextEdit:
+            pass
+            return False
+        else:
+            return False
+        print(all_selected_chan)
+        try:
+            if any([not type(i) == int for i in all_selected_chan]):
+                raise Exception('There is a non-integer in input!')
+                return False
+        except TypeError:
+            if not type(all_selected_chan) == int:
+                raise Exception('There is a non-integer in input!')
+                return False
+            all_selected_chan = [all_selected_chan]
+            
         self.toggle_all_checkboxes(Qt.Unchecked)
-        all_selected_chan = [];
-        for val in in_list:
-            index = [int(s) for s in val.split('-') if not s == '']
-            if index:
-                if len(index) == 1 and index[0]<self.rec.channels:
-                    all_selected_chan.append(index[0])
-                else:
-                    all_selected_chan.extend(range(min(index),min(max(index)+1,self.rec.channels-1)))
-                  
+        
         print(all_selected_chan)
         print(list(set(all_selected_chan)))
+        
         for chan in list(set(all_selected_chan)):
             if chan < self.rec.channels:
                 self.chan_btn_group.button(chan).click()
-                    
-            
          
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
@@ -800,7 +868,8 @@ class LiveplotApp(QMainWindow):
                 
             self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
                            y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
-                
+            
+            self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
             
     def change_threshold(self,arg):
         if type(arg) == str:
@@ -950,12 +1019,14 @@ class LiveplotApp(QMainWindow):
         self.trace_counter = np.zeros(self.rec.channels)
         self.trace_countlimit = TRACE_DURATION *self.rec.rate//self.rec.chunk_size  
         
+        self.threshold_line.setBounds((0,self.rec.max_value))
+        
         for i in range(self.rec.channels):
             self.peak_plots.append(self.channelvlplot.plot(x = [self.peak_trace[i],self.peak_trace[i]],
                                                           y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 
         
-        self.channelvlplot.setRange(xRange = (0,1.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
-        self.channelvlplot.setLimits(xMin = -0.1,xMax = 1.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
+        self.channelvlplot.setRange(xRange = (0,self.rec.max_value+0.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
+        self.channelvlplot.setLimits(xMin = -0.1,xMax = self.rec.max_value+0.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
         self.update_chanlvls()
         
     def ResetChanBtns(self):
@@ -1050,7 +1121,10 @@ class LiveplotApp(QMainWindow):
     def gen_plot_col(self):
         val = [0.0,0.5,1.0]
         colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
-        return pg.ColorMap(val,colour)
+        self.plot_colourmap =  pg.ColorMap(val,colour)
+        val = [0.0,0.1,0.2]
+        colour = np.array([[0,255,0,255],[0,255,0,255],[255,0,0,255]], dtype = np.ubyte)
+        self.level_colourmap = pg.ColorMap(val,colour)
      
     def set_input_limits(self,linebox,low,high,in_type):
         val = in_type(linebox.text())

@@ -294,10 +294,11 @@ class RecorderParent(object):
     def num_chunk(self, num_chunks):
         n = max(1, int(num_chunks))
         try:
-            if n * self.chunk_size > 2**16:
+            if n * self.chunk_size > 2**25:
                 n = 2**16 // self.chunk_size
             self._num_chunk = n
             self.allocate_buffer()
+            print(self._num_chunk)
         except Exception as e:
             #print(e)
             self._num_chunks = n
@@ -311,9 +312,10 @@ class RecorderParent(object):
     def chunk_size(self, chunk_size):
         n = max(1, int(chunk_size))
         try:
-            if n * self.num_chunk > 2**16:
+            if n * self.num_chunk > 2**25:
                 n = 2**16 // self.num_chunk
             self._chunk_size = n
+            print(self._chunk_size)
             self.allocate_buffer()
         except Exception as e:
             #print(e)

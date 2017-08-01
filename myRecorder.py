@@ -30,6 +30,8 @@ class Recorder(RecorderParent):
         
         self.trigger_init()
         
+        self.max_value = 1;
+        
     def open_recorder(self):
         super().open_recorder()
         if self.p == None:
