@@ -565,7 +565,9 @@ class LiveplotApp(QMainWindow):
             string = UI.toPlainText()
         else:
             return False
-        
+        '''
+        WARNING: DO NOT PUT EVAL IF FOR WHATEVER REASON THIS IS DONE OVER A NETWORK
+        '''
         try:
             all_selected_chan = eval(string)
         except:
@@ -604,6 +606,7 @@ class LiveplotApp(QMainWindow):
         '''
         
         print(all_selected_chan)
+        all_selected_chan = list(all_selected_chan)
         try:
             if any([not type(i) == int for i in all_selected_chan]):
                 raise Exception('There is a non-integer in input!')
