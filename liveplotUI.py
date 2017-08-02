@@ -497,6 +497,7 @@ class LiveplotApp(QMainWindow):
         self.chan_text3 = QLineEdit(self.chan_toggle_ext)
         self.chan_text4 = QLineEdit(self.chan_toggle_ext)
         search_status = QStatusBar(self.chan_toggle_ext)
+        search_status.setSizeGripEnabled(False)
         code_warning = QLabel('**For toggling by code:Numpy is imported as np; Import is not allowed**')
         code_warning.setWordWrap(True)
         lay.addWidget(code_warning)
@@ -558,7 +559,8 @@ class LiveplotApp(QMainWindow):
             tlpoint = self.chan_text.mapTo(self,QPoint(0,0))
             self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
             self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),self.chan_text.width()*3,self.chan_text.height()*15)
-            self.chan_toggle_ext.show()
+            if not self.chan_toggle_ext.isVisible():
+                self.chan_toggle_ext.show()
         else:
             self.chan_toggle_ext.hide()
      
@@ -1149,6 +1151,13 @@ class LiveplotApp(QMainWindow):
             self.rec_boxes[4].setEnabled(True)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
+    def resizeEvent(self, event):
+        try:
+            if self.chan_toggle_ext.isVisible():
+                self.toggle_ext_toggling(toggle = True)
+        except:
+            pass
+
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
         #if self.plottimer.isActive():
