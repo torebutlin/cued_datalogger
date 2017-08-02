@@ -11,6 +11,8 @@ from scipy.optimize import curve_fit
 
 import sys
 
+from channel import *
+from matlab_import import import_from_mat
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -511,6 +513,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     c = CircleFitWidget()
 
+    """
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
     a = sdof_modal_peak(w, 5, 0.006, 8e12, 0) \
@@ -518,7 +521,10 @@ if __name__ == '__main__':
         + sdof_modal_peak(w, 12, 0.003, -8e12, 0) \
         + sdof_modal_peak(w, 20, 0.01, 22e12, 0) \
         # + 5e10*np.random.normal(size=w.size)
-
-    c.set_data(w, a)
+    """
+    cs = ChannelSet()
+    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+    a = cs.chans[0].data('f')
+    c.set_data(np.linspace(0, a.size, a.size), a)
 
     sys.exit(app.exec_())
