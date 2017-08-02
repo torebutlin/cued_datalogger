@@ -9,8 +9,8 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit )
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette,QSizePolicy
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import pyqtgraph as pg
 import numpy as np
 import functools as fct
@@ -149,7 +149,11 @@ class LiveplotApp(QMainWindow):
         
         self.chan_text = QLineEdit(chantoggle_UI)
         sel_btn_layout.addWidget(self.chan_text,0,1)
+        toggle_ext_button = QPushButton('>>',chantoggle_UI)
+        sel_btn_layout.addWidget(toggle_ext_button,1,1)
+        
         self.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
+        toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
         
         chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
@@ -481,53 +485,43 @@ class LiveplotApp(QMainWindow):
     #---------------------------Additional UIs----------------------------
         #h = 600 - chans_settings_layout.geometry().height()
         #main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
-        #'''
+
         print('--------- Frame Test------------')
-        #frame = QWidget(self.main_widget)
-        frame = QFrame(self.main_widget)
-        frame.setFrameStyle(QFrame.Box)
-        
-        lay = QVBoxLayout()
+        self.chan_toggle_ext = QWidget(self.main_widget)
+        self.chan_toggle_ext.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        lay = QVBoxLayout(self.chan_toggle_ext)
+
         lay2 = QHBoxLayout()
-        self.chan_text2 = QTextEdit(self.main_widget)
+        
+        self.chan_text2 = QTextEdit(self.chan_toggle_ext)
+        self.chan_text3 = QLineEdit(self.chan_toggle_ext)
+        self.chan_text4 = QLineEdit(self.chan_toggle_ext)
+        search_status = QStatusBar(self.chan_toggle_ext)
+        code_warning = QLabel('**For toggling by code:Numpy is imported as np; Import is not allowed**')
+        code_warning.setWordWrap(True)
+        lay.addWidget(code_warning)
+        lay.addWidget(QLabel('Code Toggle:'))
         lay.addWidget(self.chan_text2)
-        lay2.addWidget(QLabel('Results'))
-        lay2.addWidget(QPushButton('Execute'))
-        lay2.addWidget(QPushButton('<<'))
+        
+        exec_code_btn = QPushButton('Execute',self.chan_toggle_ext)        
+        close_ext_toggle = QPushButton('<<',self.chan_toggle_ext)
+        lay2.addWidget(exec_code_btn)
+        lay2.addWidget(close_ext_toggle)
+        exec_code_btn.clicked.connect(lambda: self.chan_line_toggle(exec_code_btn))
+        close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
         lay.addLayout(lay2)
-        frame.setLayout(lay)
-        frame.show()
         
-        tlpoint = self.chan_text.geometry().topLeft()
-        #newp = self.chan_text.mapTo(self.main_widget,tlpoint)
-        w = self.chan_text.width() * 3
-        h = self.chan_text.height() * 10
+        lay.addWidget(QLabel('Hashtag Toggle:'))
+        lay.addWidget(self.chan_text3)
+        lay.addWidget(QLabel('Channel(s) Toggled:'))
+        lay.addWidget(self.chan_text4)
+        lay.addWidget(search_status)
+                
+        search_status.showMessage('Awaiting...')
         
         
-        frame.setGeometry(tlpoint.x()+10,tlpoint.y()+10,w,h)
-        #frame.setFrameRect(frec)
-        
-        print(frame.getContentsMargins())
-        #lay.setContentsMargins(0,0,0,0)
-        #frame.setSpacing(0)
-        '''
-        pal = frame.palette()
-        pal.setColor(QPalette.Window,QColor(255,0,0,255))
-        frame.setPalette(pal)
-        frame.setAutoFillBackground(True)
-        '''
-        lay.setSpacing(0)
-        ntlpoint = frame.frameGeometry().topLeft()
-        print(ntlpoint.x(),ntlpoint.y())
-        print(tlpoint.x(),tlpoint.y())
-        print(frame.x(),sel_btn_layout.spacing())
-        print(self.main_widget.geometry().left())
-        print(main_splitter.geometry().left())
-        print(chantoggle_UI.geometry().left())
-        print(left_splitter.geometry().left())
         print('--------- Frame Test------------')
         
-        # '''
         
         #self.chan_text = QLineEdit(chantoggle_UI)
         #sel_btn_layout.addWidget(self.chan_text,0,1,-1,-1)
@@ -558,6 +552,15 @@ class LiveplotApp(QMainWindow):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
+                
+    def toggle_ext_toggling(self,toggle):
+        if toggle:
+            tlpoint = self.chan_text.mapTo(self,QPoint(0,0))
+            self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
+            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),self.chan_text.width()*3,self.chan_text.height()*15)
+            self.chan_toggle_ext.show()
+        else:
+            self.chan_toggle_ext.hide()
      
     def chan_line_toggle(self,UI):
         print(UI)
@@ -852,7 +855,7 @@ class LiveplotApp(QMainWindow):
         rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
         maxs = np.amax(abs(currentdata),axis = 0)
         
-        self.chanlvl_bars.setData(x = rms,right = maxs-rms,left = rms)
+        self.chanlvl_bars.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR, right = maxs-rms,left = rms)
         self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
         
         for i in range(self.rec.channels):
@@ -1071,6 +1074,7 @@ class LiveplotApp(QMainWindow):
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
         self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
+        self.sig_hold = [Qt.Unchecked]* self.rec.channels
         c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
         self.plot_colours = []
         self.def_colours = []
