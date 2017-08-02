@@ -138,7 +138,7 @@ class Recorder(RecorderParent):
         self.rEmitter.newdata.emit()
        
         if self.recording:
-            self.record_data()
+            self.record_data(in_data)
          # Add trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)

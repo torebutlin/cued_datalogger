@@ -190,8 +190,8 @@ class RecorderParent(object):
         self.recorded_data = []
     
     # Append the current chunk(which is before next_chunk) to recorded data            
-    def record_data(self):
-        data = cp.copy(self.buffer[self.next_chunk-1])
+    def record_data(self,data):
+        #data = cp.copy(self.buffer[self.next_chunk-1])
         self.recorded_data.append(data)
         # Check to see whether recording is done
         self.next_rec_chunk += 1

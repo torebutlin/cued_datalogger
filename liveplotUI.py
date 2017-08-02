@@ -14,6 +14,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import pyqtgraph as pg
 import numpy as np
 import functools as fct
+import ast
 
 from ChanLineText import ChanLineText
 import myRecorder as mR
@@ -488,12 +489,11 @@ class LiveplotApp(QMainWindow):
 
         print('--------- Frame Test------------')
         self.chan_toggle_ext = QWidget(self.main_widget)
-        self.chan_toggle_ext.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         lay = QVBoxLayout(self.chan_toggle_ext)
 
         lay2 = QHBoxLayout()
         
-        self.chan_text2 = QTextEdit(self.chan_toggle_ext)
+        self.chan_text2 = ChanLineText(self.chan_toggle_ext)
         self.chan_text3 = QLineEdit(self.chan_toggle_ext)
         self.chan_text4 = QLineEdit(self.chan_toggle_ext)
         search_status = QStatusBar(self.chan_toggle_ext)
@@ -503,12 +503,12 @@ class LiveplotApp(QMainWindow):
         lay.addWidget(code_warning)
         lay.addWidget(QLabel('Code Toggle:'))
         lay.addWidget(self.chan_text2)
-        
+        self.chan_text2.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text2))
         exec_code_btn = QPushButton('Execute',self.chan_toggle_ext)        
         close_ext_toggle = QPushButton('<<',self.chan_toggle_ext)
         lay2.addWidget(exec_code_btn)
         lay2.addWidget(close_ext_toggle)
-        exec_code_btn.clicked.connect(lambda: self.chan_line_toggle(exec_code_btn))
+        #exec_code_btn.clicked.connect(lambda: self.chan_line_toggle(self.chan_text2))
         close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
         lay.addLayout(lay2)
         
@@ -520,13 +520,6 @@ class LiveplotApp(QMainWindow):
                 
         search_status.showMessage('Awaiting...')
         
-        
-        print('--------- Frame Test------------')
-        
-        
-        #self.chan_text = QLineEdit(chantoggle_UI)
-        #sel_btn_layout.addWidget(self.chan_text,0,1,-1,-1)
-        #self.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
         
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -567,19 +560,49 @@ class LiveplotApp(QMainWindow):
     def chan_line_toggle(self,UI):
         print(UI)
         if type(UI) == QLineEdit:
+            string = UI.text()
+        elif type(UI) == QTextEdit or type(UI) == ChanLineText:
+            string = UI.toPlainText()
+        else:
+            return False
+        
+        try:
+            all_selected_chan = eval(string)
+        except:
+            t,v,_ = sys.exc_info()
+            print(t)
+            print(v)
+            print('Invalid expression')
+            return False
+        '''
+        elif type(UI) == QTextEdit or type(UI) == ChanLineText:
             try:
-                all_selected_chan = eval(UI.text())
+                string = UI.toPlainText()
+                code = compile(string,'<string>','exec')
             except:
                 t,v,_ = sys.exc_info()
                 print(t)
                 print(v)
-                print('Invalid expression')
+                print('Invalid code')
                 return False
-        elif UI == QTextEdit:
-            pass
-            return False
-        else:
-            return False
+
+            g = {}
+            try:
+                ast.literal_eval(code,g)
+            except:
+                t,v,_ = sys.exc_info()
+                print(t)
+                print(v)
+                print('Code failed')
+                return False
+            
+            print('Code executed')
+            try:
+                all_selected_chan = g['output']
+            except KeyError:
+                all_selected_chan = []
+        '''
+        
         print(all_selected_chan)
         try:
             if any([not type(i) == int for i in all_selected_chan]):

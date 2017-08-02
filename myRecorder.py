@@ -114,7 +114,7 @@ class Recorder(RecorderParent):
         self.rEmitter.newdata.emit()
         
         if self.recording:
-            self.record_data()
+            self.record_data(data_array)
             
          # Trigger check
         if self.trigger:
