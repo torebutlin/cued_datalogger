@@ -82,11 +82,14 @@ class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
 
+        self.w = np.zeros(1)
+
+
         self.init_ui()
 
     # Initialisation functions ------------------------------------------------
     def init_ui(self):
-        # # Transfer function plot
+        # # Transfer function plotlock
         self.transfer_func_plot_w = pg.PlotWidget(title="Transfer Function",
                                                   labels={'bottom':
                                                           ("Frequency", "rad"),
@@ -129,7 +132,8 @@ class CircleFitWidget(QWidget):
         # # Additional controls
         self.add_peak_btn = QPushButton(self)
         self.add_peak_btn.setText("Add new peak")
-        self.add_peak_btn.clicked.connect(self.add_sdof_row)
+        self.add_peak_btn.clicked.connect(self.add_peak)
+        self.add_peak_btn.clicked.connect(self.update_plots)
 
         self.delete_selected_btn = QPushButton(self)
         self.delete_selected_btn.setText("Delete selected")
@@ -142,20 +146,39 @@ class CircleFitWidget(QWidget):
         controls.addLayout(spacer_hbox, 0, 1)
         controls.addWidget(self.add_peak_btn, 0, 2)
 
-        self.groupbox = QGroupBox(self)
-        self.groupbox.setTitle("Results")
+        # # Transfer function reconstruction
+        self.construct_transfer_fn_btn = QPushButton(self)
+        self.construct_transfer_fn_btn.setText("Construct transfer function")
+        self.construct_transfer_fn_btn.clicked.connect(self.construct_transfer_fn)
 
-        self.groupbox_vbox = QVBoxLayout()
-        self.groupbox_vbox.addWidget(self.tableWidget)
-        self.groupbox_vbox.addLayout(controls)
+        self.show_transfer_fn_checkbox = QCheckBox(self)
+        self.show_transfer_fn_checkbox.setText("Show/hide")
+        self.show_transfer_fn_checkbox.stateChanged.connect(self.show_transfer_fn)
 
-        self.groupbox.setLayout(self.groupbox_vbox)
+        transfer_fn_hbox = QHBoxLayout()
+        transfer_fn_hbox.addWidget(self.construct_transfer_fn_btn)
+        transfer_fn_hbox.addWidget(self.show_transfer_fn_checkbox)
+        transfer_fn_hbox.addLayout(spacer_hbox)
+
+        transfer_fn_groupbox = QGroupBox(self)
+        transfer_fn_groupbox.setTitle("Reconstructed transfer function")
+        transfer_fn_groupbox.setLayout(transfer_fn_hbox)
+
+        groupbox = QGroupBox(self)
+        groupbox.setTitle("Results")
+
+        groupbox_vbox = QVBoxLayout()
+        groupbox_vbox.addWidget(self.tableWidget)
+        groupbox_vbox.addLayout(controls)
+        groupbox_vbox.addWidget(transfer_fn_groupbox)
+
+        groupbox.setLayout(groupbox_vbox)
 
         # # Layout
         layout = QGridLayout()
         layout.addWidget(self.transfer_func_plot_w, 0, 0)
         layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addWidget(self.groupbox, 2, 0)
+        layout.addWidget(groupbox, 2, 0)
         layout.addWidget(self.circle_plot_w, 2, 1)
         self.setLayout(layout)
 
@@ -168,7 +191,7 @@ class CircleFitWidget(QWidget):
         self.tableWidget.setColumnCount(6)
         self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
                                                     "Damping ratio",
-                                                    "Amplitude (dB)", "Phase (rad)", ""])
+                                                    "Amplitude", "Phase (rad)", "\N{LOCK}"])
         header = self.tableWidget.horizontalHeader()
         header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
         header.setResizeMode(1, QtGui.QHeaderView.Stretch)
@@ -180,10 +203,10 @@ class CircleFitWidget(QWidget):
         self.row_list = []
         self.modal_peaks = []
 
-        self.add_sdof_row()
+        self.add_peak()
 
     # Interaction functions ---------------------------------------------------
-    def add_sdof_row(self):
+    def add_peak(self):
         # Add the new row at the end
         self.tableWidget.insertRow(self.tableWidget.rowCount())
         # Go to the new row
@@ -205,6 +228,7 @@ class CircleFitWidget(QWidget):
 
         # Create a load of widgets to fill the row - store them in the new dict
         self.row_list[-1]["selectbox"] = QCheckBox()
+        self.row_list[-1]["selectbox"].toggle()
         self.row_list[-1]["selectbox"].stateChanged.connect(self.select_peak)
         self.row_list[-1]["selectbox"].stateChanged.connect(self.set_active_row)
         self.row_list[-1]["freqbox"] = QDoubleSpinBox()
@@ -221,19 +245,18 @@ class CircleFitWidget(QWidget):
         self.row_list[-1]["ampbox"] = QDoubleSpinBox()
         self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["ampbox"].valueChanged.connect(self.set_active_row)
-        self.row_list[-1]["ampbox"].setSingleStep(0.1)
-        self.row_list[-1]["ampbox"].setRange(0, 1e3)
+        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_ampbox_step)
+        self.row_list[-1]["ampbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["phasebox"] = QDoubleSpinBox()
         self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["phasebox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["phasebox"].setSingleStep(0.01)
         self.row_list[-1]["phasebox"].setRange(-np.pi, np.pi)
         self.row_list[-1]["lockbtn"] = QPushButton()
-        self.row_list[-1]["lockbtn"].setText("Lock")
+        self.row_list[-1]["lockbtn"].setText("")
         self.row_list[-1]["lockbtn"].setCheckable(True)
         self.row_list[-1]["lockbtn"].clicked[bool].connect(self.lock_peak)
         self.row_list[-1]["lockbtn"].clicked.connect(self.set_active_row)
-
 
         # Fill the row with widgets
         self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 0,
@@ -249,14 +272,49 @@ class CircleFitWidget(QWidget):
         self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
                                        self.row_list[-1]["lockbtn"])
 
-    def select_peak(self):
-        pass
+    def show_transfer_fn(self):
+        if self.sender().isChecked():
+            self.constructed_transfer_fn1.show()
+            self.constructed_transfer_fn2.show()
+        else:
+            self.constructed_transfer_fn1.hide()
+            self.constructed_transfer_fn2.hide()
 
-    def lock_peak(self, clicked):
-        pass
+    def update_ampbox_step(self, value):
+        # Set the step to 1% of the current value
+        self.row_list[self.tableWidget.currentRow()]["ampbox"].setSingleStep(0.01 * value)
+
+    def select_peak(self, checked):
+        for item in self.transfer_func_plot.items:
+            if item == self.modal_peaks[self.tableWidget.currentRow()]["plot1"]:
+                item.setVisible(checked)
+        for item in self.region_select_plot.items:
+            if item == self.modal_peaks[self.tableWidget.currentRow()]["plot2"]:
+                item.setVisible(checked)
+
+    def lock_peak(self, checked):
+        self.set_active_row()
+        # Clicked is a bool (true or false) - this either disables or enables
+        # all widgets in the row except the lock button
+        for name, widget in self.row_list[self.tableWidget.currentRow()].items():
+            # If it is locked, change the text to "unlock"
+            if name is "lockbtn" and checked is True:
+                widget.setText("\N{LOCK}")
+            elif name is "lockbtn" and checked is False:
+                widget.setText("")
+            if name is not "selectbox" and name is not "lockbtn":
+                widget.setDisabled(checked)
 
     def delete_selected(self):
-        pass
+        for i, row in enumerate(self.row_list):
+            if row["selectbox"].isChecked():
+                # Delete from table
+                del self.row_list[i]
+                self.tableWidget.removeRow(i)
+                # Delete from graphs
+                self.transfer_func_plot.removeItem(self.modal_peaks[i]["plot1"])
+                self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
+                del self.modal_peaks[i]
 
     def set_active_row(self):
         for i, row in enumerate(self.row_list):
@@ -273,10 +331,15 @@ class CircleFitWidget(QWidget):
         # Plot the transfer function
         self.transfer_function1 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
                                      pen=defaultpen)
+        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
         self.transfer_func_plot.addItem(self.transfer_function1)
+        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
+
         self.transfer_function2 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
                                      pen=defaultpen)
+        self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
         self.region_select_plot.addItem(self.transfer_function2)
+        self.region_select_plot.addItem(self.constructed_transfer_fn2)
 
         self.transfer_func_plot.autoRange()
         self.transfer_func_plot.disableAutoRange()
@@ -293,6 +356,16 @@ class CircleFitWidget(QWidget):
         self.circle_plot.addItem(self.circle_plot_points)
 
         self.update_plots()
+
+    def construct_transfer_fn(self):
+        self.show_transfer_fn_checkbox.setChecked(True)
+        self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["data"])
+        for i, peak in enumerate(self.modal_peaks):
+            if self.row_list[i]["selectbox"].isChecked():
+                self.constructed_transfer_fn += peak["data"]
+
+        self.constructed_transfer_fn1.setData(x=self.w_circle, y=to_dB(np.abs(self.constructed_transfer_fn)))
+        self.constructed_transfer_fn2.setData(x=self.w_circle, y=to_dB(np.abs(self.constructed_transfer_fn)))
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
@@ -338,7 +411,7 @@ class CircleFitWidget(QWidget):
             self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
             self.w_circle = np.linspace(0, self.w.max(), 1e5)
 
-            if self.sender() == self.transfer_func_plot or self.sender() == self.region_select:
+            if self.sender() == self.transfer_func_plot or self.sender() == self.region_select or self.sender() == self.add_peak_btn:
                 self.update_plot_from_plot()
                 # Update what is displayed in the table
                 self.update_row_from_plot()
@@ -361,20 +434,23 @@ class CircleFitWidget(QWidget):
             # Plot the fitted modal peak
             self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real + self.x0,
                                                 self.modal_peaks[self.tableWidget.currentRow()]["data"].imag,
-                                                pen=pg.mkPen('m', width=1.5))
+                                                pen=pg.mkPen('r', width=1.5))
 
             self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_circle,
                                                        np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                       pen='m')
+                                                       pen='r')
             self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_circle,
                                                        np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                       pen='m')
+                                                       pen='r')
 
+            # Update the constructed transfer function
+            if self.show_transfer_fn_checkbox.isChecked():
+                self.construct_transfer_fn()
 
     def update_row_from_plot(self):
         self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
         self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
-        self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["cr"]))
+        self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["cr"])
         self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
     def update_plot_from_row(self, value):
@@ -383,7 +459,7 @@ class CircleFitWidget(QWidget):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["zbox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["zr"] = value
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["ampbox"]:
-            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = from_dB(value)
+            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = value
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
 
@@ -424,9 +500,9 @@ class CircleFitWidget(QWidget):
         phi = popts[0]
         wr = popts[1]
         zr = popts[2]
-        cr = popts[3]
+        cr = -popts[3]
 
-        return wr, zr, np.abs(cr), phi
+        return wr, zr, cr, phi
 
 
 if __name__ == '__main__':
