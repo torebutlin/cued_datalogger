@@ -8,7 +8,7 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit )
+    QCheckBox,QButtonGroup,QTextEdit,QApplication )
 from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette,QSizePolicy
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import pyqtgraph as pg
@@ -17,6 +17,7 @@ import functools as fct
 import ast
 
 from ChanLineText import ChanLineText
+from ChanMetaWin import ChanMetaWin
 import myRecorder as mR
 try:
     import NIRecorder as NIR
@@ -57,6 +58,8 @@ class LiveplotApp(QMainWindow):
         self.setGeometry(500,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
         self.center()
+        
+        self.meta_window = None
         
         # Set recorder object
         self.playing = False
@@ -188,9 +191,12 @@ class LiveplotApp(QMainWindow):
         colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
         defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
         self.chanprop_config.append(colbox)
+        meta_btn = QPushButton('Channel Info',chanconfig_UI)
+        meta_btn.clicked.connect(self.open_meta_window)
         chan_num_col_layout.addWidget(QLabel('Colour',chanconfig_UI),1,0)
         chan_num_col_layout.addWidget(colbox,1,1)
         chan_num_col_layout.addWidget(defcol_btn,1,2)
+        chan_num_col_layout.addWidget(meta_btn,2,0,1,3)
         
         chans_prop_layout.addLayout(chan_num_col_layout)
         
@@ -675,7 +681,16 @@ class LiveplotApp(QMainWindow):
             self.plotlines[2*chan].setPen(col)
             self.plotlines[2*chan+1].setPen(col)
         self.chanlvl_pts.scatter.setBrush(self.plot_colours)
-     
+    
+    def open_meta_window(self):
+        if not self.meta_window:
+            self.meta_window = ChanMetaWin(self)
+            self.meta_window.show()
+            self.meta_window.finished.connect(self.meta_win_closed)
+            
+    def meta_win_closed(self):
+        self.meta_window = None
+
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
     def toggle_rec(self,stop = None):
@@ -1194,4 +1209,8 @@ class LiveplotApp(QMainWindow):
             self.parent.liveplot = None
             self.parent.liveplotbtn.setText('Open Oscilloscope')
             
-           
+if __name__ == '__main__':
+    app = 0 
+    app = QApplication(sys.argv)
+    w = ChanMetaWin()
+    sys.exit(app.exec_())           
