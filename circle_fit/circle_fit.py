@@ -499,6 +499,12 @@ class CircleFitWidget(QWidget):
         return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
 
     def fitted_single_pole(self, w, wr, zr, cr, phi):
+        if cr < 0:
+            cr = -cr
+            phi += np.pi/2
+        if zr < 0:
+            zr = -zr
+            phi -= np.pi/2
         return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
             - self.single_pole(w, wr, zr, cr, phi)
 
@@ -542,8 +548,8 @@ if __name__ == '__main__':
     """
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
-    a = sdof_modal_peak(w, 5, 0.006, 8e12, 0) \
-        + sdof_modal_peak(w, 10, 0.008, 8e12, np.pi/2) \
+    a = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
+        + sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
         + sdof_modal_peak(w, 12, 0.003, -8e12, 0) \
         + sdof_modal_peak(w, 20, 0.01, 22e12, 0) \
         # + 5e10*np.random.normal(size=w.size)
