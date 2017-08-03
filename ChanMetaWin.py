@@ -51,15 +51,14 @@ class ChanMetaWin(QDialog):
         
         row +=5
         
-        
+        apply_btn = QPushButton('Apply',self)
         yes_btn = QPushButton('Ok',self)
         no_btn =  QPushButton('Cancel',self)
+        channel_meta_form.addWidget(apply_btn,row,0)
         channel_meta_form.addWidget(yes_btn,row,1)
         channel_meta_form.addWidget(no_btn,row,2)
         
         main_layout.addLayout(channel_meta_form)
-        #main_layout.setStretchFactor(channel_listview, 0.2)
-        #main_layout.setStretchFactor(channel_meta_form, 10)
 '''  
 if __name__ == '__main__':
     app = 0 
