@@ -13,33 +13,81 @@ class ChannelSet():
             for i in range(channels):
                 self.add_channel(i)
                 
-                
     # Add a Channel
-    # TODO: allow inputs of a Channel class
+    # TODO: allow inputs of a Channel class????
     def add_channel(self,cid):
         self.chans = np.append(self.chans, Channel(cid))
     
-    # Add a DataSet to a Channel
-    # TODO: allow multichannel adding
-    # TODO: Auto create the DataSet with the input being the id    
-    def chan_add_dataset(self,num,datasets):
-        self.chans[num].add_dataset(datasets)
-    
+    # Add a DataSet to Channel
+    def chan_add_dataset(self,id_,num = None, value = None):
+        if type(id_) == str:
+            id_ = [id_]
+        if num == None:
+            num = range(len(self))
+        if type(num) == int:
+            num = [num]  
+        all_val = []
+        try:
+            all_val.extend(value)
+            if len(all_val)<len(id_):
+                all_val.extend([None]*(len(id_)-len(all_val)))
+        except TypeError:
+            all_val.append(value)
+            all_val = all_val*len(id_)  
+            
+        for n in num:    
+            for d,v in zip(id_,all_val): 
+                self.chans[n].add_dataset(d,v)
+   
     # Set the data of a DataSet in a Channel
-    # TODO: allow multidata setting   
-    def chan_set_data(self,num,id_,datasets):
-        self.chans[num].set_data(id_,datasets)
+    def chan_set_data(self,id_,value,num = None):
+        if type(id_) == str:
+            id_ = [id_]
+        if num == None:
+            num = range(len(self))
+            value = [value]*len(id_)
+        if type(num) == int:
+            num = [num]
+        all_val = []
+        try:
+            all_val.extend(value)
+        except TypeError:
+            all_val.append(value)
+        if len(all_val)<len(id_):
+            all_val.extend([None]*(len(id_)-len(all_val)))
+            
+        for n in num: 
+            for d,v in zip(id_,all_val): 
+                self.chans[n].set_data(d,v)
+            
+    def chan_get_data(self,id_,num = None):
+        if num == None:
+            num = range(len(self))
+        if type(num) == int:
+            num = [num]            
+        if type(id_) == str:
+            id_ = [id_]
+        chan_datasets = {}
+        for n in num:
+            chan_data = {}
+            for d in id_: 
+                chan_data[d] = self.chans[n].data(d)
+            chan_datasets[str(n)] = chan_data
+            
+        return chan_datasets       
     
     # Get the metadatas of specified Channels
-    def get_metadatas(self,chan_nums,meta_names): 
+    def chan_get_metadatas(self,meta_names,num = None): 
         metadatas = {}
-        if type(chan_nums) == int:
-            chan_nums = [chan_nums]
+        if num == None:
+            num = range(len(self))
+        if type(num) == int:
+            num = [num]
         
         if type(meta_names) == str:
             meta_names = [meta_names]
             
-        for n in chan_nums:
+        for n in num:
             mdata = {}
             for m in meta_names:
                 try:
@@ -51,17 +99,19 @@ class ChannelSet():
         return metadatas
     
     # Get the metadatas of specified Channels
-    def set_metadatas(self,chan_nums,meta_dict):
+    def chan_set_metadatas(self,meta_dict,num = None):
         if not type(meta_dict) == dict:
             raise Exception('Please Enter a Dictionary type')
-            
-        if type(chan_nums) == int:
-            chan_nums = [chan_nums]
-        else:    
-            chan_nums = list(set(chan_nums))
-            chan_nums.sort()
         
-        for n in chan_nums:
+        if num == None:
+            num = range(len(self))
+        if type(num) == int:
+            num = [num]
+        else:    
+            num = list(set(num))
+            num.sort()
+        
+        for n in num:
             try:
                 self.chans[n]
             except IndexError:
@@ -69,7 +119,6 @@ class ChannelSet():
                 break
             for m,v in zip(iter(meta_dict.keys()),iter(meta_dict.values())):
                     self.chans[n].set_metadata(m.lower(),v)
-                
                 
     def __len__(self):
         return(len(self.chans))
@@ -81,7 +130,10 @@ class Channel():
         
         # Put metadata here
         self.cid = int(cid)
-        self.name = name
+        if name == None:
+            self.name = 'Channel %i' % cid
+        else:
+            self.name = str(name)
         self.cal_factor = 1
         self.units = 'm/s'
         self.tags = []
@@ -106,29 +158,29 @@ class Channel():
         if not self.is_dataset(id_):
             self.datasets = np.append(self.datasets, DataSet(id_,values))
         else:
-            raise Exception('You already have that dataset!')
+            print('You already have that dataset!')
             
     def set_data(self, id_, values):
         for ds in self.datasets:
             if ds.id_ == id_:
                 ds.set_values(values)
-                break
-            else:
-                raise Exception('No such dataset!')
-                
+                return
+            
+        print('No such datasets')    
+            
     def data(self, id_):
         for ds in self.datasets:
             if ds.id_ == id_:
                 return ds.values
-            else:
-                raise Exception('No such dataset!')
+            
+        print('No such datasets')
     
     def get_metadata(self,meta_name):
         mdata = None
         if hasattr(self,meta_name):
             mdata = getattr(self,meta_name)
         else:
-            raise Exception('No such attribute')
+            print('No such attribute')
             
         return mdata
     
@@ -148,5 +200,4 @@ class DataSet():
     
     def set_values(self, values):
         self.values = np.asarray(values)
-        
         
