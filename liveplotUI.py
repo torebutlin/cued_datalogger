@@ -30,7 +30,7 @@ except ModuleNotFoundError:
     NI_drivers = False
 
 # Theo's channel implementation, will probably use it later
-from channel import DataSet, Channel, ChannelSet
+import channel as ch
 
 import math
 
@@ -61,6 +61,7 @@ class LiveplotApp(QMainWindow):
         
         self.meta_window = None
         
+        
         # Set recorder object
         self.playing = False
         self.rec = mR.Recorder(channels = 15,
@@ -74,7 +75,8 @@ class LiveplotApp(QMainWindow):
         self.freqdata = None
         
         self.gen_plot_col()
-        
+        self.ResetMetaData()
+           
         try:
             # Construct UI        
             self.initUI()
@@ -939,13 +941,14 @@ class LiveplotApp(QMainWindow):
 #----------------------- APP ADJUSTMENTS METHODS-------------------------------               
     # Center the window
     def center(self):
-        pr = self.parent.frameGeometry()
-        qr = self.frameGeometry()
-        print(qr.width())
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(pr.topLeft())
-        self.move(qr.left() - qr.width(),qr.top())
+        if self.parent:
+            pr = self.parent.frameGeometry()
+            qr = self.frameGeometry()
+            print(qr.width())
+            cp = QDesktopWidget().availableGeometry().center()
+            qr.moveCenter(cp)
+            self.move(pr.topLeft())
+            self.move(qr.left() - qr.width(),qr.top())
         
 #--------------------------- RESET METHODS-------------------------------------    
     def ResetRecording(self):
@@ -1014,6 +1017,8 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot reset buttons')
+        
+        self.ResetMetaData()
         
         self.connect_rec_signals()
         
@@ -1132,16 +1137,16 @@ class LiveplotApp(QMainWindow):
         
         self.display_chan_config(0)
     
+    def ResetMetaData(self):
+        self.live_chanset = ch.ChannelSet(self.rec.channels)
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-
         # Save the time series
-        self.parent.cs.chan_set_data(0,'t', np.arange(data.size)/self.rec.rate)
+        self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
         # Save the values
-        self.parent.cs.chan_set_data(0,'y', data.reshape(data.size))
-        
+        self.parent.cs.chan_set_data('y', data.reshape(data.size),num=0)
         self.dataSaved.emit()        
         print('Data saved!')
 
@@ -1212,5 +1217,5 @@ class LiveplotApp(QMainWindow):
 if __name__ == '__main__':
     app = 0 
     app = QApplication(sys.argv)
-    w = ChanMetaWin()
+    w = LiveplotApp()
     sys.exit(app.exec_())           

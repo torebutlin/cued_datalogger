@@ -19,46 +19,31 @@ class ChannelSet():
         self.chans = np.append(self.chans, Channel(cid))
     
     # Add a DataSet to Channel
-    def chan_add_dataset(self,id_,num = None, value = None):
+    def chan_add_dataset(self,id_,num = None):
         if type(id_) == str:
             id_ = [id_]
         if num == None:
             num = range(len(self))
+            
         if type(num) == int:
             num = [num]  
-        all_val = []
-        try:
-            all_val.extend(value)
-            if len(all_val)<len(id_):
-                all_val.extend([None]*(len(id_)-len(all_val)))
-        except TypeError:
-            all_val.append(value)
-            all_val = all_val*len(id_)  
-            
+        all_val = [None]*len(id_)
+        
         for n in num:    
             for d,v in zip(id_,all_val): 
                 self.chans[n].add_dataset(d,v)
    
     # Set the data of a DataSet in a Channel
     def chan_set_data(self,id_,value,num = None):
-        if type(id_) == str:
-            id_ = [id_]
+        #if type(id_) == str:
+        #    id_ = [id_]
         if num == None:
             num = range(len(self))
-            value = [value]*len(id_)
         if type(num) == int:
             num = [num]
-        all_val = []
-        try:
-            all_val.extend(value)
-        except TypeError:
-            all_val.append(value)
-        if len(all_val)<len(id_):
-            all_val.extend([None]*(len(id_)-len(all_val)))
-            
+
         for n in num: 
-            for d,v in zip(id_,all_val): 
-                self.chans[n].set_data(d,v)
+            self.chans[n].set_data(id_,value)
             
     def chan_get_data(self,id_,num = None):
         if num == None:
@@ -72,7 +57,7 @@ class ChannelSet():
             chan_data = {}
             for d in id_: 
                 chan_data[d] = self.chans[n].data(d)
-            chan_datasets[str(n)] = chan_data
+            chan_datasets[n] = chan_data
             
         return chan_datasets       
     
@@ -94,7 +79,7 @@ class ChannelSet():
                     mdata[m.lower()] = self.chans[n].get_metadata(m.lower())
                 except IndexError:
                     print('The specified channel cannot be found')
-            metadatas[str(n)] = mdata
+            metadatas[n] = mdata
         
         return metadatas
     

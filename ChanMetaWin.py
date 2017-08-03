@@ -31,7 +31,10 @@ class ChanMetaWin(QDialog):
         main_layout = QHBoxLayout(self)
         
         channel_listview = QListWidget(self)
-        channel_listview.addItems(['Fruits','Apple','Stuff'])
+        a = self.livewin.live_chanset.chan_get_metadatas('name')
+        
+        for i in range(len(a)):
+            channel_listview.addItem(a[i]['name'])
         
         
         main_layout.addWidget(channel_listview)

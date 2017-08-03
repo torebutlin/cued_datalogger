@@ -98,14 +98,8 @@ class DataWindow(QMainWindow):
         """Initialise the channels"""
         # Create the channel set
         self.cs = ChannelSet(1)
-        # Set up the datasets in the channels
-        t = DataSet(id_='t')
-        y = DataSet(id_='y')
-        f = DataSet(id_='f')
-        s = DataSet(id_='s')
         # Add one input channel
-        self.cs.chan_add_dataset(0,[t,y,f,s])
-        self.cs.set_metadatas([0],['name'],['Channel 0'])
+        self.cs.chan_add_dataset(['t','y','f','s'])
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
@@ -126,8 +120,9 @@ class DataWindow(QMainWindow):
     def plot_time_series(self):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
-        t = self.cs.chans[0].data('t')
-        y = self.cs.chans[0].data('y')
+        datas = self.cs.chan_get_data(['t','y'])
+        t = datas[0]['t']
+        y = datas[0]['y']
         d5y = np.gradient(y,2)
         # Plot data
         self.data_tabs.currentWidget().canvasplot.clear()
@@ -137,16 +132,18 @@ class DataWindow(QMainWindow):
                 
         
     def plot_sonogram(self):
-        signal = self.cs.chans[0].data('y')
-        t = self.cs.chans[0].data('t')
+        datas = self.cs.chan_get_data(['t','y'])
+        t = datas[0]['t']
+        signal = datas[0]['y']
         self.data_tabs.addTab(SonogramWidget(self), "Sonogram")
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
         self.data_tabs.currentWidget().plot(signal)
     
     def plot_cwt(self):
-        signal = self.cs.chans[0].data('y')
-        t = self.cs.chans[0].data('t')
+        datas = self.cs.chan_get_data(['t','y'])
+        t = datas[0]['t']
+        signal = datas[0]['y']
         self.data_tabs.addTab(CWTWidget(signal, t, parent=self), "CWT")
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(3)
@@ -154,8 +151,8 @@ class DataWindow(QMainWindow):
     def plot_fft(self):
         # Switch to frequency domain tab
         self.data_tabs.setCurrentIndex(1)
-        
-        y = self.cs.chans[0].data('y')
+        datas = self.cs.chan_get_data(['t','y'])
+        y = datas[0]['y']
 
         # Calculate FT and associated frequencies
         ft = np.abs(np.real(rfft(y)))
