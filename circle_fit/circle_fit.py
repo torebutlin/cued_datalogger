@@ -33,7 +33,7 @@ def from_dB(x):
 
 def sdof_modal_peak(w, wr, zr, cr, phi):
     """A modal peak"""
-    return cr*np.exp(phi) / (wr**2 - w**2 + 2j * zr * wr**2)
+    return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
 
 def circle_fit(data):
@@ -193,7 +193,8 @@ class CircleFitWidget(QWidget):
         self.tableWidget.setColumnCount(6)
         self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
                                                     "Damping ratio",
-                                                    "Amplitude", "Phase (rad)", "\N{LOCK}"])
+                                                    "Amplitude", "Phase (rad)",
+                                                    "\N{LOCK}"])
         header = self.tableWidget.horizontalHeader()
         header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
         header.setResizeMode(1, QtGui.QHeaderView.Stretch)
@@ -237,23 +238,23 @@ class CircleFitWidget(QWidget):
         self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["freqbox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["freqbox"].setSingleStep(0.01)
-        self.row_list[-1]["freqbox"].setRange(0, 4096*2*np.pi)
+        self.row_list[-1]["freqbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"] = QDoubleSpinBox()
         self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["zbox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["zbox"].setSingleStep(0.0001)
-        self.row_list[-1]["zbox"].setRange(0, 10)
+        self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"].setDecimals(4)
         self.row_list[-1]["ampbox"] = QDoubleSpinBox()
         self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["ampbox"].valueChanged.connect(self.set_active_row)
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_ampbox_step)
+        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_spinbox_step)
         self.row_list[-1]["ampbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["phasebox"] = QDoubleSpinBox()
         self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["phasebox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["phasebox"].setSingleStep(0.01)
-        self.row_list[-1]["phasebox"].setRange(-np.pi, np.pi)
+        self.row_list[-1]["phasebox"].setRange(-9e99, 9e99)
         self.row_list[-1]["lockbtn"] = QPushButton()
         self.row_list[-1]["lockbtn"].setText("")
         self.row_list[-1]["lockbtn"].setCheckable(True)
@@ -282,17 +283,22 @@ class CircleFitWidget(QWidget):
             self.constructed_transfer_fn1.hide()
             self.constructed_transfer_fn2.hide()
 
-    def update_ampbox_step(self, value):
-        # Set the step to 1% of the current value
-        self.row_list[self.tableWidget.currentRow()]["ampbox"].setSingleStep(0.01 * value)
+    def update_spinbox_step(self, value):
+        if np.abs(value) > 1:
+            # Set the step to 1% of the current value
+            self.sender().setSingleStep(0.01 * value)
+        else:
+            self.sender().setSingleStep(0.01)
 
     def select_peak(self, checked):
+        self.set_active_row()
         for item in self.transfer_func_plot.items:
             if item == self.modal_peaks[self.tableWidget.currentRow()]["plot1"]:
                 item.setVisible(checked)
         for item in self.region_select_plot.items:
             if item == self.modal_peaks[self.tableWidget.currentRow()]["plot2"]:
                 item.setVisible(checked)
+        self.update_plots()
 
     def lock_peak(self, checked):
         self.set_active_row()
@@ -306,6 +312,7 @@ class CircleFitWidget(QWidget):
                 widget.setText("")
             if name is not "selectbox" and name is not "lockbtn":
                 widget.setDisabled(checked)
+        self.update_plots()
 
     def delete_selected(self):
         for i, row in enumerate(self.row_list):
@@ -317,6 +324,7 @@ class CircleFitWidget(QWidget):
                 self.transfer_func_plot.removeItem(self.modal_peaks[i]["plot1"])
                 self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
                 del self.modal_peaks[i]
+        self.update_plots()
 
     def set_active_row(self):
         for i, row in enumerate(self.row_list):
@@ -328,17 +336,21 @@ class CircleFitWidget(QWidget):
             self.a = a
         if w is not None:
             self.w = w
+            # Create a more precise version for plotting the fit
+            self.w_fit = np.linspace(0, self.w.max(), self.w.size*10)
         else:
             pass
         # Plot the transfer function
-        self.transfer_function1 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
-                                     pen=defaultpen)
+        self.transfer_function1 = pg.PlotDataItem(x=self.w,
+                                                  y=to_dB(np.abs(self.a)),
+                                                  pen=defaultpen)
         self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
         self.transfer_func_plot.addItem(self.transfer_function1)
         self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
 
-        self.transfer_function2 = pg.PlotDataItem(x=self.w, y=to_dB(np.abs(self.a)),
-                                     pen=defaultpen)
+        self.transfer_function2 = pg.PlotDataItem(x=self.w,
+                                                  y=to_dB(np.abs(self.a)),
+                                                  pen=defaultpen)
         self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
         self.region_select_plot.addItem(self.transfer_function2)
         self.region_select_plot.addItem(self.constructed_transfer_fn2)
@@ -357,6 +369,7 @@ class CircleFitWidget(QWidget):
         self.circle_plot_points = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_points)
 
+        self.region_select.setBounds((self.w.min(), self.w.max()))
         self.update_plots()
 
     def construct_transfer_fn(self):
@@ -366,8 +379,10 @@ class CircleFitWidget(QWidget):
             if self.row_list[i]["selectbox"].isChecked():
                 self.constructed_transfer_fn += peak["data"]
 
-        self.constructed_transfer_fn1.setData(x=self.w_circle, y=to_dB(np.abs(self.constructed_transfer_fn)))
-        self.constructed_transfer_fn2.setData(x=self.w_circle, y=to_dB(np.abs(self.constructed_transfer_fn)))
+        self.constructed_transfer_fn1.setData(x=self.w_fit,
+                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
+        self.constructed_transfer_fn2.setData(x=self.w_fit,
+                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
@@ -380,6 +395,7 @@ class CircleFitWidget(QWidget):
     def get_viewed_region(self):
         # Get just the peak we're looking at
         self.wmin, self.wmax = self.transfer_func_plot.getAxis('bottom').range
+        """
         self.amin, self.amax = self.transfer_func_plot.getAxis('left').range
         # Convert back to linear scale
         self.amin = from_dB(self.amin)
@@ -387,23 +403,27 @@ class CircleFitWidget(QWidget):
 
         lower_w = np.where(self.w > self.wmin)[0][0]
         upper_w = np.where(self.w < self.wmax)[0][-1]
-        lower_a = np.where(self.a > self.amin)[0][0]
+        #lower_a = np.where(self.a > self.amin)[0][0]
         upper_a = np.where(self.a < self.amax)[0][-1]
 
         if lower_w > lower_a:
-            lower = lower_w
+            self.lower = lower_w
         else:
-            lower = lower_a
+            self.lower = lower_a
         if upper_w < upper_a:
-            upper = upper_w
+            self.upper = upper_w
         else:
-            upper = upper_a
+            self.upper = upper_a
+        """
+        self.lower = np.where(self.w > self.wmin)[0][0]
+        self.upper = np.where(self.w < self.wmax)[0][-1]
+        self.a_reg = self.a[self.lower:self.upper]
+        self.w_reg = self.w[self.lower:self.upper]
 
-        self.a_reg = self.a[lower:upper]
-        self.w_reg = self.w[lower:upper]
+        self.fit_lower = np.where(self.w_fit > self.wmin)[0][0]
+        self.fit_upper = np.where(self.w_fit < self.wmax)[0][-1]
 
     def update_plots(self, value=None):
-        self.region_select.setBounds((self.w.min(), self.w.max()))
         # Get zoomed in region
         self.get_viewed_region()
 
@@ -411,9 +431,11 @@ class CircleFitWidget(QWidget):
         if not self.row_list[self.tableWidget.currentRow()]["lockbtn"].isChecked():
             # Recalculate the geometric circle fit
             self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
-            self.w_circle = np.linspace(0, self.w.max(), 1e5)
 
-            if self.sender() == self.transfer_func_plot or self.sender() == self.region_select or self.sender() == self.add_peak_btn:
+            if (self.sender() == self.transfer_func_plot
+                or self.sender() == self.region_select
+                or self.sender() == self.add_peak_btn
+                or value == None):
                 self.update_plot_from_plot()
                 # Update what is displayed in the table
                 self.update_row_from_plot()
@@ -427,23 +449,23 @@ class CircleFitWidget(QWidget):
 
 
             # Recalculate the fitted modal peak
-            self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_circle,
-                                                           self.modal_peaks[self.tableWidget.currentRow()]["wr"],
-                                                           self.modal_peaks[self.tableWidget.currentRow()]["zr"],
-                                                           self.modal_peaks[self.tableWidget.currentRow()]["cr"],
-                                                           self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+            self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
+                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
             # Plot the fitted modal peak
-            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real + self.x0,
-                                                self.modal_peaks[self.tableWidget.currentRow()]["data"].imag,
+            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real[self.fit_lower:self.fit_upper],
+                                                self.modal_peaks[self.tableWidget.currentRow()]["data"].imag[self.fit_lower:self.fit_upper],
                                                 pen=pg.mkPen('r', width=1.5))
 
-            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_circle,
-                                                       np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                       pen='r')
-            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_circle,
-                                                       np.abs(to_dB(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                       pen='r')
+            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_fit,
+                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                                             pen='r')
+            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_fit,
+                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                                             pen='r')
 
             # Update the constructed transfer function
             if self.show_transfer_fn_checkbox.isChecked():
@@ -473,10 +495,16 @@ class CircleFitWidget(QWidget):
          self.modal_peaks[self.tableWidget.currentRow()]["phi"] = self.sdof_get_parameters()
 
 # Fitting functions -----------------------------------------------------------
-    def sdof_modal_peak_optimisation_function(self, w, phi, wr, zr, cr):
-        f = self.x0 + 1j*self.y0 - self.R0 * np.exp(1j*(phi - np.pi/2)) \
-            - sdof_modal_peak(w, wr, zr, cr, phi)
-        return np.real(f * f.conjugate())
+    def single_pole(self, w, wr, zr, cr, phi):
+        return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
+
+    def fitted_single_pole(self, w, wr, zr, cr, phi):
+        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
+            - self.single_pole(w, wr, zr, cr, phi)
+
+    def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
+        f = self.fitted_single_pole(w, wr, zr, cr, phi)
+        return np.real(f*f.conjugate())
 
     def sdof_get_parameters(self):
         # # Find initial parameters for curve fitting
@@ -494,15 +522,10 @@ class CircleFitWidget(QWidget):
 
         # # Find the parameter values that give a minimum of
         # the optimisation function
-        popts, pconv = curve_fit(self.sdof_modal_peak_optimisation_function,
-                                 self.w_reg,
-                                 np.real(self.a_reg * self.a_reg.conjugate()),
-                                 [phi0, wr0, zr0, cr0])
-
-        phi = popts[0]
-        wr = popts[1]
-        zr = popts[2]
-        cr = -popts[3]
+        wr, zr, cr, phi = curve_fit(self.optimise_single_pole_fit,
+                                    self.w_reg,
+                                    np.real(self.a_reg * self.a_reg.conjugate()),
+                                    [wr0, zr0, cr0, phi0])[0]
 
         return wr, zr, cr, phi
 
@@ -512,7 +535,10 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     c = CircleFitWidget()
-
+    """
+    w = np.linspace(0, 25, 3e2)
+    transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
+    c.set_data(w, transfer_function)
     """
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
@@ -521,10 +547,11 @@ if __name__ == '__main__':
         + sdof_modal_peak(w, 12, 0.003, -8e12, 0) \
         + sdof_modal_peak(w, 20, 0.01, 22e12, 0) \
         # + 5e10*np.random.normal(size=w.size)
+    c.set_data(w, a)
     """
     cs = ChannelSet()
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.chans[0].data('f')
-    c.set_data(np.linspace(0, a.size, a.size), a)
-
+    c.set_data(np.linspace(0, cs.chans[0].sample_freq[0], a.size), a)
+    """
     sys.exit(app.exec_())
