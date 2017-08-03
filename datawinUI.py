@@ -97,14 +97,15 @@ class DataWindow(QMainWindow):
     def init_channels(self):
         """Initialise the channels"""
         # Create the channel set
-        self.cs = ChannelSet()
+        self.cs = ChannelSet(1)
         # Set up the datasets in the channels
         t = DataSet(id_='t')
         y = DataSet(id_='y')
         f = DataSet(id_='f')
         s = DataSet(id_='s')
         # Add one input channel
-        self.cs.add_channel(Channel(0, name="Input 0", datasets=[t,y,f,s]))
+        self.cs.chan_add_dataset(0,[t,y,f,s])
+        self.cs.set_metadatas([0],['name'],['Channel 0'])
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):

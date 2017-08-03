@@ -1138,9 +1138,9 @@ class LiveplotApp(QMainWindow):
         print('Saving data...')
 
         # Save the time series
-        self.parent.cs.chans[0].set_data('t', np.arange(data.size)/self.rec.rate)
+        self.parent.cs.chan_set_data(0,'t', np.arange(data.size)/self.rec.rate)
         # Save the values
-        self.parent.cs.chans[0].set_data('y', data.reshape(data.size))
+        self.parent.cs.chan_set_data(0,'y', data.reshape(data.size))
         
         self.dataSaved.emit()        
         print('Data saved!')
