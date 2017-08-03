@@ -499,18 +499,12 @@ class CircleFitWidget(QWidget):
         return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
 
     def fitted_single_pole(self, w, wr, zr, cr, phi):
-        if cr < 0:
-            cr = -cr
-            phi += np.pi/2
-        if zr < 0:
-            zr = -zr
-            phi -= np.pi/2
         return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            - self.single_pole(w, wr, zr, cr, phi)
+            + self.single_pole(w, wr, zr, cr, phi)
 
     def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
         f = self.fitted_single_pole(w, wr, zr, cr, phi)
-        return np.real(f*f.conjugate())
+        return np.abs(f)
 
     def sdof_get_parameters(self):
         # # Find initial parameters for curve fitting
@@ -522,7 +516,8 @@ class CircleFitWidget(QWidget):
         wr0 = self.w_reg[i]
         # Take the max amplitude as a first guess for the modal constant
         cr0 = np.abs(self.a_reg[i])
-        phi0 = np.angle(self.a_reg[i])
+        #phi0 = np.angle(self.a_reg[i])
+        phi0 = 0
         # First guess of damping factor of 1% (Q of 100)
         zr0 = 0.01
 
@@ -530,8 +525,9 @@ class CircleFitWidget(QWidget):
         # the optimisation function
         wr, zr, cr, phi = curve_fit(self.optimise_single_pole_fit,
                                     self.w_reg,
-                                    np.real(self.a_reg * self.a_reg.conjugate()),
-                                    [wr0, zr0, cr0, phi0])[0]
+                                    np.abs(self.a_reg),
+                                    [wr0, zr0, cr0, phi0],
+                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
 
         return wr, zr, cr, phi
 
@@ -545,7 +541,7 @@ if __name__ == '__main__':
     w = np.linspace(0, 25, 3e2)
     transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
     c.set_data(w, transfer_function)
-    """
+
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
     a = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
@@ -559,5 +555,5 @@ if __name__ == '__main__':
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.chans[0].data('f')
     c.set_data(np.linspace(0, cs.chans[0].sample_freq[0], a.size), a)
-    """
+    #"""
     sys.exit(app.exec_())
