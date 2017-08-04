@@ -326,7 +326,7 @@ class CircleFitWidget(QWidget):
         self.row_list[-1]["freqbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"] = QDoubleSpinBox()
         self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
+        #self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
         self.row_list[-1]["zbox"].setSingleStep(0.0001)
         self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"].setDecimals(4)
