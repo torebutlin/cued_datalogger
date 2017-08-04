@@ -135,7 +135,6 @@ class CircleFitWidget(QWidget):
         self.add_peak_btn = QPushButton(self)
         self.add_peak_btn.setText("Add new peak")
         self.add_peak_btn.clicked.connect(self.add_peak)
-        self.add_peak_btn.clicked.connect(self.update_plots)
 
         self.delete_selected_btn = QPushButton(self)
         self.delete_selected_btn.setText("Delete selected")
@@ -242,6 +241,7 @@ class CircleFitWidget(QWidget):
         self.row_list[-1]["zbox"] = QDoubleSpinBox()
         self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
         self.row_list[-1]["zbox"].valueChanged.connect(self.set_active_row)
+        self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
         self.row_list[-1]["zbox"].setSingleStep(0.0001)
         self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"].setDecimals(4)
@@ -274,6 +274,9 @@ class CircleFitWidget(QWidget):
                                        self.row_list[-1]["phasebox"])
         self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
                                        self.row_list[-1]["lockbtn"])
+
+        #self.update_plots()
+
 
     def show_transfer_fn(self):
         if self.sender().isChecked():
@@ -424,29 +427,16 @@ class CircleFitWidget(QWidget):
         self.fit_upper = np.where(self.w_fit < self.wmax)[0][-1]
 
     def update_plots(self, value=None):
-        # Get zoomed in region
-        self.get_viewed_region()
-
         # If the current peak is not locked
         if not self.row_list[self.tableWidget.currentRow()]["lockbtn"].isChecked():
-            # Recalculate the geometric circle fit
-            self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
+            # Get zoomed in region
+            self.get_viewed_region()
 
-            if (self.sender() == self.transfer_func_plot
-                or self.sender() == self.region_select
-                or self.sender() == self.add_peak_btn
-                or value == None):
-                self.update_plot_from_plot()
-                # Update what is displayed in the table
-                self.update_row_from_plot()
-            else:
+            # Update the values
+            if self.sender() in self.row_list[self.tableWidget.currentRow()].values():
                 self.update_plot_from_row(value)
-
-            # Plot the raw data
-            self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
-                                  symbol='o', symbolPen=None, symbolBrush='k',
-                                  symbolSize=6)
-
+            else:
+                self.update_row_from_plot()
 
             # Recalculate the fitted modal peak
             self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
@@ -454,6 +444,11 @@ class CircleFitWidget(QWidget):
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["zr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["cr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+
+            # Plot the raw data
+            self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
+                                  ymbol='o', symbolPen=None, symbolBrush='k',
+                                  symbolSize=6)
 
             # Plot the fitted modal peak
             self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real[self.fit_lower:self.fit_upper],
@@ -472,12 +467,26 @@ class CircleFitWidget(QWidget):
                 self.construct_transfer_fn()
 
     def update_row_from_plot(self):
+        print("Updating row")
+
+        # Recalculate the geometric circle fit
+        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
+
+        # Recalculate the parameters
+        self.modal_peaks[self.tableWidget.currentRow()]["wr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["zr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["cr"], \
+         self.modal_peaks[self.tableWidget.currentRow()]["phi"] = self.sdof_get_parameters()
+
         self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
         self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
         self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["cr"])
         self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
+
+
     def update_plot_from_row(self, value):
+        print("Updating plot")
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["wr"] = value
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["zbox"]:
@@ -487,12 +496,6 @@ class CircleFitWidget(QWidget):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
 
-    def update_plot_from_plot(self):
-        # Fit a modal peak circle to the geometric circle
-        self.modal_peaks[self.tableWidget.currentRow()]["wr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["zr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["cr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["phi"] = self.sdof_get_parameters()
 
 # Fitting functions -----------------------------------------------------------
     def single_pole(self, w, wr, zr, cr, phi):
