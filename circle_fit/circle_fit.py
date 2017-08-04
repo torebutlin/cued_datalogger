@@ -108,7 +108,7 @@ class CircleFitWidget(QWidget):
                                                           ("Transfer Function",
                                                            "dB")})
         self.region_select_plot = self.region_select_plot_w.getPlotItem()
-        self.region_select_plot.setMouseEnabled(x=False, y=False)
+        #self.region_select_plot.setMouseEnabled(x=False, y=False)
 
         self.region_select = pg.LinearRegionItem()
         self.region_select.setZValue(-10)
@@ -381,14 +381,10 @@ class CircleFitWidget(QWidget):
                                         y=to_dB(np.abs(self.a)))
 
         self.transfer_func_plot.autoRange()
-        self.transfer_func_plot.disableAutoRange()
+        #self.transfer_func_plot.disableAutoRange()
 
         self.region_select_plot.autoRange()
-        self.region_select_plot.disableAutoRange()
-
-        # Create the plot items for the data points
-        self.circle_plot_points = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_points)
+        #self.region_select_plot.disableAutoRange()
 
         self.region_select.setBounds((self.w.min(), self.w.max()))
         self.add_peak()
@@ -414,35 +410,19 @@ class CircleFitWidget(QWidget):
         self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
 
     def get_viewed_region(self):
-        # Get just the peak we're looking at
-        self.wmin, self.wmax = self.transfer_func_plot.getAxis('bottom').range
-        """
-        self.amin, self.amax = self.transfer_func_plot.getAxis('left').range
-        # Convert back to linear scale
-        self.amin = from_dB(self.amin)
-        self.amax = from_dB(self.amax)
+        # Get the axes limits
+        w_axis_lower, w_axis_upper = self.transfer_func_plot.getAxis('bottom').range
 
-        lower_w = np.where(self.w > self.wmin)[0][0]
-        upper_w = np.where(self.w < self.wmax)[0][-1]
-        #lower_a = np.where(self.a > self.amin)[0][0]
-        upper_a = np.where(self.a < self.amax)[0][-1]
+        w_in_display = (self.w >= w_axis_lower) & (self.w <= w_axis_upper)
 
-        if lower_w > lower_a:
-            self.lower = lower_w
-        else:
-            self.lower = lower_a
-        if upper_w < upper_a:
-            self.upper = upper_w
-        else:
-            self.upper = upper_a
-        """
-        self.lower = np.where(self.w > self.wmin)[0][0]
-        self.upper = np.where(self.w < self.wmax)[0][-1]
-        self.a_reg = self.a[self.lower:self.upper]
-        self.w_reg = self.w[self.lower:self.upper]
+        self.w_reg = np.extract(w_in_display, self.w)
+        self.a_reg = np.extract(w_in_display, self.a)
 
-        self.fit_lower = np.where(self.w_fit > self.wmin)[0][0]
-        self.fit_upper = np.where(self.w_fit < self.wmax)[0][-1]
+        # Do something similar for the more precise w_fit - but get the indices
+        # rather than the values
+        w_fit_in_display = (self.w_fit >= w_axis_lower) & (self.w_fit <= w_axis_upper)
+        self.fit_lower = np.where(w_fit_in_display)[0][0]
+        self.fit_upper = np.where(w_fit_in_display)[0][-1]
 
     def update_plots(self, value=None):
         # If the current peak is not locked
@@ -551,7 +531,8 @@ class CircleFitWidget(QWidget):
                                     #np.abs(self.a_reg),
                                     np.append(self.a_reg.real, self.a_reg.imag),
                                     [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
+                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]),
+                                    ftol=1e-5)[0]
 
         return wr, zr, cr, phi
 
@@ -562,6 +543,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     c = CircleFitWidget()
     """
+
     w = np.linspace(0, 25, 3e2)
     transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
     c.set_data(w, transfer_function)
