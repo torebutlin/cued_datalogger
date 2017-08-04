@@ -124,7 +124,7 @@ class Recorder(RecorderParent):
 #---------------- STREAMING METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
-        return data.reshape((-1,self.channels))/2**15 *10.0
+        return data.reshape((-1,self.channels))/(2**15) *10.0
     
     # Callback function for audio streaming
     def stream_audio_callback(self):
@@ -135,11 +135,11 @@ class Recorder(RecorderParent):
         
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
-        self.rEmitter.newdata.emit()
+        #self.rEmitter.newdata.emit()
        
         if self.recording:
-            self.record_data(in_data)
-         # Add trigger check
+            self.record_data(data_array)
+         # Trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
         
@@ -167,9 +167,6 @@ class Recorder(RecorderParent):
                 self.audio_stream = None
                 
                 return False
-            
-            
-            
         
     # Start the streaming
     def stream_start(self):
@@ -202,61 +199,7 @@ class Recorder(RecorderParent):
             self.audio_stream = None
             
     #---------------- RECORD TRIGGER METHODS ----------------------------------
-    '''def trigger_init(self):
-        self.trigger = False
-        self.trigger_threshold = 0
-        self.trigger_channel = 0
-        self.ref_rms = 0'''
-    '''
-    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0,pretrig = 200):
-        if self.recording:
-            print('You are current recording. Please finish the recording before starting the trigger.')
-            return False
-        
-        if not self.trigger:
-            if not self._record_check():
-                return False
-            self.record_init(duration = duration)
-            self.trigger = True
-            self.trigger_threshold = threshold
-            self.trigger_channel = channel
-            self.pretrig_samples = pretrig
-            self.ref_level = np.sqrt(np.mean(self.buffer[self.next_chunk,:,self.trigger_channel] ** 2))
-            print('Reference level: %.2f' % self.ref_level)
-            print('Trigger Set!')
-            return True
-        else:
-            print('You have already started a trigger')
-            return False
-
-    def _trigger_check_threshold(self,data):
-        #Calculate RMS of chunk
-        norm_data = data[:,self.trigger_channel]
-        maximum = np.amax(abs(norm_data))
-        print(maximum, np.argmax(abs(norm_data)))
-        
-        if abs(maximum - self.ref_level) > self.trigger_threshold:
-            print('Triggered!')
-            self.recording = True
-            self.trigger = False
-            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
-                                                    self.chunk_size - self.pretrig_samples:,
-                                                    :])
-            self.rEmitter.triggered.emit()
-        
-        
-        rms = np.sqrt(np.mean(norm_data ** 2))
-        print(abs(rms - self.ref_level))
-        
-        if abs(rms - self.ref_level) > self.trigger_threshold:
-            print('Triggered!')
-            self.recording = True
-            self.trigger = False
-            self.pretrig_data = cp.copy(self.buffer[self.next_chunk-2,
-                                                    self.chunk_size - self.pretrig_samples:,
-                                                    :])
-            self.rEmitter.triggered.emit()
-            '''
+    
     ''' I don't know anymore...'''
     
     '''def trigger_init(self):

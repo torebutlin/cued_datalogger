@@ -36,7 +36,7 @@ import math
 
 # GLOBAL CONSTANTS
 PLAYBACK = False    # Whether to playback the stream
-MAX_SAMPLE = 1e6    # Recording Sample max size limit
+MAX_SAMPLE = 1e9    # Recording Sample max size limit
 WIDTH = 900         # Window width
 HEIGHT = 500        # Window height
 CHANLVL_FACTOR = 0.1# The gap between each channel level (seems useless)
@@ -70,6 +70,7 @@ class LiveplotApp(QMainWindow):
         # Connect the recorder Signals
         self.connect_rec_signals()
         
+        self.plottimer = QTimer(self)
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
@@ -485,9 +486,9 @@ class LiveplotApp(QMainWindow):
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
-        #self.plottimer = QTimer(self)
-        #self.plottimer.timeout.connect(self.update_line)
-        #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
+        self.plottimer.timeout.connect(self.update_line)
+        #self.plottimer.timeout.connect(self.update_chanlvls)
+        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 2)
         
         self.show()
         
@@ -574,7 +575,7 @@ class LiveplotApp(QMainWindow):
         else:
             return False
         '''
-        WARNING: DO NOT PUT EVAL IF FOR WHATEVER REASON THIS IS DONE OVER A NETWORK
+        WARNING: DO NOT PUT EVAL IF, FOR WHATEVER REASON, THIS IS DONE OVER A NETWORK
         '''
         try:
             all_selected_chan = eval(string)
@@ -717,15 +718,23 @@ class LiveplotApp(QMainWindow):
         self.save_data(data = snapshot[:,0])
         self.statusbar.showMessage('Snapshot Captured!', 1500)
         
-#----------------------PLOT WIDGETS-----------------------------------        
+#----------------------PLOT WIDGETS-----------------------------------              
     # Updates the plots    
     def update_line(self):
+        # TODO: can this be merge with update channel levels plot
         data = self.rec.get_buffer()
         window = np.hanning(data.shape[0])
         weightage = np.exp(2* self.timedata / self.timedata[-1])
+        currentdata = data[len(data)-self.rec.chunk_size:,:]
+        currentdata -= np.mean(currentdata)
+        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
+        maxs = np.amax(abs(currentdata),axis = 0)
+        
+        self.chanlvl_bars.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR, right = maxs-rms,left = rms)
+        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
+
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),))
-            
             zc = 0
             if self.sig_hold[i] == Qt.Checked:
                 avg = np.mean(plotdata);
@@ -737,8 +746,23 @@ class LiveplotApp(QMainWindow):
             self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
 
             fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data)
-            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data** 0.5  + self.plot_yoffset[1,i])
+            psd_data = abs(fft_data)** 0.5
+            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
+
+            if self.trace_counter[i]>self.trace_countlimit:
+                self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
+                self.peak_decays[i] += TRACE_DECAY
+            self.trace_counter[i] += 1
+            
+            if self.peak_trace[i]<maxs[i]:
+                self.peak_trace[i] = maxs[i]
+                self.peak_decays[i] = 0
+                self.trace_counter[i] = 0
+                
+            self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
+                           y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
+            
+            self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
 
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
@@ -810,7 +834,7 @@ class LiveplotApp(QMainWindow):
     # Start the data recording        
     def start_recording(self):
         rec_configs = self.read_record_config()
-        
+        print(type(self.rec))
         if rec_configs[2]>=0:
             # Set up the trigger
             if self.rec.trigger_start(posttrig = rec_configs[0],
@@ -893,6 +917,7 @@ class LiveplotApp(QMainWindow):
         self.rec_boxes[1].setText(str(duration))
 
 #-------------------------CHANNEL LEVELS WIDGET--------------------------------
+    '''
     def update_chanlvls(self):
         data = self.rec.get_buffer()
         currentdata = data[len(data)-self.rec.chunk_size:,:]
@@ -918,7 +943,7 @@ class LiveplotApp(QMainWindow):
                            y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
             
             self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
-            
+    '''        
     def change_threshold(self,arg):
         if type(arg) == str:
             self.threshold_line.setValue(float(arg))
@@ -956,7 +981,7 @@ class LiveplotApp(QMainWindow):
         
         # Stop the update and close the stream
         self.playing = False
-        #self.plottimer.stop()
+        self.plottimer.stop()
         self.rec.close()
         del self.rec
                 
@@ -989,7 +1014,6 @@ class LiveplotApp(QMainWindow):
             self.ResetChanConfigs()
             self.ResetPlots()
             self.ResetChanLvls()
-            #self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -1020,6 +1044,8 @@ class LiveplotApp(QMainWindow):
         
         self.ResetMetaData()
         
+        
+        self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate + 1)
         self.connect_rec_signals()
         
     def ResetPlots(self):
@@ -1047,7 +1073,6 @@ class LiveplotApp(QMainWindow):
             self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1*self.rec.channels))
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
             self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
-            self.update_line()
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
@@ -1078,7 +1103,6 @@ class LiveplotApp(QMainWindow):
         
         self.channelvlplot.setRange(xRange = (0,self.rec.max_value+0.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
         self.channelvlplot.setLimits(xMin = -0.1,xMax = self.rec.max_value+0.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
-        self.update_chanlvls()
         
     def ResetChanBtns(self):
         for btn in self.chan_btn_group.buttons():
@@ -1143,8 +1167,9 @@ class LiveplotApp(QMainWindow):
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
+        print(data)
         # Save the time series
-        self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
+        #self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
         # Save the values
         self.parent.cs.chan_set_data('y', data.reshape(data.size),num=0)
         self.dataSaved.emit()        
@@ -1164,8 +1189,8 @@ class LiveplotApp(QMainWindow):
     def connect_rec_signals(self):
             self.rec.rEmitter.recorddone.connect(self.stop_recording)
             self.rec.rEmitter.triggered.connect(self.trigger_message)
-            self.rec.rEmitter.newdata.connect(self.update_line)
-            self.rec.rEmitter.newdata.connect(self.update_chanlvls)
+            #self.rec.rEmitter.newdata.connect(self.update_line)
+            #self.rec.rEmitter.newdata.connect(self.update_chanlvls)
             
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')
@@ -1206,8 +1231,8 @@ class LiveplotApp(QMainWindow):
 
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
-        #if self.plottimer.isActive():
-        #    self.plottimer.stop()
+        if self.plottimer.isActive():
+            self.plottimer.stop()
         self.rec.close()
         event.accept()
         if self.parent:

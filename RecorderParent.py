@@ -129,8 +129,8 @@ class RecorderParent(object):
         
 #---------------- RECORDING METHODS -----------------------------------
     def record_init(self,samples = None,duration = 3):
-        self.pretrig_data = np.array([])
-        self.part_posttrig_data = np.array([])
+        self.pretrig_data = np.array([],dtype = np.int16)
+        self.part_posttrig_data = np.array([],dtype = np.int16)
         if samples:
             self.actual_rec_samples = samples
             self.total_rec_chunk = (samples // self.chunk_size)+1
@@ -204,7 +204,6 @@ class RecorderParent(object):
             data =  np.array(self.recorded_data);
             flushed_data = data.reshape((self.rec_samples,self.channels))
             if self.part_posttrig_data.shape[0]:
-                print('part post')
                 flushed_data = np.vstack((self.part_posttrig_data,flushed_data))
             
             print(flushed_data.shape)
@@ -216,7 +215,6 @@ class RecorderParent(object):
             if self.pretrig_data.shape[0]:
                 flushed_data = np.vstack((self.pretrig_data,flushed_data))
             print(flushed_data.shape)
-            #print(flushed_data)
             return flushed_data               
                             
 
@@ -268,7 +266,7 @@ class RecorderParent(object):
     def _trigger_check_threshold(self,data):
         norm_data = abs(data[:,self.trigger_channel])#- self.ref_level
         
-        #Calculate RMS of chunk
+        
         maximum = np.amax(norm_data)
         pos = np.argmax(norm_data)
         
@@ -277,6 +275,7 @@ class RecorderParent(object):
             self.recording = True
             self.trigger = False
             try:
+                # TODO: See if it is possible to optimise this
                 self.part_posttrig_data =  cp.copy(self.buffer[self.next_chunk-1, pos:,:])
                 temp = np.vstack((self.buffer[self.next_chunk-2,:,:],self.buffer[self.next_chunk-1,:pos,:]))
                 self.pretrig_data = temp[temp.shape[0]-self.pretrig_samples:,:]

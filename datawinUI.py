@@ -120,15 +120,15 @@ class DataWindow(QMainWindow):
     def plot_time_series(self):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
-        datas = self.cs.chan_get_data(['t','y'])
-        t = datas[0]['t']
+        datas = self.cs.chan_get_data(['y'])
+        #t = datas[0]['t']
         y = datas[0]['y']
+        t = np.arange(len(y),dtype = np.float32)/44100
         d5y = np.gradient(y,2)
         # Plot data
         self.data_tabs.currentWidget().canvasplot.clear()
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=False, pen='b')
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y+np.mean(y), clear=False, pen='y')
-        
                 
         
     def plot_sonogram(self):
@@ -139,7 +139,8 @@ class DataWindow(QMainWindow):
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
         self.data_tabs.currentWidget().plot(signal)
-    
+        
+        
     def plot_cwt(self):
         datas = self.cs.chan_get_data(['t','y'])
         t = datas[0]['t']
@@ -185,3 +186,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = DataWindow()
     sys.exit(app.exec_())
+    app = 0 
