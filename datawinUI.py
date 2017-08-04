@@ -186,4 +186,3 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = DataWindow()
     sys.exit(app.exec_())
-    app = 0 

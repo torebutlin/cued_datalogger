@@ -16,6 +16,8 @@ import numpy as np
 import functools as fct
 import ast
 
+
+from collections.abc import Sequence
 from ChanLineText import ChanLineText
 from ChanMetaWin import ChanMetaWin
 import myRecorder as mR
@@ -29,7 +31,6 @@ except ModuleNotFoundError:
     print("Seems like you don't have pyDAQmx modules")
     NI_drivers = False
 
-# Theo's channel implementation, will probably use it later
 import channel as ch
 
 import math
@@ -578,7 +579,7 @@ class LiveplotApp(QMainWindow):
         WARNING: DO NOT PUT EVAL IF, FOR WHATEVER REASON, THIS IS DONE OVER A NETWORK
         '''
         try:
-            all_selected_chan = eval(string)
+            expression = eval(string)
         except:
             t,v,_ = sys.exc_info()
             print(t)
@@ -612,28 +613,25 @@ class LiveplotApp(QMainWindow):
                 all_selected_chan = g['output']
             except KeyError:
                 all_selected_chan = []
+                
         '''
-        
-        print(all_selected_chan)
-        all_selected_chan = list(all_selected_chan)
-        try:
-            if any([not type(i) == int for i in all_selected_chan]):
-                raise Exception('There is a non-integer in input!')
-                return False
-        except TypeError:
-            if not type(all_selected_chan) == int:
-                raise Exception('There is a non-integer in input!')
-                return False
-            all_selected_chan = [all_selected_chan]
+        all_selected_chan = []
+        if isinstance(expression,Sequence) and not isinstance(expression,str) :
+            for n in expression:
+                if isinstance(n,Sequence) and not isinstance(n,str):
+                    all_selected_chan.extend(n)
+                elif isinstance(expression,int):
+                    all_selected_chan.append(n)
+        elif isinstance(expression,int):
+            all_selected_chan.append(expression)
             
-        self.toggle_all_checkboxes(Qt.Unchecked)
-        
         print(all_selected_chan)
-        print(list(set(all_selected_chan)))
         
-        for chan in list(set(all_selected_chan)):
-            if chan < self.rec.channels:
-                self.chan_btn_group.button(chan).click()
+        if all_selected_chan:
+            self.toggle_all_checkboxes(Qt.Unchecked)
+            for chan in list(set(all_selected_chan)):
+                if chan < self.rec.channels:
+                    self.chan_btn_group.button(chan).click()
          
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
