@@ -108,12 +108,13 @@ class CircleFitWidget(QWidget):
                                                           ("Transfer Function",
                                                            "dB")})
         self.region_select_plot = self.region_select_plot_w.getPlotItem()
-        #self.region_select_plot.setMouseEnabled(x=False, y=False)
+        self.region_select_plot.setMouseEnabled(x=False, y=False)
 
         self.region_select = pg.LinearRegionItem()
         self.region_select.setZValue(-10)
         self.region_select_plot.addItem(self.region_select)
 
+        self.region_select.sigRegionChangeFinished.connect(self.autorange_to_region)
         self.region_select.sigRegionChanged.connect(self.update_zoom)
         self.region_select.sigRegionChanged.connect(self.update_plots)
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_region)
@@ -141,11 +142,9 @@ class CircleFitWidget(QWidget):
         self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
         self.region_select_plot.addItem(self.constructed_transfer_fn2)
 
-        # Create the plot items for the data points
         self.circle_plot_points = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_points)
 
-        # Create the plot items for the modal peak fit
         self.circle_plot_modal_peak = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_modal_peak)
 
@@ -198,11 +197,30 @@ class CircleFitWidget(QWidget):
         # # Fit controls
         self.init_fit_controls()
 
+        # # Region selection controls
+        self.autorange_to_region_checkbox = QCheckBox("Autorange to region")
+        self.autorange_to_region_checkbox.clicked.connect(self.autorange_to_region)
+
+        selection_vbox_spacer = QVBoxLayout()
+        selection_vbox_spacer.addStretch(1)
+
+        selection_vbox = QVBoxLayout()
+        selection_vbox.addWidget(self.autorange_to_region_checkbox)
+        selection_vbox.addLayout(selection_vbox_spacer)
+
+        selection_groupbox = QGroupBox()
+        selection_groupbox.setTitle("Selection controls")
+        selection_groupbox.setLayout(selection_vbox)
+
         # # Widget layout
+        controls_hbox = QHBoxLayout()
+        controls_hbox.addWidget(self.fit_controls_groupbox)
+        controls_hbox.addWidget(selection_groupbox)
+
         controls_vbox = QVBoxLayout()
         controls_vbox.addWidget(results_groupbox)
         controls_vbox.addWidget(transfer_fn_groupbox)
-        controls_vbox.addWidget(self.fit_controls_groupbox)
+        controls_vbox.addLayout(controls_hbox)
 
         layout = QGridLayout()
         layout.addWidget(self.transfer_func_plot_w, 0, 0)
@@ -263,6 +281,8 @@ class CircleFitWidget(QWidget):
         fit_controls_grid_layout.addWidget(QLabel("Phase:"), 4, 0)
         fit_controls_grid_layout.addWidget(self.fit_controls_phase_combobox, 4, 1)
         fit_controls_grid_layout.addWidget(self.fit_controls_reset_btn, 5, 1)
+
+        fit_controls_grid_layout.setColumnStretch(2, 1)
 
         self.fit_controls_groupbox = QGroupBox()
         self.fit_controls_groupbox.setTitle("Fit controls")
@@ -436,10 +456,14 @@ class CircleFitWidget(QWidget):
                                         y=to_dB(np.abs(self.a)))
 
         self.transfer_func_plot.autoRange()
-        #self.transfer_func_plot.disableAutoRange()
+        self.transfer_func_plot.setXRange(self.w.min(), self.w.max())
+        self.transfer_func_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
+        self.transfer_func_plot.disableAutoRange()
 
-        self.region_select_plot.autoRange()
-        #self.region_select_plot.disableAutoRange()
+        self.transfer_func_plot.autoRange()
+        self.region_select_plot.setXRange(self.w.min(), self.w.max())
+        self.region_select_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
+        self.region_select_plot.disableAutoRange()
 
         self.region_select.setBounds((self.w.min(), self.w.max()))
         self.add_peak()
@@ -460,6 +484,13 @@ class CircleFitWidget(QWidget):
     def update_zoom(self):
         self.transfer_func_plot.setXRange(*self.region_select.getRegion(),
                                           padding=0)
+
+    def autorange_to_region(self, checked):
+        if self.autorange_to_region_checkbox.isChecked():
+            self.region_select_plot.setXRange(*self.region_select.getRegion(),
+                                              padding=1)
+        else:
+            self.region_select_plot.setXRange(self.w.min(), self.w.max())
 
     def update_region(self):
         self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
