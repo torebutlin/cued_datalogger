@@ -2,7 +2,7 @@ from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
-                             QVBoxLayout, QHBoxLayout)
+                             QVBoxLayout, QHBoxLayout, QLabel, QComboBox)
 
 import numpy as np
 from pyqtgraph.Qt import QtCore
@@ -180,27 +180,34 @@ class CircleFitWidget(QWidget):
         transfer_fn_hbox.addLayout(spacer_hbox)
 
         transfer_fn_groupbox = QGroupBox(self)
-        transfer_fn_groupbox.setTitle("Reconstructed transfer function")
+        transfer_fn_groupbox.setTitle("Transfer function")
         transfer_fn_groupbox.setLayout(transfer_fn_hbox)
 
         # # Table of results
         self.init_table()
 
-        groupbox = QGroupBox(self)
-        groupbox.setTitle("Results")
+        results_groupbox = QGroupBox(self)
+        results_groupbox.setTitle("Results")
 
-        groupbox_vbox = QVBoxLayout()
-        groupbox_vbox.addWidget(self.tableWidget)
-        groupbox_vbox.addLayout(controls)
-        groupbox_vbox.addWidget(transfer_fn_groupbox)
+        results_groupbox_vbox = QVBoxLayout()
+        results_groupbox_vbox.addWidget(self.tableWidget)
+        results_groupbox_vbox.addLayout(controls)
 
-        groupbox.setLayout(groupbox_vbox)
+        results_groupbox.setLayout(results_groupbox_vbox)
 
-        # # Layout
+        # # Fit controls
+        self.init_fit_controls()
+
+        # # Widget layout
+        controls_vbox = QVBoxLayout()
+        controls_vbox.addWidget(results_groupbox)
+        controls_vbox.addWidget(transfer_fn_groupbox)
+        controls_vbox.addWidget(self.fit_controls_groupbox)
+
         layout = QGridLayout()
         layout.addWidget(self.transfer_func_plot_w, 0, 0)
         layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addWidget(groupbox, 2, 0)
+        layout.addLayout(controls_vbox, 2, 0)
         layout.addWidget(self.circle_plot_w, 2, 1)
         self.setLayout(layout)
 
@@ -226,7 +233,49 @@ class CircleFitWidget(QWidget):
         self.row_list = []
         self.modal_peaks = []
 
+    def init_fit_controls(self):
+        self.fit_controls_freq_combobox = QComboBox()
+        self.fit_controls_z_combobox = QComboBox()
+        self.fit_controls_amp_combobox = QComboBox()
+        self.fit_controls_phase_combobox = QComboBox()
+
+        self.fit_controls_freq_combobox.addItems(["Automatic", "Manual"])
+        self.fit_controls_z_combobox.addItems(["Automatic", "Manual"])
+        self.fit_controls_amp_combobox.addItems(["Automatic", "Manual"])
+        self.fit_controls_phase_combobox.addItems(["Automatic", "Manual"])
+
+        self.fit_controls_freq_combobox.setCurrentIndex(0)
+        self.fit_controls_z_combobox.setCurrentIndex(0)
+        self.fit_controls_amp_combobox.setCurrentIndex(0)
+        self.fit_controls_phase_combobox.setCurrentIndex(0)
+
+        self.fit_controls_reset_btn = QPushButton("Reset")
+        self.fit_controls_reset_btn.clicked.connect(self.reset_to_auto_fit)
+
+        fit_controls_grid_layout = QGridLayout()
+        fit_controls_grid_layout.addWidget(QLabel("Parameters"), 0, 0)
+        fit_controls_grid_layout.addWidget(QLabel("Frequency:"), 1, 0)
+        fit_controls_grid_layout.addWidget(self.fit_controls_freq_combobox, 1, 1)
+        fit_controls_grid_layout.addWidget(QLabel("Damping ratio:"), 2, 0)
+        fit_controls_grid_layout.addWidget(self.fit_controls_z_combobox, 2, 1)
+        fit_controls_grid_layout.addWidget(QLabel("Amplitude:"), 3, 0)
+        fit_controls_grid_layout.addWidget(self.fit_controls_amp_combobox, 3, 1)
+        fit_controls_grid_layout.addWidget(QLabel("Phase:"), 4, 0)
+        fit_controls_grid_layout.addWidget(self.fit_controls_phase_combobox, 4, 1)
+        fit_controls_grid_layout.addWidget(self.fit_controls_reset_btn, 5, 1)
+
+        self.fit_controls_groupbox = QGroupBox()
+        self.fit_controls_groupbox.setTitle("Fit controls")
+        self.fit_controls_groupbox.setLayout(fit_controls_grid_layout)
+
     # Interaction functions ---------------------------------------------------
+    def reset_to_auto_fit(self):
+        self.fit_controls_freq_combobox.setCurrentIndex(0)
+        self.fit_controls_z_combobox.setCurrentIndex(0)
+        self.fit_controls_amp_combobox.setCurrentIndex(0)
+        self.fit_controls_phase_combobox.setCurrentIndex(0)
+
+
     def add_peak(self):
         # Add the new row at the end
         self.tableWidget.insertRow(self.tableWidget.rowCount())
@@ -251,33 +300,27 @@ class CircleFitWidget(QWidget):
         self.row_list[-1]["selectbox"] = QCheckBox()
         self.row_list[-1]["selectbox"].toggle()
         self.row_list[-1]["selectbox"].stateChanged.connect(self.update_peak_selection)
-        self.row_list[-1]["selectbox"].stateChanged.connect(self.set_active_row)
         self.row_list[-1]["freqbox"] = QDoubleSpinBox()
         self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["freqbox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["freqbox"].setSingleStep(0.01)
         self.row_list[-1]["freqbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"] = QDoubleSpinBox()
         self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["zbox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
         self.row_list[-1]["zbox"].setSingleStep(0.0001)
         self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["zbox"].setDecimals(4)
         self.row_list[-1]["ampbox"] = QDoubleSpinBox()
         self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["ampbox"].valueChanged.connect(self.update_spinbox_step)
         self.row_list[-1]["ampbox"].setRange(-9e99, 9e99)
         self.row_list[-1]["phasebox"] = QDoubleSpinBox()
         self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["phasebox"].valueChanged.connect(self.set_active_row)
         self.row_list[-1]["phasebox"].setSingleStep(0.01)
         self.row_list[-1]["phasebox"].setRange(-9e99, 9e99)
         self.row_list[-1]["lockbtn"] = QPushButton()
-        self.row_list[-1]["lockbtn"].setText("")
+        self.row_list[-1]["lockbtn"].setText("<")
         self.row_list[-1]["lockbtn"].setCheckable(True)
-        self.row_list[-1]["lockbtn"].clicked[bool].connect(self.lock_peak)
         self.row_list[-1]["lockbtn"].clicked.connect(self.set_active_row)
 
         # Fill the row with widgets
@@ -298,8 +341,9 @@ class CircleFitWidget(QWidget):
         # so need to undo this for those that are unchecked
         self.update_peak_selection()
         self.show_transfer_fn()
-        self.update_plots()
 
+        self.set_active_row(new_row=True)
+        self.update_plots()
 
     def show_transfer_fn(self):
         if self.show_transfer_fn_checkbox.isChecked():
@@ -317,8 +361,7 @@ class CircleFitWidget(QWidget):
             self.sender().setSingleStep(0.01)
 
     def update_peak_selection(self):
-        self.set_active_row()
-
+        #self.set_active_row()
         for i, row in enumerate(self.row_list):
             checked = row["selectbox"].isChecked()
 
@@ -329,19 +372,6 @@ class CircleFitWidget(QWidget):
             for item in self.region_select_plot.items:
                 if item == self.modal_peaks[i]["plot2"]:
                     item.setVisible(checked)
-
-    def lock_peak(self, checked):
-        self.set_active_row()
-        # Clicked is a bool (true or false) - this either disables or enables
-        # all widgets in the row except the lock button
-        for name, widget in self.row_list[self.tableWidget.currentRow()].items():
-            # If it is locked, change the text to "unlock"
-            if name is "lockbtn" and checked is True:
-                widget.setText("\N{LOCK}")
-            elif name is "lockbtn" and checked is False:
-                widget.setText("")
-            if name is not "selectbox" and name is not "lockbtn":
-                widget.setDisabled(checked)
 
     def delete_selected(self):
         for i, row in enumerate(self.row_list):
@@ -358,10 +388,35 @@ class CircleFitWidget(QWidget):
         self.update_peak_selection()
         self.show_transfer_fn()
 
-    def set_active_row(self):
+    def set_active_row(self, checked=False, new_row=False):
         for i, row in enumerate(self.row_list):
-            if self.sender() in row.values():
+            # If this was the row that was clicked, or a new row is being added
+            if not new_row and self.sender() in row.values():
+                # Set this row as the current row
                 self.tableWidget.setCurrentCell(i, 0)
+
+                if checked:
+                    row["lockbtn"].setText("\N{LOCK}")
+                    for name, widget in row.items():
+                        if name != "lockbtn" and name != "selectbox":
+                            widget.setDisabled(True)
+                else:
+                    row["lockbtn"].setText("<")
+                    for widget in row.values():
+                            widget.setDisabled(False)
+
+            elif new_row and row is self.row_list[-1]:
+                row["lockbtn"].setText("<")
+                for widget in row.values():
+                    widget.setDisabled(False)
+
+            else:
+                row["lockbtn"].setText("\N{LOCK}")
+                for name, widget in row.items():
+                    if name != "lockbtn" and name != "selectbox":
+                        widget.setDisabled(True)
+
+        self.update_plots()
 
     def set_data(self, w=None, a=None):
         if a is not None:
@@ -469,10 +524,16 @@ class CircleFitWidget(QWidget):
         self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
 
         # Recalculate the parameters
-        self.modal_peaks[self.tableWidget.currentRow()]["wr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["zr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["cr"], \
-         self.modal_peaks[self.tableWidget.currentRow()]["phi"] = self.sdof_get_parameters()
+        wr, zr, cr, phi = self.sdof_get_parameters()
+
+        if self.fit_controls_freq_combobox.currentText() == "Automatic":
+            self.modal_peaks[self.tableWidget.currentRow()]["wr"] = wr
+        if self.fit_controls_z_combobox.currentText() == "Automatic":
+            self.modal_peaks[self.tableWidget.currentRow()]["zr"] = zr
+        if self.fit_controls_amp_combobox.currentText() == "Automatic":
+            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = cr
+        if self.fit_controls_phase_combobox.currentText() == "Automatic":
+            self.modal_peaks[self.tableWidget.currentRow()]["phi"] = phi
 
         self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
         self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
@@ -531,8 +592,7 @@ class CircleFitWidget(QWidget):
                                     #np.abs(self.a_reg),
                                     np.append(self.a_reg.real, self.a_reg.imag),
                                     [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]),
-                                    ftol=1e-5)[0]
+                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
 
         return wr, zr, cr, phi
 
@@ -542,6 +602,7 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     c = CircleFitWidget()
+    c.showMaximized()
     """
 
     w = np.linspace(0, 25, 3e2)
