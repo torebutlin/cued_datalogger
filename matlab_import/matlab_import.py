@@ -16,23 +16,45 @@ def import_from_mat(file, channel_set):
                                        num_spectrum_datasets,
                                        num_sonogram_datasets]))
 
-    # Extract metadata
+    # # Extract metadata
     sample_freq = file["freq"]
 
+    if "tsmax" in file.keys():
+        time_series_scale_factor = file["tsmax"]
+    else:
+        time_series_scale_factor = None
+
+    if "npts" in file.keys():
+        fft_num_samples = file["npts"]
+    else:
+        fft_num_samples = None
+
+    if "tfun" in file.keys():
+        is_transfer_function = bool(file["tfun"])
+    else:
+        is_transfer_function = False
+
+    if "step" in file.keys():
+        sonogram_fft_step = file["step"]
+    else:
+        sonogram_fft_step = None
+
+    # # Extract data
     # Transpose the data so it's easier to work with:
     # In the matlab file it is in the form
     # (num_samples_per_channel, num_channels) - each channel is a column
     # Numpy works more easily if it is in the form
     # (num_channels, num_samples_per_channel) - each channel is a row
     if "indata" in file.keys():
-        indata = file["indata"].transpose()
+        time_series = file["indata"].transpose()
     if "yspec" in file.keys():
-        yspec = file["yspec"].transpose()
+        spectrum = file["yspec"].transpose()
     if "yson" in file.keys():
-        yson = file["yson"].transpose()
+        sonogram_amplitude = file["yson"].transpose()
     if "yphase" in file.keys():
-        yphase = file["yphase"].transpose()
+        sonogram_phase = file["yphase"].transpose()
 
+    # # Save everything
     for i in np.arange(num_channels):
         # Create a new channel
         name = "Imported " + str(i)
@@ -43,15 +65,14 @@ def import_from_mat(file, channel_set):
 
         # Set channel data
         if i < num_time_series_datasets:
-            chan_i.add_dataset(DataSet('y', indata[i]))
+            chan_i.add_dataset(DataSet('y', time_series[i]))
 
         if i < num_spectrum_datasets:
-            f_data = file["yspec"][i]
-            chan_i.add_dataset(DataSet('f', yspec[i]))
+            chan_i.add_dataset(DataSet('f', spectrum[i]))
 
         if i < num_sonogram_datasets:
-            y_data = file["yson"][i]
-            chan_i.add_dataset(DataSet('s', yson[i]))
+            chan_i.add_dataset(DataSet('s', sonogram_amplitude[i]))
+            chan_i.add_dataset(DataSet('p', sonogram_phase[i]))
 
         # Add the channel to the channel set
         channel_set.add_channel(chan_i)
