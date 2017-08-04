@@ -111,7 +111,7 @@ class Recorder(RecorderParent):
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
-        self.rEmitter.newdata.emit()
+        #self.rEmitter.newdata.emit()
         
         if self.recording:
             self.record_data(data_array)
