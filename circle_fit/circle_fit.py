@@ -521,8 +521,13 @@ class CircleFitWidget(QWidget):
             + self.single_pole(w, wr, zr, cr, phi)
 
     def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
+        if cr < 0:
+            cr *= -1
+            phi = (phi + np.pi/2) % np.pi
+
         f = self.fitted_single_pole(w, wr, zr, cr, phi)
-        return np.abs(f)
+        #return np.abs(f)
+        return np.append(f.real, f.imag)
 
     def sdof_get_parameters(self):
         # # Find initial parameters for curve fitting
@@ -543,7 +548,8 @@ class CircleFitWidget(QWidget):
         # the optimisation function
         wr, zr, cr, phi = curve_fit(self.optimise_single_pole_fit,
                                     self.w_reg,
-                                    np.abs(self.a_reg),
+                                    #np.abs(self.a_reg),
+                                    np.append(self.a_reg.real, self.a_reg.imag),
                                     [wr0, zr0, cr0, phi0],
                                     bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
 
@@ -559,7 +565,7 @@ if __name__ == '__main__':
     w = np.linspace(0, 25, 3e2)
     transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
     c.set_data(w, transfer_function)
-    """
+
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
     a = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
@@ -573,5 +579,5 @@ if __name__ == '__main__':
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.chans[0].data('f')
     c.set_data(np.linspace(0, cs.chans[0].sample_freq[0], a.size), a)
-    """
+    #"""
     sys.exit(app.exec_())
