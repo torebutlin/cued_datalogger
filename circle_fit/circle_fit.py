@@ -128,8 +128,26 @@ class CircleFitWidget(QWidget):
         self.circle_plot.setAspectLocked(lock=True, ratio=1)
         self.circle_plot.showGrid(x=True, y=True)
 
-        # # Table of results
-        self.init_table()
+        # # Create the items for the plots
+        self.transfer_function1 = pg.PlotDataItem(pen=defaultpen)
+        self.transfer_func_plot.addItem(self.transfer_function1)
+
+        self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
+        self.region_select_plot.addItem(self.transfer_function2)
+
+        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
+        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
+
+        self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
+        self.region_select_plot.addItem(self.constructed_transfer_fn2)
+
+        # Create the plot items for the data points
+        self.circle_plot_points = pg.PlotDataItem()
+        self.circle_plot.addItem(self.circle_plot_points)
+
+        # Create the plot items for the modal peak fit
+        self.circle_plot_modal_peak = pg.PlotDataItem()
+        self.circle_plot.addItem(self.circle_plot_modal_peak)
 
         # # Additional controls
         self.add_peak_btn = QPushButton(self)
@@ -164,6 +182,9 @@ class CircleFitWidget(QWidget):
         transfer_fn_groupbox = QGroupBox(self)
         transfer_fn_groupbox.setTitle("Reconstructed transfer function")
         transfer_fn_groupbox.setLayout(transfer_fn_hbox)
+
+        # # Table of results
+        self.init_table()
 
         groupbox = QGroupBox(self)
         groupbox.setTitle("Results")
@@ -205,8 +226,6 @@ class CircleFitWidget(QWidget):
         self.row_list = []
         self.modal_peaks = []
 
-        self.add_peak()
-
     # Interaction functions ---------------------------------------------------
     def add_peak(self):
         # Add the new row at the end
@@ -231,7 +250,7 @@ class CircleFitWidget(QWidget):
         # Create a load of widgets to fill the row - store them in the new dict
         self.row_list[-1]["selectbox"] = QCheckBox()
         self.row_list[-1]["selectbox"].toggle()
-        self.row_list[-1]["selectbox"].stateChanged.connect(self.select_peak)
+        self.row_list[-1]["selectbox"].stateChanged.connect(self.update_peak_selection)
         self.row_list[-1]["selectbox"].stateChanged.connect(self.set_active_row)
         self.row_list[-1]["freqbox"] = QDoubleSpinBox()
         self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
@@ -275,11 +294,15 @@ class CircleFitWidget(QWidget):
         self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
                                        self.row_list[-1]["lockbtn"])
 
-        #self.update_plots()
+        # With pyqtgraph's addItem, all the other items are set back to being visible
+        # so need to undo this for those that are unchecked
+        self.update_peak_selection()
+        self.show_transfer_fn()
+        self.update_plots()
 
 
     def show_transfer_fn(self):
-        if self.sender().isChecked():
+        if self.show_transfer_fn_checkbox.isChecked():
             self.constructed_transfer_fn1.show()
             self.constructed_transfer_fn2.show()
         else:
@@ -293,15 +316,19 @@ class CircleFitWidget(QWidget):
         else:
             self.sender().setSingleStep(0.01)
 
-    def select_peak(self, checked):
+    def update_peak_selection(self):
         self.set_active_row()
-        for item in self.transfer_func_plot.items:
-            if item == self.modal_peaks[self.tableWidget.currentRow()]["plot1"]:
-                item.setVisible(checked)
-        for item in self.region_select_plot.items:
-            if item == self.modal_peaks[self.tableWidget.currentRow()]["plot2"]:
-                item.setVisible(checked)
-        self.update_plots()
+
+        for i, row in enumerate(self.row_list):
+            checked = row["selectbox"].isChecked()
+
+            for item in self.transfer_func_plot.items:
+                if item == self.modal_peaks[i]["plot1"]:
+                    item.setVisible(checked)
+
+            for item in self.region_select_plot.items:
+                if item == self.modal_peaks[i]["plot2"]:
+                    item.setVisible(checked)
 
     def lock_peak(self, checked):
         self.set_active_row()
@@ -315,7 +342,6 @@ class CircleFitWidget(QWidget):
                 widget.setText("")
             if name is not "selectbox" and name is not "lockbtn":
                 widget.setDisabled(checked)
-        self.update_plots()
 
     def delete_selected(self):
         for i, row in enumerate(self.row_list):
@@ -327,7 +353,10 @@ class CircleFitWidget(QWidget):
                 self.transfer_func_plot.removeItem(self.modal_peaks[i]["plot1"])
                 self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
                 del self.modal_peaks[i]
-        self.update_plots()
+        # With pyqtgraph's removeItem, all the other items are set back to being visible
+        # so need to undo this for those that are unchecked
+        self.update_peak_selection()
+        self.show_transfer_fn()
 
     def set_active_row(self):
         for i, row in enumerate(self.row_list):
@@ -343,20 +372,13 @@ class CircleFitWidget(QWidget):
             self.w_fit = np.linspace(0, self.w.max(), self.w.size*10)
         else:
             pass
-        # Plot the transfer function
-        self.transfer_function1 = pg.PlotDataItem(x=self.w,
-                                                  y=to_dB(np.abs(self.a)),
-                                                  pen=defaultpen)
-        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
-        self.transfer_func_plot.addItem(self.transfer_function1)
-        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
 
-        self.transfer_function2 = pg.PlotDataItem(x=self.w,
-                                                  y=to_dB(np.abs(self.a)),
-                                                  pen=defaultpen)
-        self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
-        self.region_select_plot.addItem(self.transfer_function2)
-        self.region_select_plot.addItem(self.constructed_transfer_fn2)
+        # Plot the transfer function
+        self.transfer_function1.setData(x=self.w,
+                                        y=to_dB(np.abs(self.a)))
+
+        self.transfer_function2.setData(x=self.w,
+                                        y=to_dB(np.abs(self.a)))
 
         self.transfer_func_plot.autoRange()
         self.transfer_func_plot.disableAutoRange()
@@ -364,16 +386,12 @@ class CircleFitWidget(QWidget):
         self.region_select_plot.autoRange()
         self.region_select_plot.disableAutoRange()
 
-        # Create the plot items for the modal peak fit
-        self.circle_plot_modal_peak = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_modal_peak)
-
         # Create the plot items for the data points
         self.circle_plot_points = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_points)
 
         self.region_select.setBounds((self.w.min(), self.w.max()))
-        self.update_plots()
+        self.add_peak()
 
     def construct_transfer_fn(self):
         self.show_transfer_fn_checkbox.setChecked(True)
@@ -434,9 +452,9 @@ class CircleFitWidget(QWidget):
 
             # Update the values
             if self.sender() in self.row_list[self.tableWidget.currentRow()].values():
-                self.update_plot_from_row(value)
+                self.update_from_row(value)
             else:
-                self.update_row_from_plot()
+                self.update_from_plot()
 
             # Recalculate the fitted modal peak
             self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
@@ -466,9 +484,7 @@ class CircleFitWidget(QWidget):
             if self.show_transfer_fn_checkbox.isChecked():
                 self.construct_transfer_fn()
 
-    def update_row_from_plot(self):
-        print("Updating row")
-
+    def update_from_plot(self):
         # Recalculate the geometric circle fit
         self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
 
@@ -485,8 +501,7 @@ class CircleFitWidget(QWidget):
 
 
 
-    def update_plot_from_row(self, value):
-        print("Updating plot")
+    def update_from_row(self, value):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["wr"] = value
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["zbox"]:
@@ -544,7 +559,7 @@ if __name__ == '__main__':
     w = np.linspace(0, 25, 3e2)
     transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
     c.set_data(w, transfer_function)
-
+    """
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
     a = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
@@ -558,5 +573,5 @@ if __name__ == '__main__':
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.chans[0].data('f')
     c.set_data(np.linspace(0, cs.chans[0].sample_freq[0], a.size), a)
-    #"""
+    """
     sys.exit(app.exec_())
