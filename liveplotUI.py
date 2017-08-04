@@ -629,7 +629,7 @@ class LiveplotApp(QMainWindow):
         
         if all_selected_chan:
             self.toggle_all_checkboxes(Qt.Unchecked)
-            for chan in list(set(all_selected_chan)):
+            for chan in set(all_selected_chan):
                 if chan < self.rec.channels:
                     self.chan_btn_group.button(chan).click()
          
