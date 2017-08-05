@@ -4,14 +4,14 @@ Created on Wed Aug  2 16:24:57 2017
 
 @author: eyt21
 """
-import sys
+import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit,QApplication,QListWidget,QDialog)
 from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette,QSizePolicy
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
-
+import functools as fct
 
 class ChanMetaWin(QDialog):
     def __init__(self,livewin = None):
@@ -47,19 +47,22 @@ class ChanMetaWin(QDialog):
         title = QLabel('CHANNEL METADATA',self)
         title.setAlignment(Qt.AlignCenter)
         channel_meta_form.addWidget(title,0,0,1,3)
-        meta_dtype = ('Channel','Name','Calibration Factor','Units','Tags','Comments')
+        meta_dname = ('Channel','Name','Calibration Factor','Units','Tags','Comments')
+        meta_dtype = ('','name','cal_factor','units','tags','comments')
         
         self.meta_configs = []
-        UI_type = (QLabel,QLineEdit,QLineEdit,QLineEdit,QLineEdit,QTextEdit)
-        def_inputs = [0] + list(self.all_info[0].values())
+        UI_type = (QLabel,QLineEdit,QLineEdit,QLineEdit,QLineEdit,CommentBox)
+        
         row = 1
-        for m,UI,d_in in zip(meta_dtype,UI_type,def_inputs):
+        for m,UI,md in zip(meta_dname,UI_type,meta_dtype):
             channel_meta_form.addWidget(QLabel(m,self),row,0,1,1)
-            cbox = UI(str(d_in).strip('[]'),self)
+            cbox = UI(self)
+            if not UI == QLabel:
+                cbox.editingFinished.connect(fct.partial(self.update_metadata,md,cbox))
             channel_meta_form.addWidget(cbox,row,1,1,2)
             self.meta_configs.append(cbox)
             row +=1
-        
+        self.channel_listview.setCurrentRow(0)
         row +=5
         
         apply_btn = QPushButton('Apply',self)
@@ -77,9 +80,34 @@ class ChanMetaWin(QDialog):
         meta_values = [sel_num] + list(self.all_info[sel_num].values())
         for cbox,v in zip(self.meta_configs,meta_values):
             cbox.setText(str(v).strip('[]'))
-    
+            
+    def update_metadata(self,meta_name,UI):
+        chan_num = self.channel_listview.currentRow()
+        string = UI.text()
+        print(string)
+        try:
+            if meta_name == 'tags':
+                string = string.split(' ')
+            self.all_info[chan_num][meta_name] = string
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+        
     def closing(self):
         self.done(0)
+        
+        
+class CommentBox(QTextEdit):
+    editingFinished = pyqtSignal()
+        
+    def focusOutEvent(self,event):
+        self.editingFinished.emit()
+        QTextEdit.focusOutEvent(self,event)
+        
+    def text(self):
+        return self.toPlainText()
  
 if __name__ == '__main__':
     app = 0 
