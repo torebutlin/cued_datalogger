@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit,QApplication )
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette,QSizePolicy
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import pyqtgraph as pg
 import numpy as np
@@ -685,10 +685,16 @@ class LiveplotApp(QMainWindow):
     
     def open_meta_window(self):
         if not self.meta_window:
-            self.meta_window = ChanMetaWin(self)
-            self.meta_window.show()
-            self.meta_window.finished.connect(self.meta_win_closed)
-            
+            try:
+                self.meta_window = ChanMetaWin(self)
+                self.meta_window.show()
+                self.meta_window.finished.connect(self.meta_win_closed)
+            except:
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
+                
     def meta_win_closed(self):
         self.meta_window = None
 
@@ -1165,7 +1171,6 @@ class LiveplotApp(QMainWindow):
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-        print(data)
         # Save the time series
         #self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
         # Save the values
