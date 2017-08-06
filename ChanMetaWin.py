@@ -8,7 +8,7 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QListWidget,QDialog)
+    QCheckBox,QButtonGroup,QTextEdit,QApplication,QListWidget,QDialog,QListWidgetItem )
 from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QColor,QPalette,QSizePolicy
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import functools as fct
@@ -67,6 +67,7 @@ class ChanMetaWin(QDialog):
         
         apply_btn = QPushButton('Apply',self)
         yes_btn = QPushButton('Ok',self)
+        yes_btn.clicked.connect(self.export_metadata)
         no_btn =  QPushButton('Cancel',self)
         no_btn.clicked.connect(self.closing)
         channel_meta_form.addWidget(apply_btn,row,0)
@@ -84,16 +85,30 @@ class ChanMetaWin(QDialog):
     def update_metadata(self,meta_name,UI):
         chan_num = self.channel_listview.currentRow()
         string = UI.text()
-        print(string)
         try:
             if meta_name == 'tags':
                 string = string.split(' ')
             self.all_info[chan_num][meta_name] = string
+            
+            if meta_name == 'name':
+                self.channel_listview.currentItem().setText(string)
         except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
+            
+    def export_metadata(self):
+        try:
+            for i in range(len(self.all_info)):
+                self.livewin.live_chanset.chan_set_metadatas(self.all_info[i],num = i)
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            
+        self.closing()
         
     def closing(self):
         self.done(0)
