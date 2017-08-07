@@ -523,7 +523,9 @@ class CircleFitWidget(QWidget):
                 self.update_from_plot()
 
             # Recalculate the fitted modal peak
-            self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
+            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
+            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_single_pole(self.w_fit,
+            self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_double_pole(self.w_fit,
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["wr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["zr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["cr"],
@@ -591,6 +593,10 @@ class CircleFitWidget(QWidget):
     def fitted_single_pole(self, w, wr, zr, cr, phi):
         return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
             + self.single_pole(w, wr, zr, cr, phi)
+
+    def fitted_double_pole(self, w, wr, zr, cr, phi):
+        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
+            + sdof_modal_peak(w, wr, zr, cr, phi)
 
     def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
         if cr < 0:
