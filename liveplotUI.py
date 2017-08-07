@@ -89,7 +89,8 @@ class LiveplotApp(QMainWindow):
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            self.close()
+            #self.close()
+            self.show()
             return
         
         # Attempt to start streaming
@@ -119,58 +120,22 @@ class LiveplotApp(QMainWindow):
         self.main_splitter.addWidget(self.right_splitter)
         
     #---------------------CHANNEL TOGGLE UI----------------------------------
-        chantoggle_UI = QWidget(self.left_splitter)
-        #chanUI_layout = QHBoxLayout(chanUI)        
-        # Set up the channel tickboxes widget
-        chans_toggle_layout = QVBoxLayout(chantoggle_UI)
+        #chantoggle_UI = QWidget(self.left_splitter)
+        self.chantoggle_UI = ChanToggleUI(self)
+
+        self.chantoggle_UI.sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
+        self.chantoggle_UI.desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
+        self.chantoggle_UI.inv_sel_btn.clicked.connect(self.invert_checkboxes)
         
-        # Make the button tickboxes scrollable
-        scroll = QScrollArea(self.left_splitter)
-        
-        self.channels_box = QWidget(scroll)
-        self.checkbox_layout = QGridLayout(self.channels_box)
-        
-        # Set up the QbuttonGroup to manage the Signals
-        self.chan_btn_group = QButtonGroup(self.channels_box)
-        self.chan_btn_group.setExclusive(False)
-                
         self.ResetChanBtns()
-        self.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+        self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+        self.chantoggle_UI.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
+        self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
+
+        self.left_splitter.addWidget(self.chantoggle_UI)
         
-        #scroll.ensureVisible(50,50)
-        scroll.setWidget(self.channels_box)
-        scroll.setWidgetResizable(True)
-        
-        chans_toggle_layout.addWidget(scroll)
-      
-        # Set up the selection toggle buttons
-        sel_btn_layout = QGridLayout()    
-        sel_all_btn = QPushButton('Select All', chantoggle_UI)
-        sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        desel_all_btn = QPushButton('Deselect All',chantoggle_UI)
-        desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        inv_sel_btn = QPushButton('Invert Selection',chantoggle_UI)
-        inv_sel_btn.clicked.connect(self.invert_checkboxes)
-        for y,btn in zip((0,1,2),(sel_all_btn,desel_all_btn,inv_sel_btn)):
-            btn.resize(btn.sizeHint())
-            sel_btn_layout.addWidget(btn,y,0)
-        
-        self.chan_text = QLineEdit(chantoggle_UI)
-        sel_btn_layout.addWidget(self.chan_text,0,1)
-        toggle_ext_button = QPushButton('>>',chantoggle_UI)
-        sel_btn_layout.addWidget(toggle_ext_button,1,1)
-        
-        self.chan_text.editingFinished.connect(lambda: self.chan_line_toggle(self.chan_text))
-        toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
-        
-        chans_toggle_layout.addLayout(sel_btn_layout)
-        #chanUI_layout.addLayout(chans_settings_layout)
-        
-        
-        #main_layout.addLayout(chans_settings_layout,10)
-        self.left_splitter.addWidget(chantoggle_UI)
-        
-    #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
+    #----------------CHANNEL CONFIGURATION WIDGET---------------------------
+    
         chanconfig_UI = QWidget(self.left_splitter)
         chans_prop_layout = QVBoxLayout(chanconfig_UI)
         chans_prop_layout.setContentsMargins(5,5,5,5)
@@ -540,30 +505,29 @@ class LiveplotApp(QMainWindow):
 #+++++++++++++++++++++ UI CALLBACK METHODS +++++++++++++++++++++++++++++++++++
     
 #---------------------CHANNEL TOGGLE UI----------------------------------    
-    def display_channel_plots(self, *args):
-        for btn in args:
-            chan_num = self.chan_btn_group.id(btn)
-            if btn.isChecked():
-                self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
-                self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
-            else:
-                self.plotlines[2*chan_num].setPen(None)
-                self.plotlines[2*chan_num+1].setPen(None)
+    def display_channel_plots(self, btn):
+        chan_num = self.chantoggle_UI.chan_btn_group.id(btn)
+        if btn.isChecked():
+            self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
+            self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
+        else:
+            self.plotlines[2*chan_num].setPen(None)
+            self.plotlines[2*chan_num+1].setPen(None)
                 
     def invert_checkboxes(self):
-        for btn in self.channels_box.findChildren(QCheckBox):
+        for btn in self.chantoggle_UI.channels_box.findChildren(QCheckBox):
             btn.click()
          
     def toggle_all_checkboxes(self,state):
-        for btn in self.channels_box.findChildren(QCheckBox):
+        for btn in self.chantoggle_UI.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
                 
     def toggle_ext_toggling(self,toggle):
         if toggle:
-            tlpoint = self.chan_text.mapTo(self,QPoint(0,0))
+            tlpoint = self.chantoggle_UI.chan_text.mapTo(self,QPoint(0,0))
             self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
-            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),self.chan_text.width()*3,self.chan_text.height()*15)
+            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),self.chantoggle_UI.chan_text.width()*3,self.chantoggle_UI.chan_text.height()*15)
             if not self.chan_toggle_ext.isVisible():
                 self.chan_toggle_ext.show()
         else:
@@ -588,35 +552,7 @@ class LiveplotApp(QMainWindow):
             print(v)
             print('Invalid expression')
             return False
-        '''
-        elif type(UI) == QTextEdit or type(UI) == ChanLineText:
-            try:
-                string = UI.toPlainText()
-                code = compile(string,'<string>','exec')
-            except:
-                t,v,_ = sys.exc_info()
-                print(t)
-                print(v)
-                print('Invalid code')
-                return False
 
-            g = {}
-            try:
-                ast.literal_eval(code,g)
-            except:
-                t,v,_ = sys.exc_info()
-                print(t)
-                print(v)
-                print('Code failed')
-                return False
-            
-            print('Code executed')
-            try:
-                all_selected_chan = g['output']
-            except KeyError:
-                all_selected_chan = []
-                
-        '''
         all_selected_chan = []
         if isinstance(expression,Sequence) and not isinstance(expression,str) :
             for n in expression:
@@ -633,7 +569,7 @@ class LiveplotApp(QMainWindow):
             self.toggle_all_checkboxes(Qt.Unchecked)
             for chan in set(all_selected_chan):
                 if chan < self.rec.channels:
-                    self.chan_btn_group.button(chan).click()
+                    self.chantoggle_UI.chan_btn_group.button(chan).click()
          
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
@@ -671,7 +607,7 @@ class LiveplotApp(QMainWindow):
     
     def set_plot_colour(self,reset = False):
         chan = self.chans_num_box.currentIndex()
-        chan_btn = self.chan_btn_group.button(chan)
+        chan_btn = self.chantoggle_UI.chan_btn_group.button(chan)
             
         if reset:
             col = self.def_colours[chan]
@@ -1111,10 +1047,10 @@ class LiveplotApp(QMainWindow):
         self.channelvlplot.setLimits(xMin = -0.1,xMax = self.rec.max_value+0.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
         
     def ResetChanBtns(self):
-        for btn in self.chan_btn_group.buttons():
+        for btn in self.chantoggle_UI.chan_btn_group.buttons():
             btn.setCheckState(Qt.Checked)
         
-        n_buttons = self.checkbox_layout.count()
+        n_buttons = self.chantoggle_UI.checkbox_layout.count()
         extra_btns = abs(self.rec.channels - n_buttons)
         if extra_btns:
             if self.rec.channels > n_buttons:
@@ -1127,15 +1063,15 @@ class LiveplotApp(QMainWindow):
                         current_y +=1
                     current_x = current_x%columns_limit
                     
-                    chan_btn = QCheckBox('Channel %i' % n,self.channels_box)
+                    chan_btn = QCheckBox('Channel %i' % n,self.chantoggle_UI.channels_box)
                     chan_btn.setCheckState(Qt.Checked)
-                    self.checkbox_layout.addWidget(chan_btn,current_y,current_x)
-                    self.chan_btn_group.addButton(chan_btn,n)
+                    self.chantoggle_UI.checkbox_layout.addWidget(chan_btn,current_y,current_x)
+                    self.chantoggle_UI.chan_btn_group.addButton(chan_btn,n)
             else:
                 for n in range(n_buttons-1,self.rec.channels-1,-1):
-                    chan_btn = self.chan_btn_group.button(n)
-                    self.checkbox_layout.removeWidget(chan_btn)
-                    self.chan_btn_group.removeButton(chan_btn)
+                    chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
+                    self.chantoggle_UI.checkbox_layout.removeWidget(chan_btn)
+                    self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
                     
     def ResetRecConfigs(self):
@@ -1249,6 +1185,49 @@ class LiveplotApp(QMainWindow):
         if self.parent:
             self.parent.liveplot = None
             self.parent.liveplotbtn.setText('Open Oscilloscope')
+            
+            
+class ChanToggleUI(QWidget):
+    def __init__(self, *arg, **kwarg):
+        super().__init__(*arg, **kwarg)
+        self.initUI()
+        
+    def initUI(self):
+        # Set up the channel tickboxes widget
+        chans_toggle_layout = QVBoxLayout(self)
+        
+        # Make the button tickboxes scrollable
+        scroll = QScrollArea()
+        
+        self.channels_box = QWidget(scroll)
+        self.checkbox_layout = QGridLayout(self.channels_box)
+        
+        # Set up the QbuttonGroup to manage the Signals
+        self.chan_btn_group = QButtonGroup(self.channels_box)
+        self.chan_btn_group.setExclusive(False)
+                
+        scroll.setWidget(self.channels_box)
+        scroll.setWidgetResizable(True)
+        
+        chans_toggle_layout.addWidget(scroll)
+        
+        # Set up the selection toggle buttons
+        sel_btn_layout = QGridLayout()    
+        self.sel_all_btn = QPushButton('Select All', self)
+        self.desel_all_btn = QPushButton('Deselect All',self)
+        self.inv_sel_btn = QPushButton('Invert Selection',self)
+        for y,btn in zip((0,1,2),(self.sel_all_btn,self.desel_all_btn,self.inv_sel_btn)):
+            btn.resize(btn.sizeHint())
+            sel_btn_layout.addWidget(btn,y,0)
+        
+        self.chan_text = QLineEdit(self)
+        sel_btn_layout.addWidget(self.chan_text,0,1)
+        self.toggle_ext_button = QPushButton('>>',self)
+        sel_btn_layout.addWidget(self.toggle_ext_button,1,1)
+        
+        chans_toggle_layout.addLayout(sel_btn_layout)
+        #chanUI_layout.addLayout(chans_settings_layout)
+        
             
 if __name__ == '__main__':
     app = 0 
