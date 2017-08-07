@@ -1,3 +1,7 @@
+import sys
+sys.path.append('../')
+sys.path.append('../acquisition')
+
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
@@ -9,9 +13,7 @@ from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
 from scipy.optimize import curve_fit
 
-import sys
-
-from channel import *
+from channel import ChannelSet
 from matlab_import import import_from_mat
 
 pg.setConfigOption('background', 'w')

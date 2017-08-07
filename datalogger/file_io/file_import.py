@@ -75,4 +75,4 @@ def import_from_mat(file, channel_set):
             chan_i.add_dataset(DataSet('p', sonogram_phase[i]))
 
         # Add the channel to the channel set
-        channel_set.add_channel(chan_i)
+        channel_set.add_channel(i)
