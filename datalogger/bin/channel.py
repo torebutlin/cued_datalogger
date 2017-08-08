@@ -166,6 +166,8 @@ class Channel():
             selection and sorting
         sample_rate: The rate (in Hz) that the data was sampled at
         calibration_factor: #TODO#
+        transfer_function_type: either 'displacement', 'velocity', or
+            'acceleration' - indicates what type of transfer function is stored
 
     Methods:
         is_dataset(id_): Return a boolean of whether the dataset given by id_
@@ -186,7 +188,8 @@ class Channel():
                  comments='',
                  tags=[],
                  sample_rate=1,
-                 calibration_factor=1):
+                 calibration_factor=1,
+                 transfer_function_type="displacement"):
 
         # Set the channel metadata
         self.name = name
@@ -194,6 +197,7 @@ class Channel():
         self.tags = tags
         self.sample_rate = sample_rate
         self.calibration_factor = calibration_factor
+        self.transfer_function_type = transfer_function_type
 
         # Set the channel datasets
         self.datasets = []
@@ -258,7 +262,8 @@ class Channel():
                          "comments": self.comments,
                          "tags": self.tags,
                          "sample rate": self.sample_rate,
-                         "calibration factor": self.calibration_factor}
+                         "calibration factor": self.calibration_factor,
+                         "transfer_function_type": self.transfer_function_type}
         if metadata_id is None:
             return metadata_dict
         else:
