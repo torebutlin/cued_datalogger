@@ -261,8 +261,11 @@ Each tool in the `analysis` module is designed so that it could be run independe
 Not implemented yet.
 
 The master analysis window has:
+
 * A menubar (see 4.3)
+
 * A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection
+
 * A TabWidget containing the tools used for analysis
 
 ### 4.3 Menus
@@ -270,9 +273,13 @@ The master analysis window has:
 Not implemented yet.
 
 In the menubar, there are the following menus:
+
 * Project
+
 * Data
+
 * View
+
 * Addons
 
 #### Project menu
