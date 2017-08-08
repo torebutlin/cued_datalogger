@@ -22,6 +22,7 @@ These notes are intended to give a comprehensive breakdown of the Datalogger str
     
     2.4 Import / export
 
+	2.5 History Tree
 
 3. Datalogger: Acquisition module
 
@@ -140,7 +141,10 @@ Examples by pyqtgraph on graph interaction can be accessed by inputting the line
     python -m pyqtgraph.examples
 	    
 ### 2.4 Import / export
+Not implemented yet.
 
+### 2.5 History Tree
+Not implemented yet.
 
 ## 3. Datalogger: Acquisition module
 
