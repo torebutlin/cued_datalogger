@@ -144,6 +144,24 @@ Examples by pyqtgraph on graph interaction can be accessed by inputting the line
 
 ## 3. Datalogger: Acquisition module
 
+### 3.1 Recorder Classes
+
+Two classes are created to handle data acquisition from different types of hardware: 
+`myRecorder` to handle data from soundcards, and `NIRecorder` to handle data from National Instruments. 
+These two classes are derived from the base class `RecorderParent` which provides methods for storing data acquired.
+
+`RecorderParent` contains methods to initialise a circular buffer, 
+initialise a recording array, and initialise a trigger. 
+`myRecorder` and `NIRecorder` process data acquired from its stream using methods of `RecorderParent` 
+as part of its callback routine, such as writing to buffer, writing to recording array, or checking for trigger.
+ 
+The Recorder classes are written in such a way that they could be used in a python console. 
+Thus, the classes are not restricted to be used in the GUI only, but can be used as part of a script.
+
+Any new Recorder class can be implemented by deriving from the RecorderParent, and implement the required functions.
+
+### 3.2 Window Layout
+
 
 ## 4. Datalogger: Analysis module
 
