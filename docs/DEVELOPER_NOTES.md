@@ -26,10 +26,12 @@ These notes are intended to give a comprehensive breakdown of the Datalogger str
 3. Datalogger: Acquisition module
 
 4. Datalogger: Analysis module
+
+    4.1 Module structure
     
-    4.1 Window layout
+    4.2 Window layout
     
-    4.2 Menus
+    4.3 Menus
 
 
 ## 1. Infrastructure ##
@@ -111,9 +113,8 @@ For consistency, only the following names are permitted for DataSets and metadat
 * `comments` - A string for any additional comments
 * `tags` - A list of tags for quick selection and sorting
 * `sample_rate` - The rate (in Hz) that the data was sampled at
-* `calibration_factor` - Not implemented yet.
+* `calibration_factor` - Not implemented yet
 * `transfer_function_type` - either `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
-
 
 
 ### 2.3 Graph interaction
@@ -125,7 +126,46 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 
 ## 4. Datalogger: Analysis module
+
+The `analysis` module contains all of the tools used for processing data and modal analysis.
+
+### 4.1 Module structure
+
+Each tool in the `analysis` module is designed so that it could be run independently of the master analysis window, as is its own PyQt widget. This makes it easy to add new tools and slot them into the master window as new tabs.
     
-### 4.1 Window layout
-    
-### 4.2 Menus
+### 4.2 Window layout
+
+Not implemented yet.
+
+The master analysis window has:
+* A menubar (see 4.3)
+* A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection
+* A TabWidget containing the tools used for analysis
+
+### 4.3 Menus
+
+Not implemented yet.
+
+In the menubar, there are the following menus:
+* Project
+* Data
+* View
+* Addons
+
+#### Project menu
+
+Not implemented yet.
+
+This menu contains project-wide options, such as setting project preferences and saving the whole project.
+
+#### Data menu
+
+Not implemented yet.
+
+This menu contains options for importing and exporting data.
+
+#### Addons menu
+
+Not implemented yet.
+
+This menu contains any additional addons that are installed.
