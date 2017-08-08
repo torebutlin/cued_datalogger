@@ -144,53 +144,56 @@ Examples by pyqtgraph on graph interaction can be accessed by inputting the line
 
 ## 3. Datalogger: Acquisition module
 
-### 3.1 Recorder Classes
+### 3.1 Recorder Class
 
-Two classes are created to handle data acquisition from different types of hardware: 
-`myRecorder` to handle data from soundcards, and `NIRecorder` to handle data from National Instruments. 
-These two classes are derived from the base class `RecorderParent` which provides methods for storing data acquired.
+Two modules are created to handle data acquisition from different types of hardware: 
+`myRecorder` to handle data from soundcards, and `NIRecorder` to handle data from National Instruments.
+Both modules contain a class named **Recorder** derived from the abstract class **RecorderParent** from `RecorderParent` module which provides methods for storing data acquired.
 
-`RecorderParent` contains methods to initialise a circular buffer, 
+The import convention of the module is **mR** for `myRecorder` and **NIR** for `NIRecorder`.
+
+**RecorderParent** contains methods to initialise a circular buffer, 
 initialise a recording array, and initialise a trigger. 
-`myRecorder` and `NIRecorder` process data acquired from its stream using methods of `RecorderParent` 
+**Recorder** store data acquired from its stream using methods of **RecorderParent** 
 as part of its callback routine, such as writing to buffer, writing to recording array, or checking for trigger.
  
-The Recorder classes are written in such a way that they could be used in a python console. 
-Thus, the classes are not restricted to be used in the GUI only, but can be used as part of a script.
+The **Recorder** is written in such a way that it could be used in a python console. 
+Thus, it is not restricted to be used in the GUI only, but can be used as part of a script.
 
-Any new Recorder class can be implemented by deriving from the RecorderParent, and implement the required functions.
+The **Recorder** class will only output _**raw data**_. Any kind of data processing is done outside of the class.
+
+Any new **Recorder** or equivalent class can be implemented by deriving from the **RecorderParent**, and re-implement the required functions.
 
 ### 3.2 Window Layout
 
-The acquisition window consists entirely of one main QSplitter, 
-in which more QSplitters(namely left, middle, and right) are nested within in. 
-The Widgets written separately as a class are added to the nested Qsplitters. 
-This produces a resizable 'panel' for each Widget in the QSplitters. 
-The good thing about this implementation is some Widget can be hidden away from the user through the code.
+The acquisition window consists entirely of one main **QSplitter**, 
+in which more **QSplitters**(namely left, middle, and right) are nested within in.
+The main splitter is oriented horizontally, while the nested splitters are oriented vertically.
+The _Widgets_ written separately as a class are then added to the nested **QSplitters**.
+
+This produces a resizable 'panel' for each _Widget_. 
+The good thing about this implementation is some _Widget_ can be hidden away from the user through the code.
 
 ### 3.3 Window Function
 
 The window acts as a central hub to connect the widgets together. 
 This is where most slots and signals are connected, meaning most callback functions are implemented here. 
-The window also holds the variables for displaying the data acquired from the Recorder classes. 
-A window without any extra QWidget added to it would consist only the data plots within the QSplitters, 
+The window also holds the variables for plotting the processed data from the Recorder classes
+(i.e. time series data, DFT data, and channel levels). 
+A window without any extra _Widget_ added to it would consist only the data plots within the QSplitters, 
 and would technically function.
 
-The important variables that the window holds are:
--\<Insert variable here\>
+\<Insert variables here\>
 
 ### 3.4 Widgets
 
-All QWidgets except `PlotWidgets` from pyqtgraph are reimplemented as a class of its own. 
-They are derived from the abstract class `BaseWidget`, 
-which re-implement function for styling and provide a template for self-written QWidgets. 
-The construction of the UI components is implemented under `initUI` method. 
-No connection of signals and slots are done here, unless the connection is internal, 
-meaning the signal will only affect the components within the QWidget.
+All _Widgets_ except `PlotWidgets` from `pyqtgraph` are reimplemented as a class of its own. 
+They are derived from the abstract class **BaseWidget**
+which re-implement function for styling and provide a template for self-written _Widgets_. 
+The construction of the UI components is implemented under `initUI()` method. 
+No callback functions are done here, unless the callback only affect components within the _Widget_.
 
-The classes of QWidget implemented are:
-
--\<Insert class here\>
+\<Insert widgets here\>
 
 ## 4. Datalogger: Analysis module
 
