@@ -128,17 +128,17 @@ This requires subclassing the [`ViewBox`](http://www.pyqtgraph.org/documentation
 To modify the context menu, reimplement the 'menu' variable and 'raiseContextMenu()' method. 
 After that, initialise a [`PlotItem`](http://www.pyqtgraph.org/documentation/graphicsItems/plotitem.html#pyqtgraph.PlotItem) with the custom ViewBox as its 'viewBox' keyword argument.
     
-In addition to mouse interaction, pyqtgraph also included interactive data selection. 
+In addition to mouse interactions, pyqtgraph also included interactive data selection. 
 The [documentation](http://www.pyqtgraph.org/documentation/region_of_interest.html) includes a basic introduction. 
     
 For our purposes, the [`LinearRegionItem`](http://www.pyqtgraph.org/documentation/graphicsItems/linearregionitem.html#pyqtgraph.LinearRegionItem) 
 and [`InfiniteLine`](http://www.pyqtgraph.org/documentation/graphicsItems/infiniteline.html#pyqtgraph.InfiniteLine) from pyqtgraph are used. 
-In general, the item is first initialised and added to a PlotItem, Then, its Signal (usually emitted when its position has changed) is connected a method which does something to the data in selected region.
+In general, the item is initialised and added to a PlotItem, Then, its Signal (usually emitted when its position has changed) is connected to a method which does something to the data in the selected region.
     
 Examples by pyqtgraph on graph interaction can be accessed by inputting the line on command line after installing pyqtgraph:
     	
     python -m pyqtgraph.examples
-	    
+		    
 ### 2.4 Import / export
 
 
@@ -162,6 +162,35 @@ Any new Recorder class can be implemented by deriving from the RecorderParent, a
 
 ### 3.2 Window Layout
 
+The acquisition window consists entirely of one main QSplitter, 
+in which more QSplitters(namely left, middle, and right) are nested within in. 
+The Widgets written separately as a class are added to the nested Qsplitters. 
+This produces a resizable 'panel' for each Widget in the QSplitters. 
+The good thing about this implementation is some Widget can be hidden away from the user through the code.
+
+### 3.3 Window Function
+
+The window acts as a central hub to connect the widgets together. 
+This is where most slots and signals are connected, meaning most callback functions are implemented here. 
+The window also holds the variables for displaying the data acquired from the Recorder classes. 
+A window without any extra QWidget added to it would consist only the data plots within the QSplitters, 
+and would technically function.
+
+The important variables that the window holds are:
+-\<Insert variable here\>
+
+### 3.4 Widgets
+
+All QWidgets except `PlotWidgets` from pyqtgraph are reimplemented as a class of its own. 
+They are derived from the abstract class `BaseWidget`, 
+which re-implement function for styling and provide a template for self-written QWidgets. 
+The construction of the UI components is implemented under `initUI` method. 
+No connection of signals and slots are done here, unless the connection is internal, 
+meaning the signal will only affect the components within the QWidget.
+
+The classes of QWidget implemented are:
+
+-\<Insert class here\>
 
 ## 4. Datalogger: Analysis module
 
