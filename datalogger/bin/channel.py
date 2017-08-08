@@ -55,96 +55,101 @@ class ChannelSet():
         for i in range(num_channels):
             self.channels.append(Channel())
 
-    def add_channel_dataset(self, channel_index, id_):
+    def add_channel_dataset(self, channel_index, id_, data=None, units=None):
         """Add an empty dataset to the specified channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            self.channels[channel_index].add_dataset(id_)
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             for channel in self.channels[channel_index]:
                 channel.add_dataset(id_)
+        else:
+            self.channels[channel_index].add_dataset(id_)
+
+        if data is not None:
+            self.set_channel_data(channel_index, id_, data)
+        if units is not None:
+            self.set_channel_units(channel_index, id_, units)
 
     def set_channel_data(self, channel_index, id_, data):
         """Set the data in a dataset in the specified channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            self.channels[channel_index].set_data(id_, data)
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             for channel in self.channels[channel_index]:
                 channel.set_data(id_, data)
+        else:
+            self.channels[channel_index].set_data(id_, data)
 
     def set_channel_units(self, channel_index, id_, units):
         """Set the units of a dataset in the specified channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            self.channels[channel_index].set_units(id_, units)
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             for channel in self.channels[channel_index]:
                 channel.set_units(id_, units)
+        else:
+            self.channels[channel_index].set_units(id_, units)
 
     def set_channel_metadata(self, channel_index, metadata_dict):
         """Set specified metadata of specified channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            # Get metadata from this channel
-            self.channels[channel_index].set_metadata(metadata_dict)
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             # Iterate through the given channels
             for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 channel.set_metadata(metadata_dict)
+        else:
+            # Get metadata from this channel
+            self.channels[channel_index].set_metadata(metadata_dict)
 
     def get_channel_ids(self, channel_index):
         """Get the ids of all datasets in channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            # Get metadata from this channel
-            self.channels[channel_index].get_ids()
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             output = []
             # Iterate through the given channels
             for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 output.append(channel.get_ids())
             return output
+        else:
+            # Get metadata from this channel
+            return self.channels[channel_index].get_ids()
 
     def get_channel_data(self, channel_index, id_):
         """Get specified data from specified channel(s)"""
-        # If an int is given, indexing the channels will give one result,
-        # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            self.channels[channel_index].get_data(id_)
-        else:
+        # If an tuple is given, indexing the channels will give an iterable,
+        # otherwise it will give one result
+        if isinstance(channel_index, tuple):
             for channel in self.channels[channel_index]:
-                channel.get_data(id_)
+                return channel.get_data(id_)
+        else:
+            return self.channels[channel_index].get_data(id_)
 
     def get_channel_units(self, channel_index, id_):
         """Get specified units from specified channel(s)"""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            self.channels[channel_index].get_units(id_)
-        else:
+        if isinstance(channel_index, tuple):
             for channel in self.channels[channel_index]:
-                channel.get_units(id_)
+                return channel.get_units(id_)
+        else:
+            return self.channels[channel_index].get_units(id_)
 
     def get_channel_metadata(self, channel_index, metadata_id=None):
         """Get specified metadata from specified channel(s)"""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
-        if isinstance(channel_index, int):
-            # Get metadata from this channel
-            self.channels[channel_index].get_metadata(metadata_id)
-        else:
+        if isinstance(channel_index, tuple):
             # Iterate through the given channels
             for channel in self.channels[channel_index]:
                 # Get metadata from this channel
-                channel.get_metadata(metadata_id)
+                return channel.get_metadata(metadata_id)
+        else:
+            # Get metadata from this channel
+            return self.channels[channel_index].get_metadata(metadata_id)
 
 
 class Channel():
@@ -213,7 +218,7 @@ class Channel():
         if not self.is_dataset(id_):
             self.datasets.append(DataSet(id_, units, data))
         else:
-            raise ValueError("DataSet {} already exists".format(id_))
+            raise ValueError("DataSet '{}' already exists".format(id_))
 
     def set_data(self, id_, data):
         # Set the data for a pre-existing DataSet
@@ -221,7 +226,7 @@ class Channel():
             if ds.id_ == id_:
                 ds.set_data(data)
                 return
-        raise ValueError("No such DataSet {}".format(id_))
+        raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_units(self, id_, units):
         # Set the units for a pre-existing DataSet
@@ -229,7 +234,7 @@ class Channel():
             if ds.id_ == id_:
                 ds.set_units(units)
                 return
-        raise ValueError("No such DataSet {}".format(id_))
+        raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_metadata(self, metadata_dict):
         for metadata_name, metadata_value in metadata_dict.items():
@@ -237,7 +242,7 @@ class Channel():
             if hasattr(self, metadata_name):
                 setattr(self, metadata_name, metadata_value)
             else:
-                raise ValueError("No such metadata {}".format(metadata_name))
+                raise ValueError("No such metadata '{}'".format(metadata_name))
 
     def get_ids(self):
         # Get a list of the datasets that this channel has
@@ -261,8 +266,8 @@ class Channel():
         metadata_dict = {"name": self.name,
                          "comments": self.comments,
                          "tags": self.tags,
-                         "sample rate": self.sample_rate,
-                         "calibration factor": self.calibration_factor,
+                         "sample_rate": self.sample_rate,
+                         "calibration_factor": self.calibration_factor,
                          "transfer_function_type": self.transfer_function_type}
         if metadata_id is None:
             return metadata_dict
