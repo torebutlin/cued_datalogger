@@ -118,7 +118,27 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 
 ### 2.3 Graph interaction
+
+Pyqtgraph has built-in mouse interactions. 
+These interactions are described in [pyqtgraph documentations](http://www.pyqtgraph.org/documentation/mouse_interaction.html). 
+Several methods are implemented in [`PlotItem`](http://www.pyqtgraph.org/documentation/graphicsItems/plotitem.html#pyqtgraph.PlotItem) to modify the interaction behaviours, such as setting the panning limits, setting mouse mode, enabling auto-ranging, and more.
     
+The interactions can be modified if so desired, especially the right-click context menu. 
+This requires subclassing the [`ViewBox`](http://www.pyqtgraph.org/documentation/graphicsItems/viewbox.html) [[source]](http://www.pyqtgraph.org/documentation/_modules/pyqtgraph/graphicsItems/ViewBox/ViewBox.html#ViewBox). 
+To modify the context menu, reimplement the 'menu' variable and 'raiseContextMenu()' method. 
+After that, initialise a [`PlotItem`](http://www.pyqtgraph.org/documentation/graphicsItems/plotitem.html#pyqtgraph.PlotItem) with the custom ViewBox as its 'viewBox' keyword argument.
+    
+In addition to mouse interaction, pyqtgraph also included interactive data selection. 
+The [documentation](http://www.pyqtgraph.org/documentation/region_of_interest.html) includes a basic introduction. 
+    
+For our purposes, the [`LinearRegionItem`](http://www.pyqtgraph.org/documentation/graphicsItems/linearregionitem.html#pyqtgraph.LinearRegionItem) 
+and [`InfiniteLine`](http://www.pyqtgraph.org/documentation/graphicsItems/infiniteline.html#pyqtgraph.InfiniteLine) from pyqtgraph are used. 
+In general, the item is first initialised and added to a PlotItem, Then, its Signal (usually emitted when its position has changed) is connected a method which does something to the data in selected region.
+    
+Examples by pyqtgraph on graph interaction can be accessed by inputting the line on command line after installing pyqtgraph:
+    	
+    python -m pyqtgraph.examples
+	    
 ### 2.4 Import / export
 
 
