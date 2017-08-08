@@ -102,6 +102,7 @@ class DataWindow(QMainWindow):
         self.cs = ChannelSet(1)
         # Add one input channel
         self.cs.add_channel_dataset(0,'y')
+        self.cs.add_channel_dataset(0,'s')
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
@@ -122,10 +123,9 @@ class DataWindow(QMainWindow):
     def plot_time_series(self):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
-        datas = self.cs.get_channel_data(0,['y'])
-        #t = datas[0]['t']
-        y = datas[0]['y']
-        t = np.arange(len(y),dtype = np.float32)/44100
+        y = self.cs.get_channel_data(0,'y')
+        # TODO: Pass metadata
+        t = np.arange(len(y),dtype = np.float32)/44100 
         d5y = np.gradient(y,2)
         # Plot data
         self.data_tabs.currentWidget().canvasplot.clear()
@@ -134,9 +134,7 @@ class DataWindow(QMainWindow):
                 
         
     def plot_sonogram(self):
-        datas = self.cs.chan_get_data(['t','y'])
-        t = datas[0]['t']
-        signal = datas[0]['y']
+        signal = self.cs.get_channel_data(0,'y')
         self.data_tabs.addTab(SonogramWidget(self), "Sonogram")
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(2)
@@ -144,9 +142,8 @@ class DataWindow(QMainWindow):
         
         
     def plot_cwt(self):
-        datas = self.cs.chan_get_data(['t','y'])
-        t = datas[0]['t']
-        signal = datas[0]['y']
+        signal = self.cs.get_channel_data(0,'y')
+        t = np.arange(len(signal),dtype = np.float32)/44100 
         self.data_tabs.addTab(CWTWidget(signal, t, parent=self), "CWT")
         # Switch to sonogram tab
         self.data_tabs.setCurrentIndex(3)
@@ -154,16 +151,15 @@ class DataWindow(QMainWindow):
     def plot_fft(self):
         # Switch to frequency domain tab
         self.data_tabs.setCurrentIndex(1)
-        datas = self.cs.chan_get_data(['t','y'])
-        y = datas[0]['y']
+        y = self.cs.get_channel_data(0,'y')
 
         # Calculate FT and associated frequencies
         ft = np.abs(np.real(rfft(y)))
         freqs = np.real(rfftfreq(y.size, 1/4096))
         
         # Store in datasets
-        self.cs.chans[0].set_data('f', freqs)
-        self.cs.chans[0].set_data('s', ft)
+        #self.cs.chans[0].set_data('f', freqs)
+        self.cs.set_channel_data(0,'s', ft)
 
         # Plot data
         self.data_tabs.currentWidget().canvasplot.plot(x=freqs, y=ft, clear=True, pen='g')
