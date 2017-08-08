@@ -183,7 +183,37 @@ The window also holds the variables for plotting the processed data from the Rec
 A window without any extra _Widget_ added to it would consist only the data plots within the QSplitters, 
 and would technically function.
 
-\<Insert variables here\>
+The window contains important variables such as:
+
+* **Recorder**
+    * _playing_ - indicate whether the stream is playing
+    * _rec_		- Holds the recorder object
+
+* **Plot Data**
+    * _timedata_	- Time vector for plotting
+    * _freqdata_	- Frequency vector for plotting
+
+* **Plot Colourmaps**
+    * _plot_colourmap_	- Colourmap for plotting different channel
+    * _level_colourmap_ - Colourmap for indicating channel levels
+
+* **Channel Set**
+ 	* _live_chanset_	- ChannelSet for holding metadata
+
+* **Time + FFT Plots**
+    * _plotlines_		- Holds the lines of time + FFT plots
+    * _plot_xoffset_	- Indicate the x offsets of each plot line
+    * _plot_yoffset_	- Indicate the y offsets of each plot line
+    * _plot_colours_	- Indicate the colours of each plot line
+    * _def_colours_		- Holds the default colours of each plot line
+    * _sig_hold_		- Indicate whether to 'freeze' a signal plot
+  
+* **Channel Level Plots**
+    * _peakplots_		- Holds all the peak plots of each channel
+    * _peak_trace_		- Indicate the value of each trace of the peak of each channel 
+    * _peak_decays_		- Indicate the level of decay of each trace
+    * _trace_counter_	- Indicate counter of each trace before it decays
+    * _trace_countlimit_- Maximum amount of count before the trace decays
 
 ### 3.4 Widgets
 
@@ -193,7 +223,12 @@ which re-implement function for styling and provide a template for self-written 
 The construction of the UI components is implemented under `initUI()` method. 
 No callback functions are done here, unless the callback only affect components within the _Widget_.
 
-\<Insert widgets here\>
+* **ChanToggleUI** 	- Toggling the plot of the channels
+* **ChanConfigUI** 	- Configure the plot of the channels + metadata
+* **DevConfigUI** 	- Configure the recorder
+* **StatusUI** 		- Display status and some buttons 
+* **RecUI**			- Record data
+* **AdvUI**			- Advance channel toggling
 
 ## 4. Datalogger: Analysis module
 

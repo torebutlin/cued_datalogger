@@ -110,7 +110,6 @@ class LiveplotApp(QMainWindow):
         main_layout = QHBoxLayout(self.main_widget)
         self.main_splitter = QSplitter(self.main_widget,orientation = Qt.Horizontal)
         main_layout.addWidget(self.main_splitter)
-        
     #-------------------- ALL SPLITTER ------------------------------
         self.left_splitter = QSplitter(self.main_splitter,orientation = Qt.Vertical)
         self.mid_splitter = QSplitter(self.main_splitter,orientation = Qt.Vertical)
@@ -137,8 +136,6 @@ class LiveplotApp(QMainWindow):
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.left_splitter)
-        
-        self.sig_hold = [Qt.Unchecked]* self.rec.channels
         
         self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
         self.chanconfig_UI.hold_tickbox.stateChanged.connect(self.signal_hold)
@@ -200,7 +197,7 @@ class LiveplotApp(QMainWindow):
         self.mid_splitter.addWidget(self.fftplotcanvas)
         
     #-----------------------------STATUS WIDGET----------------------------
-        self.stats_UI = StatusWidget(self.mid_splitter)
+        self.stats_UI = StatusUI(self.mid_splitter)
         
         self.stats_UI.statusbar.messageChanged.connect(self.default_status)
         self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
@@ -210,7 +207,7 @@ class LiveplotApp(QMainWindow):
         self.mid_splitter.addWidget(self.stats_UI)
         
     #---------------------------RECORDING WIDGET-------------------------------
-        self.RecUI = RecWidget(self.right_splitter)
+        self.RecUI = RecUI(self.right_splitter)
         
         # Connect the sample and time input check
         self.RecUI.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
@@ -229,7 +226,7 @@ class LiveplotApp(QMainWindow):
     #-----------------------CHANNEL LEVELS WIDGET------------------------------
         chanlevel_UI = QWidget(self.right_splitter)
         chanlevel_UI_layout = QVBoxLayout(chanlevel_UI)
-        self.chanelvlcvs = pg.PlotWidget(self.mid_splitter, background = 'default')
+        self.chanelvlcvs = pg.PlotWidget(self.right_splitter, background = 'default')
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
         self.channelvlplot = self.chanelvlcvs.getPlotItem()
@@ -322,7 +319,7 @@ class LiveplotApp(QMainWindow):
         #self.main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
         
     #---------------------------ADDITIONAL UIs----------------------------
-        self.chan_toggle_ext = AdvToggleWidget(self.main_widget)
+        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
         self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
         self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
     
@@ -1149,7 +1146,7 @@ class DevConfigUI(BaseWidget):
         self.config_button = QPushButton('Set Config', self)
         config_form.addRow(self.config_button)
     
-class StatusWidget(BaseWidget):
+class StatusUI(BaseWidget):
     def initUI(self):
         stps_layout = QHBoxLayout(self)
     
@@ -1169,7 +1166,7 @@ class StatusWidget(BaseWidget):
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         stps_layout.addWidget(self.sshotbtn)
         
-class RecWidget(BaseWidget):
+class RecUI(BaseWidget):
     def initUI(self):
         rec_settings_layout = QFormLayout(self)
         
@@ -1210,7 +1207,7 @@ class RecWidget(BaseWidget):
         
         rec_settings_layout.addRow(rec_buttons_layout)
         
-class AdvToggleWidget(BaseWidget):
+class AdvToggleUI(BaseWidget):
     def initUI(self):
         self.setAutoFillBackground(True)
         lay = QVBoxLayout(self)
