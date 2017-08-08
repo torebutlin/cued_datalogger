@@ -1,11 +1,10 @@
 import sys
+
 if __name__ == '__main__':
-    sys.path.append('../bin')
-    from channel import ChannelSet
-    from file_import import import_from_mat
-else:
-    from ..bin.channel import ChannelSet
-    from ..bin.import_export.file_import import import_from_mat
+    sys.path.append('../')
+
+from bin.channel import ChannelSet
+from bin.file_import import import_from_mat
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -89,7 +88,6 @@ class CircleFitWidget(QWidget):
         super().__init__()
 
         self.w = np.zeros(1)
-
 
         self.init_ui()
 
@@ -685,6 +683,6 @@ if __name__ == '__main__':
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.get_channel_data(0, "spectrum")
     c.transfer_function_type = 'acceleration'
-    c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)
+    c.set_data(cs.get_channel_data(0, "omega"), cs.get_channel_data(0, "spectrum"))
     #"""
     sys.exit(app.exec_())
