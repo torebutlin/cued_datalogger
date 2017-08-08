@@ -33,8 +33,9 @@ class ChanMetaWin(QDialog):
         self.channel_listview = QListWidget(self)
         self.channel_listview.itemSelectionChanged.connect(self.display_metadata)
 
-        self.all_info = self.livewin.live_chanset.chan_get_metadatas(
-                ['name','cal_factor','units','tags','comments'])
+        self.all_info = []
+        for i in range(len(self.livewin.live_chanset)):
+                self.all_info.append(self.livewin.live_chanset.get_channel_metadata(i))
         
         for i in range(len(self.all_info)):
             self.channel_listview.addItem(self.all_info[i]['name'])
@@ -101,7 +102,7 @@ class ChanMetaWin(QDialog):
     def export_metadata(self):
         try:
             for i in range(len(self.all_info)):
-                self.livewin.live_chanset.chan_set_metadatas(self.all_info[i],num = i)
+                self.livewin.live_chanset.set_channel_metadata(i,self.all_info[i])
         except:
             t,v,tb = sys.exc_info()
             print(t)
