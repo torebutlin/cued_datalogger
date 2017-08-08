@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy.signal import ricker, cwt
 
-from pyqt_matplotlib import MatplotlibCanvas
+from bin.pyqt_widgets import MatplotlibCanvas
 
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
 

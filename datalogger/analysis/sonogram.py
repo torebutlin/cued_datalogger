@@ -4,8 +4,8 @@ if __name__ == '__main__':
     from numpy_functions import to_dB
     from pyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
 else:
-    from ..bin.numpy_functions import to_dB
-    from ..bin.pyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
+    from bin.numpy_functions import to_dB
+    from bin.pyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushButton, QLabel, QSpinBox, QHBoxLayout, QGridLayout

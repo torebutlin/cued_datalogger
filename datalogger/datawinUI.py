@@ -5,6 +5,8 @@ Created on Tue Jul 11 11:44:12 2017
 @author: eyt21
 """
 import sys,traceback
+
+
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QApplication, QMessageBox, QDesktopWidget,QTabWidget,QTabBar)
 #from PyQt5.QtGui import QIcon,QFont
@@ -17,11 +19,11 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 
 import liveplotUI as lpUI
-from wintabwidgets import data_tab_widget
-from sonogram import SonogramWidget
-from cwt.cwt import CWTWidget
+from acquisition.wintabwidgets import data_tab_widget
+from analysis.sonogram import SonogramWidget
+from analysis.cwt import CWTWidget
 
-from channel import DataSet, Channel, ChannelSet
+from bin.channel import DataSet, Channel, ChannelSet
 
 # For the exporter to work, need to change iteritem to item in pyqtgraph
 class DataWindow(QMainWindow):
@@ -99,7 +101,7 @@ class DataWindow(QMainWindow):
         # Create the channel set
         self.cs = ChannelSet(1)
         # Add one input channel
-        self.cs.chan_add_dataset(['t','y','f','s'])
+        self.cs.add_channel_dataset(0,'y')
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
@@ -120,7 +122,7 @@ class DataWindow(QMainWindow):
     def plot_time_series(self):
         # Switch to time series tab
         self.data_tabs.setCurrentIndex(0)
-        datas = self.cs.chan_get_data(['y'])
+        datas = self.cs.get_channel_data(0,['y'])
         #t = datas[0]['t']
         y = datas[0]['y']
         t = np.arange(len(y),dtype = np.float32)/44100

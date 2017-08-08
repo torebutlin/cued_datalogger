@@ -19,11 +19,11 @@ import ast
 
 
 from collections.abc import Sequence
-from ChanLineText import ChanLineText
-from ChanMetaWin import ChanMetaWin
-import myRecorder as mR
+from acquisition.ChanLineText import ChanLineText
+from acquisition.ChanMetaWin import ChanMetaWin
+import acquisition.myRecorder as mR
 try:
-    import NIRecorder as NIR
+    import acquisition.NIRecorder as NIR
     NI_drivers = True
 except NotImplementedError:
     print("Seems like you don't have National Instruments drivers")
@@ -32,7 +32,7 @@ except ModuleNotFoundError:
     print("Seems like you don't have pyDAQmx modules")
     NI_drivers = False
 
-import channel as ch
+from bin import channel as ch
 
 import math
 

@@ -2,7 +2,7 @@
 - Essentially identical to the pyaudio version
 """
 
-from RecorderParent import RecorderParent
+from .RecorderParent import RecorderParent
 
 import sys,traceback
 # TODO: Add codes to install pyaudio if pyaudio is not installed???
