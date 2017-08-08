@@ -527,9 +527,8 @@ class CircleFitWidget(QWidget):
                 self.update_from_plot()
 
             # Recalculate the fitted modal peak
-            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = sdof_modal_peak(self.w_fit,
-            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_single_pole(self.w_fit,
-            self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_double_pole(self.w_fit,
+            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_sdof_peak(self.w_fit,
+            self.modal_peaks[self.tableWidget.currentRow()]["data"] = -self.w_fit**2 * sdof_modal_peak(self.w_fit,
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["wr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["zr"],
                                                                                       self.modal_peaks[self.tableWidget.currentRow()]["cr"],
@@ -611,6 +610,26 @@ class CircleFitWidget(QWidget):
         #return np.abs(f)
         return np.append(f.real, f.imag)
 
+    def fitted_sdof_peak(self, w, wr, zr, cr, phi):
+        if self.transfer_function_type == 'displacement':
+            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
+                + sdof_modal_peak(w, wr, zr, cr, phi)
+
+        if self.transfer_function_type == 'velocity':
+            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*phi)\
+                + 1j*w*sdof_modal_peak(w, wr, zr, cr, phi)
+
+        if self.transfer_function_type == 'acceleration':
+            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
+                -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
+
+    def optimise_sdof_peak_fit(self, w, wr, zr, cr, phi):
+        if cr < 0:
+            cr *= -1
+            phi = (phi + np.pi) % np.pi
+        f = self.fitted_sdof_peak(w, wr, zr, cr, phi)
+        return np.append(f.real, f.imag)
+
     def sdof_get_parameters(self):
         # # Find initial parameters for curve fitting
         # Find where the peak is - the maximum magnitude of the amplitude
@@ -621,16 +640,15 @@ class CircleFitWidget(QWidget):
         wr0 = self.w_reg[i]
         # Take the max amplitude as a first guess for the modal constant
         cr0 = np.abs(self.a_reg[i])
-        #phi0 = np.angle(self.a_reg[i])
-        phi0 = 0
+        phi0 = np.angle(self.a_reg[i])
+        #phi0 = 0
         # First guess of damping factor of 1% (Q of 100)
         zr0 = 0.01
 
         # # Find the parameter values that give a minimum of
         # the optimisation function
-        wr, zr, cr, phi = curve_fit(self.optimise_single_pole_fit,
+        wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_fit,
                                     self.w_reg,
-                                    #np.abs(self.a_reg),
                                     np.append(self.a_reg.real, self.a_reg.imag),
                                     [wr0, zr0, cr0, phi0],
                                     bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
@@ -644,24 +662,29 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     c = CircleFitWidget()
     c.showMaximized()
-    """
-
-    w = np.linspace(0, 25, 3e2)
-    transfer_function = sdof_modal_peak(w, 5, 0.01, 100, 0.01)
-    c.set_data(w, transfer_function)
 
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
-    a = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
+    d = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
         + sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
-        + sdof_modal_peak(w, 12, 0.003, -8e12, 0) \
-        + sdof_modal_peak(w, 20, 0.01, 22e12, 0) \
-        # + 5e10*np.random.normal(size=w.size)
-    c.set_data(w, a)
-    """
+        + sdof_modal_peak(w, 12, 0.003, 8e12, 0) \
+        + sdof_modal_peak(w, 20, 0.01, 22e12, 0)
+    v = 1j * w * d
+    a = -w**2*d
+
+    #c.transfer_function_type = 'displacement'
+    #c.set_data(w, d)
+
+    #c.transfer_function_type = 'velocity'
+    #c.set_data(w, v)
+
+    #c.transfer_function_type = 'acceleration'
+    #c.set_data(w, a)
+    #"""
     cs = ChannelSet()
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.get_channel_data(0, "spectrum")
+    c.transfer_function_type = 'acceleration'
     c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)
     #"""
     sys.exit(app.exec_())
