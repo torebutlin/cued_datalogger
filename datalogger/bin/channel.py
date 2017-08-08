@@ -1,200 +1,148 @@
 import numpy as np
 from numpy_functions import MatlabList
 
-'''
-The idea of this class is that users will only need to interact with
-the ChannelSet class to interact with the rest of the class
-'''
-'''
-Usage:
-    ChannelSet is a class to contain Channel classes which contains all the
-    information of a channel. This is stored in a numpy array.
 
-    When initialising, you can put in an optional argument to initiate a number
-    of channel. For example:
-        cs = ChannelSet(2) will initiate two Channel class in itself
-        cs = ChannelSet() will have no Channel class initiated
-
-    Each Channel will be given a number as an id. For now, it is the channel
-    number. (Not sure if this is useful)
-
-    You may initiate more channel later by calling add_channel with an id as
-    input, as such:
-        cs.add_channel(5) adds a Channel with id of 5 to the array
-
-    To make use of the Channel, you must first add DataSet to the Channel
-    to contain the relevant datas, then set the data into that DataSet
-
-    For example, to store a data array of y which is taken from channel 0:
-        cs.chan_add_dataset('y', num = 0)
-        cs.chan_set_data('y', y, num = 0)
-
-    In chan_add_dataset, the first input argument ('y') is the "name" given
-    to that DataSet. In this case, it is known as 'y'. Just like before,
-    an optional argument 'num' can be provided to indicated which specific
-    channel to add the DataSet to. In this case, it's Channel 0.
-
-    chan_set_data inputs are similar, only with an additional input argument
-    which is the value to set to the DataSet
-
-    Multiple DataSets can be added at once by giving a list:
-        cs.chan_add_dataset(['x','y','z'])
-
-    However, only one DataSet can be set at once. (Possible improvements here)
-    Each DataSet must have a unique id.
-
-    To get data from the DataSets:
-        cs.chan_get_data('x',num =[0,2])
-    will get the data from 'x' DataSet of Channels 0 and 2
-
-    You can obtain multiple DataSets like so:
-        cs.chan_get_data(['x','y'])
-
-    The return value will be a dictionary in this format:
-        { <chan_num>: {<DataSet id>: <value>,
-                       <DataSet id>: <value>,
-                       ...},
-          <chan_num>: {<DataSet id>: <value>,
-                       <DataSet id>: <value>,
-                       ...},
-          ...
-        }
-
-    So, cs.chan_get_data('y',num = range(2)) will give:
-        {0: {'y': array(None, dtype=object)},
-         1: {'y': array(None, dtype=object)}}
-    In this case, 'y' is a Numpy Array containing None
-
-    The Channel class also contains metadata, which are created
-    during initialisation.
-    Currently, user-defined metadata are not allowed
-    The available metadata are:
-        name, cal_factor, units, tags, and comments
-
-
-    Getting and Setting Metadata is similar to that of DataSets.
-    To get metadata:
-        cs.chan_get_metadatas(['comments','name','units'],num = range(2))
-    returns a dictionary:
-        {0: {'comments': '', 'name': 'lol', 'units': 'm/s'},
-         1: {'comments': '', 'name': 'Channel 1', 'units': 'm/s'}}
-
-    To set metadata, a dictionary must be provided as such:
-
-        meta_dict = {'name': 'Broken Channel',
-                     'comments': 'Don't use this channel'}
-
-        cs.chan_set_metadatas(meta_dict,num = 0)
-
-        cs.chan_get_metadatas(['comments','name','units'],num = range(2))
-    now returns:
-        {0: {'comments': "Don't use this channel", 'name': 'Broken Channel', 'units': 'm/s'},
-         1: {'comments': '', 'name': 'Channel 1', 'units': 'm/s'}}
-
-'''
 class ChannelSet():
-    """A group of channels, normally made from one recording"""
+    """A group of channels, with methods for setting and getting data.
+
+    In theory, a user will only need to interact with the ChannelSet to
+    interact with the channels and data. Each ChannelSet will normally be
+    derived from one set of results, or one run of an experiment, and then
+    the ChannelSet will contain all the information and analysis from that run.
+    ChannelSets can be initialised as empty, and channels added later,
+    or initialised with a number of empty channels, to which DataSets can be
+    added later. Channels are stored in a matlab-style list structure
+    (see bin.numpy_functions.MatlabList) which uses tuple indexing, eg.
+    channelset.channels[1, 2, range(5,10)], so that multiple channels can be
+    selected easily.
+
+    Attributes:
+        channels: A MatlabList of the channels in this set.
+
+    Methods:
+        add_channels(num_channels=1): Add new empty channels to the end of the
+            channel list
+        add_channel_dataset(channel_index, id_):  Add an empty dataset with id_
+            to the channel(s) specified by channel_index
+        set_channel_data(channel_index, id_, data): Set the data in dataset
+            with id_ in the channel(s) specified by channel_index
+        set_channel_units(channel_index, id_, units): Set the units of dataset
+            with id_ in the channel(s) specified by channel_index
+        set_channel_metadata(self, channel_index, metadata_dict): Set the
+            metadata given in metadata_dict of the channel(s) specified
+            by channel_index.
+        get_channel_ids(channel_index): Get the ids of all datasets in the
+            channel(s) specified by channel_index
+        get_channel_data(channel_index, id_): Get the data from dataset
+            with id_ in the channel(s) specified by channel_index
+        get_channel_units(channel_index, id_): Get the units from dataset
+            with id_ in the channel(s) specified by channel_index
+        get_channel_metadata(channel_index, metadata_id=None): Get the metadata
+            with the name metadata_id from the channel(s) specified by
+            channel_index
+            """
     def __init__(self, initial_num_channels=0):
         # Initialise the channel list
-        self.chans = MatlabList()
+        self.channels = MatlabList()
 
         # Create an initial number of channels
         self.add_channels(initial_num_channels)
 
     def __len__(self):
-        return len(self.chans)
+        return len(self.channels)
 
     def add_channels(self, num_channels=1):
         for i in range(num_channels):
-            self.chans.append(Channel())
+            self.channels.append(Channel())
 
     def add_channel_dataset(self, channel_index, id_):
         """Add an empty dataset to the specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
-            self.chans[channel_index].add_dataset(id_)
+            self.channels[channel_index].add_dataset(id_)
         else:
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 channel.add_dataset(id_)
 
     def set_channel_data(self, channel_index, id_, data):
         """Set the data in a dataset in the specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
-            self.chans[channel_index].set_data(id_, data)
+            self.channels[channel_index].set_data(id_, data)
         else:
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 channel.set_data(id_, data)
 
     def set_channel_units(self, channel_index, id_, units):
         """Set the units of a dataset in the specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
-            self.chans[channel_index].set_units(id_, units)
+            self.channels[channel_index].set_units(id_, units)
         else:
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 channel.set_units(id_, units)
 
     def set_channel_metadata(self, channel_index, metadata_dict):
         """Set specified metadata of specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
             # Get metadata from this channel
-            self.chans[channel_index].set_metadata(metadata_dict)
+            self.channels[channel_index].set_metadata(metadata_dict)
         else:
             # Iterate through the given channels
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 channel.set_metadata(metadata_dict)
 
     def get_channel_ids(self, channel_index):
-        # If an int is given, indexing the chans will give one result,
+        """Get the ids of all datasets in channel(s)"""
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
             # Get metadata from this channel
-            self.chans[channel_index].get_ids()
+            self.channels[channel_index].get_ids()
         else:
             output = []
             # Iterate through the given channels
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 output.append(channel.get_ids())
             return output
 
     def get_channel_data(self, channel_index, id_):
         """Get specified data from specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
-            self.chans[channel_index].get_data(id_)
+            self.channels[channel_index].get_data(id_)
         else:
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 channel.get_data(id_)
 
     def get_channel_units(self, channel_index, id_):
         """Get specified units from specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
-            self.chans[channel_index].get_units(id_)
+            self.channels[channel_index].get_units(id_)
         else:
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 channel.get_units(id_)
 
     def get_channel_metadata(self, channel_index, metadata_id=None):
         """Get specified metadata from specified channel(s)"""
-        # If an int is given, indexing the chans will give one result,
+        # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, int):
             # Get metadata from this channel
-            self.chans[channel_index].get_metadata(metadata_id)
+            self.channels[channel_index].get_metadata(metadata_id)
         else:
             # Iterate through the given channels
-            for channel in self.chans[channel_index]:
+            for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 channel.get_metadata(metadata_id)
 
