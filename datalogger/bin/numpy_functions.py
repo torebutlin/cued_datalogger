@@ -14,7 +14,7 @@ def from_dB(x):
 class MatlabList(list):
     """A list that allows slicing like Matlab.
 
-    eg. l[1, 2, 3:5, 10:20:2]
+    eg. l[1, 2, range(3, 5), range(10, 20, 2)]
     """
     """
     def __init__(self, *args):
