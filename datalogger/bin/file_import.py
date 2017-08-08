@@ -17,7 +17,7 @@ def import_from_mat(file, channel_set):
                                        num_sonogram_datasets]))
 
     # # Extract metadata
-    sample_freq = file["freq"]
+    sample_rate = file["freq"][0][0]
 
     if "tsmax" in file.keys():
         time_series_scale_factor = file["tsmax"]
@@ -57,22 +57,32 @@ def import_from_mat(file, channel_set):
     # # Save everything
     for i in np.arange(num_channels):
         # Create a new channel
-        name = "Imported " + str(i)
-        chan_i = Channel(channel_set.chans.size, name)
+        channel_set.add_channels()
 
         # Set channel metadata
-        chan_i.sample_freq = sample_freq
+        channel_set.set_channel_metadata(i, {"name": "Imported {}".format(i),
+                                             "sample_rate": sample_rate,
+                                             "calibration_factor":
+                                                 time_series_scale_factor})
 
         # Set channel data
         if i < num_time_series_datasets:
-            chan_i.add_dataset(DataSet('y', time_series[i]))
+            channel_set.add_channel_dataset(i,
+                                            "time_series",
+                                            time_series)
 
         if i < num_spectrum_datasets:
-            chan_i.add_dataset(DataSet('f', spectrum[i]))
+            channel_set.add_channel_dataset(i,
+                                            "spectrum",
+                                             spectrum[i],
+                                             'Hz')
 
         if i < num_sonogram_datasets:
-            chan_i.add_dataset(DataSet('s', sonogram_amplitude[i]))
-            chan_i.add_dataset(DataSet('p', sonogram_phase[i]))
+            channel_set.add_channel_dataset(i,
+                                            "sonogram",
+                                            sonogram_amplitude[i])
+            channel_set.add_channel_dataset(i,
+                                            "sonogram_phase",
+                                            sonogram_phase[i],
+                                            'rad')
 
-        # Add the channel to the channel set
-        channel_set.add_channel(i)
