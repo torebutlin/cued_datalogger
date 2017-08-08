@@ -1,6 +1,11 @@
 import sys
-sys.path.append('../')
-sys.path.append('../acquisition')
+if __name__ == '__main__':
+    sys.path.append('../bin')
+    from channel import ChannelSet
+    from file_import import import_from_mat
+else:
+    from ..bin.channel import ChannelSet
+    from ..bin.import_export.file_import import import_from_mat
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -9,13 +14,10 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QVBoxLayout, QHBoxLayout, QLabel, QComboBox)
 
 import numpy as np
-from pyqtgraph.Qt import QtCore
-import pyqtgraph as pg
 from scipy.optimize import curve_fit
 
-from channel import ChannelSet
-from matlab_import import import_from_mat
-
+from pyqtgraph.Qt import QtCore
+import pyqtgraph as pg
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 pg.setConfigOption('antialias', True)
@@ -659,7 +661,7 @@ if __name__ == '__main__':
     """
     cs = ChannelSet()
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
-    a = cs.chans[0].data('f')
-    c.set_data(np.linspace(0, cs.chans[0].sample_freq[0], a.size), a)
+    a = cs.get_channel_data(0, "spectrum")
+    c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)
     #"""
     sys.exit(app.exec_())
