@@ -101,20 +101,34 @@ The Datalogger uses a three-tier structure for storing data, comprising of Chann
 For consistency, only the following names are permitted for DataSets and metadata. (\* indicates that the variable is auto-generated)
 
 *DataSets*:
+
 * `time_series` - The raw input time series data
+
 * `time`\*	- Calculated from the sample rate and number of samples
+
 * `frequency`\* - Calculated from the sample rate and number of samples (Hz)
+
 * `omega`\* - Angular frequency (rad), calculated from the sample rate and number of samples
+
 * `spectrum` - The spectral amplitudes given by the Fourier Transform
+
 * `sonogram` - The sonogram array, shape (number of FFTs, frequencies)
+
 * `sonogram_phase` - Phase data associated with the sonogram (rad)
 
+
 *Metadata*:
+
 * `name` - A human-readable string identifying this channel
+
 * `comments` - A string for any additional comments
+
 * `tags` - A list of tags for quick selection and sorting
+
 * `sample_rate` - The rate (in Hz) that the data was sampled at
+
 * `calibration_factor` - Not implemented yet
+
 * `transfer_function_type` - either `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
 
 
