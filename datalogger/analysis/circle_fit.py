@@ -5,6 +5,7 @@ if __name__ == '__main__':
 
 from bin.channel import ChannelSet
 from bin.file_import import import_from_mat
+from bin.numpy_functions import circle_fit
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -21,60 +22,6 @@ pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 pg.setConfigOption('antialias', True)
 defaultpen = pg.mkPen('k')
-
-
-# External functions ----------------------------------------------------------
-def to_dB(x):
-    """A simple function that converts x to dB"""
-    return 20*np.log10(x)
-
-
-def from_dB(x):
-    """A simple function that converts x in dB to a ratio over 1"""
-    return 10**(x/20)
-
-
-def circle_fit(data):
-    # Take the real and imaginary parts
-    x = data.real
-    y = data.imag
-
-    # Use the method from "Theoretical and Experimental Modal Analysis" p221
-    # Set up the matrices
-    xs = np.sum(x)
-    ys = np.sum(y)
-    xx = np.square(x).sum()
-    yy = np.square(y).sum()
-    xy = np.sum(x*y)
-    L = data.size
-    xxx = np.sum(x*np.square(x))
-    yyy = np.sum(y*np.square(y))
-    xyy = np.sum(x*np.square(y))
-    yxx = np.sum(y*np.square(x))
-
-    A = np.asarray([[xx, xy, -xs],
-                    [xy, yy, -ys],
-                    [-xs, -ys, L]])
-
-    B = np.asarray([[-(xxx + xyy)],
-                    [-(yyy + yxx)],
-                    [xx + yy]])
-
-    # Solve the equation
-    v = np.linalg.solve(A, B)
-
-    # Find the circle parameters
-    x0 = v[0]/-2
-    y0 = v[1]/-2
-    R0 = np.sqrt(v[2] + x0**2 + y0**2)
-    return x0, y0, R0
-
-
-def plot_circle(x0, y0, R0):
-    theta = np.linspace(-np.pi, np.pi, 180)
-    x = x0 + R0[0]*np.cos(theta)
-    y = y0 + R0[0]*np.sin(theta)
-    return x, y
 
 
 # Circle Fit window -----------------------------------------------------------
