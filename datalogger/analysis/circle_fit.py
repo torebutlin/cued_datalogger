@@ -520,17 +520,19 @@ class CircleFitWidget(QWidget):
                 self.update_from_plot()
 
             # Recalculate the fitted modal peak
-            self.modal_peaks[self.tableWidget.currentRow()]["plot_data"] = self.sdof_modal_peak(self.w_fit,
-                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["wr"],
-                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["zr"],
-                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["cr"],
-                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+            self.modal_peaks[self.tableWidget.currentRow()]["plot_data"] = \
+                self.sdof_modal_peak(self.w_fit,
+                                     self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                     self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                     self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                     self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
-            self.modal_peaks[self.tableWidget.currentRow()]["circle_data"] = self.fitted_sdof_peak(self.w_fit,
-                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["wr"],
-                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["zr"],
-                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["cr"],
-                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+            self.modal_peaks[self.tableWidget.currentRow()]["circle_data"] = \
+                self.sdof_modal_peak_with_circlefit_residuals(self.w_fit,
+                                                              self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                                              self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                                              self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                                              self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
             # Plot the raw data
             self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
@@ -586,7 +588,6 @@ class CircleFitWidget(QWidget):
 
 # Fitting functions -----------------------------------------------------------
     def sdof_modal_peak(self, w, wr, zr, cr, phi):
-        """A modal peak"""
         if self.transfer_function_type == 'displacement':
             return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
@@ -596,7 +597,7 @@ class CircleFitWidget(QWidget):
         if self.transfer_function_type == 'acceleration':
             return -w**2 * cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
-    def fitted_sdof_peak(self, w, wr, zr, cr, phi):
+    def sdof_modal_peak_with_circlefit_residuals(self, w, wr, zr, cr, phi):
         if self.transfer_function_type == 'displacement':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
                 + self.sdof_modal_peak(w, wr, zr, cr, phi)
@@ -609,11 +610,11 @@ class CircleFitWidget(QWidget):
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
                 + self.sdof_modal_peak(w, wr, zr, cr, phi)
 
-    def optimise_sdof_peak_fit(self, w, wr, zr, cr, phi):
+    def optimise_sdof_peak_from_circlefit(self, w, wr, zr, cr, phi):
         if cr < 0:
             cr *= -1
             phi = (phi + np.pi) % np.pi
-        f = self.fitted_sdof_peak(w, wr, zr, cr, phi)
+        f = self.sdof_modal_peak_with_circlefit_residuals(w, wr, zr, cr, phi)
         return np.append(f.real, f.imag)
 
     def sdof_get_parameters(self):
@@ -633,7 +634,7 @@ class CircleFitWidget(QWidget):
 
         # # Find the parameter values that give a minimum of
         # the optimisation function
-        wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_fit,
+        wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_from_circlefit,
                                     self.w_reg,
                                     np.append(self.a_reg.real, self.a_reg.imag),
                                     [wr0, zr0, cr0, phi0],
