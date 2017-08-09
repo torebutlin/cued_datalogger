@@ -1,5 +1,8 @@
 import numpy as np
-from .numpy_functions import MatlabList
+if __name__ == '__main__':
+    from numpy_functions import MatlabList
+else:
+    from .numpy_functions import MatlabList
 
 
 class ChannelSet():
@@ -133,8 +136,8 @@ class ChannelSet():
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
-            for channel in self.channels[channel_index]:
-                return channel.get_units(id_)
+            #for channel in self.channels[channel_index]:
+            return [chan.get_units(id_) for chan in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_units(id_)
 
@@ -144,9 +147,10 @@ class ChannelSet():
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
             # Iterate through the given channels
-            for channel in self.channels[channel_index]:
+            #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
-                return channel.get_metadata(metadata_id)
+            return [chan.get_metadata(metadata_id) for chan in self.channels[channel_index]]
+                #return channel.get_metadata(metadata_id)
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)

@@ -771,12 +771,12 @@ class LiveplotApp(QMainWindow):
             print(traceback.format_tb(tb))
             print('Cannot recording configs')
 
-            # Reset and change channel toggles
-        self.ResetChanBtns()
+        # Reset and change channel toggles
         self.ResetMetaData()
+        self.ResetChanBtns()
+        self.connect_rec_signals()
         
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
-        self.connect_rec_signals()
         
     def ResetPlots(self):
             n_plotlines = len(self.plotlines)
