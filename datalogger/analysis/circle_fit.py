@@ -34,11 +34,6 @@ def from_dB(x):
     return 10**(x/20)
 
 
-def sdof_modal_peak(w, wr, zr, cr, phi):
-    """A modal peak"""
-    return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
-
-
 def circle_fit(data):
     # Take the real and imaginary parts
     x = data.real
@@ -472,10 +467,10 @@ class CircleFitWidget(QWidget):
 
     def construct_transfer_fn(self):
         self.show_transfer_fn_checkbox.setChecked(True)
-        self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["data"])
+        self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["plot_data"])
         for i, peak in enumerate(self.modal_peaks):
             if self.row_list[i]["selectbox"].isChecked():
-                self.constructed_transfer_fn += peak["data"]
+                self.constructed_transfer_fn += peak["plot_data"]
 
         self.constructed_transfer_fn1.setData(x=self.w_fit,
                                               y=to_dB(np.abs(self.constructed_transfer_fn)))
@@ -525,12 +520,17 @@ class CircleFitWidget(QWidget):
                 self.update_from_plot()
 
             # Recalculate the fitted modal peak
-            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_sdof_peak(self.w_fit,
-            self.modal_peaks[self.tableWidget.currentRow()]["data"] = -self.w_fit**2 * sdof_modal_peak(self.w_fit,
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["wr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["zr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["cr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+            self.modal_peaks[self.tableWidget.currentRow()]["plot_data"] = self.sdof_modal_peak(self.w_fit,
+                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                                                                                self.modal_peaks[self.tableWidget.currentRow()]["phi"])
+
+            self.modal_peaks[self.tableWidget.currentRow()]["circle_data"] = self.fitted_sdof_peak(self.w_fit,
+                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["wr"],
+                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["zr"],
+                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["cr"],
+                                                                                                   self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
             # Plot the raw data
             self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
@@ -538,15 +538,15 @@ class CircleFitWidget(QWidget):
                                   symbolSize=6)
 
             # Plot the fitted modal peak
-            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real[self.fit_lower:self.fit_upper],
-                                                self.modal_peaks[self.tableWidget.currentRow()]["data"].imag[self.fit_lower:self.fit_upper],
+            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["circle_data"].real[self.fit_lower:self.fit_upper],
+                                                self.modal_peaks[self.tableWidget.currentRow()]["circle_data"].imag[self.fit_lower:self.fit_upper],
                                                 pen=pg.mkPen('r', width=1.5))
 
             self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_fit,
-                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["plot_data"])),
                                                                              pen='r')
             self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_fit,
-                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
+                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["plot_data"])),
                                                                              pen='r')
 
             # Update the constructed transfer function
@@ -574,8 +574,6 @@ class CircleFitWidget(QWidget):
         self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["cr"])
         self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
-
-
     def update_from_row(self, value):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["wr"] = value
@@ -586,40 +584,30 @@ class CircleFitWidget(QWidget):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
 
-
 # Fitting functions -----------------------------------------------------------
-    def single_pole(self, w, wr, zr, cr, phi):
-        return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
+    def sdof_modal_peak(self, w, wr, zr, cr, phi):
+        """A modal peak"""
+        if self.transfer_function_type == 'displacement':
+            return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
-    def fitted_single_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + self.single_pole(w, wr, zr, cr, phi)
+        if self.transfer_function_type == 'velocity':
+            return 1j*w * cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
-    def fitted_double_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + sdof_modal_peak(w, wr, zr, cr, phi)
-
-    def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
-        if cr < 0:
-            cr *= -1
-            phi = (phi + np.pi/2) % np.pi
-
-        f = self.fitted_single_pole(w, wr, zr, cr, phi)
-        #return np.abs(f)
-        return np.append(f.real, f.imag)
+        if self.transfer_function_type == 'acceleration':
+            return -w**2 * cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
     def fitted_sdof_peak(self, w, wr, zr, cr, phi):
         if self.transfer_function_type == 'displacement':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-                + sdof_modal_peak(w, wr, zr, cr, phi)
+                + self.sdof_modal_peak(w, wr, zr, cr, phi)
 
         if self.transfer_function_type == 'velocity':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*phi)\
-                + 1j*w*sdof_modal_peak(w, wr, zr, cr, phi)
+                + self.sdof_modal_peak(w, wr, zr, cr, phi)
 
         if self.transfer_function_type == 'acceleration':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
-                -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
+                + self.sdof_modal_peak(w, wr, zr, cr, phi)
 
     def optimise_sdof_peak_fit(self, w, wr, zr, cr, phi):
         if cr < 0:
@@ -659,14 +647,15 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     c = CircleFitWidget()
+    c.transfer_function_type = 'acceleration'
     c.showMaximized()
 
     # Create a demo transfer function
     w = np.linspace(0, 25, 3e2)
-    d = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
-        + sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
-        + sdof_modal_peak(w, 12, 0.003, 8e12, 0) \
-        + sdof_modal_peak(w, 20, 0.01, 22e12, 0)
+    d = c.sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
+        + c.sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
+        + c.sdof_modal_peak(w, 12, 0.003, 8e12, 0) \
+        + c.sdof_modal_peak(w, 20, 0.01, 22e12, 0)
     v = 1j * w * d
     a = -w**2*d
 
