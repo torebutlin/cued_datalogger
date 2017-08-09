@@ -29,7 +29,7 @@ class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
 
-        self.w = np.zeros(1)
+        self.omega = np.zeros(1)
 
         self.init_ui()
 
@@ -386,31 +386,34 @@ class CircleFitWidget(QWidget):
         if transfer_function is not None:
             self.tf = transfer_function
         if omega is not None:
-            self.w = omega
+            self.omega = omega
             # Create a more precise version for plotting the fit
-            self.w_fit = np.linspace(0, self.w.max(), self.w.size*10)
+            self.omega_fit = np.linspace(0, self.omega.max(), self.omega.size*10)
         else:
             pass
 
         # Plot the transfer function
-        self.tf_plotDataItem.setData(x=self.w,
+        self.tf_plotDataItem.setData(x=self.omega,
                                         y=to_dB(np.abs(self.tf)))
 
-        self.region_select_plotDataItem.setData(x=self.w,
+        self.region_select_plotDataItem.setData(x=self.omega,
                                         y=to_dB(np.abs(self.tf)))
 
         self.transfer_func_plot.autoRange()
-        self.transfer_func_plot.setXRange(self.w.min(), self.w.max())
-        self.transfer_func_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
+        self.transfer_func_plot.setXRange(self.omega.min(), self.omega.max())
+        self.transfer_func_plot.setLimits(xMin=self.omega.min(), xMax=self.omega.max())
         self.transfer_func_plot.disableAutoRange()
 
         self.transfer_func_plot.autoRange()
-        self.region_select_plot.setXRange(self.w.min(), self.w.max())
-        self.region_select_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
+        self.region_select_plot.setXRange(self.omega.min(), self.omega.max())
+        self.region_select_plot.setLimits(xMin=self.omega.min(), xMax=self.omega.max())
         self.region_select_plot.disableAutoRange()
 
-        self.region_select.setBounds((self.w.min(), self.w.max()))
+        self.region_select.setBounds((self.omega.min(), self.omega.max()))
         self.add_peak()
+
+    def set_channels(self, channels):
+        self.channels = channels
 
     def construct_transfer_fn(self):
         self.show_transfer_fn_checkbox.setChecked(True)
@@ -419,9 +422,9 @@ class CircleFitWidget(QWidget):
             if self.row_list[i]["selectbox"].isChecked():
                 self.constructed_tf += peak["plot_data"]
 
-        self.constructed_tf1.setData(x=self.w_fit,
+        self.constructed_tf1.setData(x=self.omega_fit,
                                               y=to_dB(np.abs(self.constructed_tf)))
-        self.constructed_tf2.setData(x=self.w_fit,
+        self.constructed_tf2.setData(x=self.omega_fit,
                                               y=to_dB(np.abs(self.constructed_tf)))
 
     # Update functions --------------------------------------------------------
@@ -434,25 +437,25 @@ class CircleFitWidget(QWidget):
             self.region_select_plot.setXRange(*self.region_select.getRegion(),
                                               padding=1)
         else:
-            self.region_select_plot.setXRange(self.w.min(), self.w.max())
+            self.region_select_plot.setXRange(self.omega.min(), self.omega.max())
 
     def update_region(self):
         self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
 
     def get_viewed_region(self):
         # Get the axes limits
-        w_axis_lower, w_axis_upper = self.transfer_func_plot.getAxis('bottom').range
+        omega_axis_lower, omega_axis_upper = self.transfer_func_plot.getAxis('bottom').range
 
-        w_in_display = (self.w >= w_axis_lower) & (self.w <= w_axis_upper)
+        omega_in_display = (self.omega >= omega_axis_lower) & (self.omega <= omega_axis_upper)
 
-        self.w_region = np.extract(w_in_display, self.w)
-        self.tf_region = np.extract(w_in_display, self.tf)
+        self.omega_region = np.extract(omega_in_display, self.omega)
+        self.tf_region = np.extract(omega_in_display, self.tf)
 
-        # Do something similar for the more precise w_fit - but get the indices
+        # Do something similar for the more precise omega_fit - but get the indices
         # rather than the values
-        w_fit_in_display = (self.w_fit >= w_axis_lower) & (self.w_fit <= w_axis_upper)
-        self.fit_lower = np.where(w_fit_in_display)[0][0]
-        self.fit_upper = np.where(w_fit_in_display)[0][-1]
+        omega_fit_in_display = (self.omega_fit >= omega_axis_lower) & (self.omega_fit <= omega_axis_upper)
+        self.fit_lower = np.where(omega_fit_in_display)[0][0]
+        self.fit_upper = np.where(omega_fit_in_display)[0][-1]
 
     def update_plots(self, value=None):
         # If the current peak is not locked
@@ -468,14 +471,14 @@ class CircleFitWidget(QWidget):
 
             # Recalculate the fitted modal peak
             self.modal_peaks[self.tableWidget.currentRow()]["plot_data"] = \
-                self.sdof_modal_peak(self.w_fit,
+                self.sdof_modal_peak(self.omega_fit,
                                      self.modal_peaks[self.tableWidget.currentRow()]["wr"],
                                      self.modal_peaks[self.tableWidget.currentRow()]["zr"],
                                      self.modal_peaks[self.tableWidget.currentRow()]["cr"],
                                      self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
             self.modal_peaks[self.tableWidget.currentRow()]["circle_data"] = \
-                self.sdof_modal_peak_with_circlefit_residuals(self.w_fit,
+                self.sdof_modal_peak_with_circlefit_residuals(self.omega_fit,
                                                               self.modal_peaks[self.tableWidget.currentRow()]["wr"],
                                                               self.modal_peaks[self.tableWidget.currentRow()]["zr"],
                                                               self.modal_peaks[self.tableWidget.currentRow()]["cr"],
@@ -491,10 +494,10 @@ class CircleFitWidget(QWidget):
                                                 self.modal_peaks[self.tableWidget.currentRow()]["circle_data"].imag[self.fit_lower:self.fit_upper],
                                                 pen=pg.mkPen('r', width=1.5))
 
-            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_fit,
+            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.omega_fit,
                                                                              to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["plot_data"])),
                                                                              pen='r')
-            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_fit,
+            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.omega_fit,
                                                                              to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["plot_data"])),
                                                                              pen='r')
 
@@ -571,7 +574,7 @@ class CircleFitWidget(QWidget):
         i = np.where(np.abs(self.tf_region) == np.abs(self.tf_region).max())[0][0]
         # Take the frequency at the max amplitude as a
         # first resonant frequency guess
-        wr0 = self.w_region[i]
+        wr0 = self.omega_region[i]
         # Take the max amplitude as a first guess for the modal constant
         cr0 = np.abs(self.tf_region[i])
         phi0 = np.angle(self.tf_region[i])
@@ -582,10 +585,10 @@ class CircleFitWidget(QWidget):
         # # Find the parameter values that give a minimum of
         # the optimisation function
         wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_from_circlefit,
-                                    self.w_region,
+                                    self.omega_region,
                                     np.append(self.tf_region.real, self.tf_region.imag),
                                     [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_region.min(), 0, 0, -np.pi], [self.w_region.max(), np.inf, np.inf, np.pi]))[0]
+                                    bounds=([self.omega_region.min(), 0, 0, -np.pi], [self.omega_region.max(), np.inf, np.inf, np.pi]))[0]
 
         return wr, zr, cr, phi
 
