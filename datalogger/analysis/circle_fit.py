@@ -5,7 +5,7 @@ if __name__ == '__main__':
 
 from bin.channel import ChannelSet
 from bin.file_import import import_from_mat
-from bin.numpy_functions import circle_fit
+from bin.numpy_functions import circle_fit, to_dB
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -35,23 +35,23 @@ class CircleFitWidget(QWidget):
 
     # Initialisation functions ------------------------------------------------
     def init_ui(self):
-        # # Transfer function plotlock
-        self.transfer_func_plot_w = pg.PlotWidget(title="Transfer Function",
+        # # Transfer function plot
+        self.transfer_func_plotWidget = pg.PlotWidget(title="Transfer Function",
                                                   labels={'bottom':
                                                           ("Frequency", "rad"),
                                                           'left':
                                                           ("Transfer Function",
                                                            "dB")})
-        self.transfer_func_plot = self.transfer_func_plot_w.getPlotItem()
+        self.transfer_func_plot = self.transfer_func_plotWidget.getPlotItem()
 
         # # Region Selection plot
-        self.region_select_plot_w = pg.PlotWidget(title="Region Selection",
+        self.region_select_plotWidget = pg.PlotWidget(title="Region Selection",
                                                   labels={'bottom':
                                                           ("Frequency", "rad"),
                                                           'left':
                                                           ("Transfer Function",
                                                            "dB")})
-        self.region_select_plot = self.region_select_plot_w.getPlotItem()
+        self.region_select_plot = self.region_select_plotWidget.getPlotItem()
         self.region_select_plot.setMouseEnabled(x=False, y=False)
 
         self.region_select = pg.LinearRegionItem()
@@ -65,26 +65,26 @@ class CircleFitWidget(QWidget):
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
 
         # # Circle plot
-        self.circle_plot_w = pg.PlotWidget(title="Circle fit",
+        self.circle_plotWidget = pg.PlotWidget(title="Circle fit",
                                            labels={'bottom': ("Re"),
                                                    'left': ("Im")})
-        self.circle_plot = self.circle_plot_w.getPlotItem()
+        self.circle_plot = self.circle_plotWidget.getPlotItem()
         # self.circle_plot.setMouseEnabled(x=False, y=False)
         self.circle_plot.setAspectLocked(lock=True, ratio=1)
         self.circle_plot.showGrid(x=True, y=True)
 
         # # Create the items for the plots
-        self.transfer_function1 = pg.PlotDataItem(pen=defaultpen)
-        self.transfer_func_plot.addItem(self.transfer_function1)
+        self.tf_plotDataItem = pg.PlotDataItem(pen=defaultpen)
+        self.transfer_func_plot.addItem(self.tf_plotDataItem)
 
-        self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
-        self.region_select_plot.addItem(self.transfer_function2)
+        self.region_select_plotDataItem = pg.PlotDataItem(pen=defaultpen)
+        self.region_select_plot.addItem(self.region_select_plotDataItem)
 
-        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
-        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
+        self.constructed_tf1 = pg.PlotDataItem(pen='b')
+        self.transfer_func_plot.addItem(self.constructed_tf1)
 
-        self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
-        self.region_select_plot.addItem(self.constructed_transfer_fn2)
+        self.constructed_tf2 = pg.PlotDataItem(pen='b')
+        self.region_select_plot.addItem(self.constructed_tf2)
 
         self.circle_plot_points = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_points)
@@ -167,10 +167,10 @@ class CircleFitWidget(QWidget):
         controls_vbox.addLayout(controls_hbox)
 
         layout = QGridLayout()
-        layout.addWidget(self.transfer_func_plot_w, 0, 0)
-        layout.addWidget(self.region_select_plot_w, 0, 1)
+        layout.addWidget(self.transfer_func_plotWidget, 0, 0)
+        layout.addWidget(self.region_select_plotWidget, 0, 1)
         layout.addLayout(controls_vbox, 2, 0)
-        layout.addWidget(self.circle_plot_w, 2, 1)
+        layout.addWidget(self.circle_plotWidget, 2, 1)
         self.setLayout(layout)
 
         self.setWindowTitle('Circle fit')
@@ -311,11 +311,11 @@ class CircleFitWidget(QWidget):
 
     def show_transfer_fn(self):
         if self.show_transfer_fn_checkbox.isChecked():
-            self.constructed_transfer_fn1.show()
-            self.constructed_transfer_fn2.show()
+            self.constructed_tf1.show()
+            self.constructed_tf2.show()
         else:
-            self.constructed_transfer_fn1.hide()
-            self.constructed_transfer_fn2.hide()
+            self.constructed_tf1.hide()
+            self.constructed_tf2.hide()
 
     def update_spinbox_step(self, value):
         if np.abs(value) > 1:
@@ -382,22 +382,22 @@ class CircleFitWidget(QWidget):
 
         self.update_plots()
 
-    def set_data(self, w=None, a=None):
-        if a is not None:
-            self.a = a
-        if w is not None:
-            self.w = w
+    def set_data(self, omega=None, transfer_function=None):
+        if transfer_function is not None:
+            self.tf = transfer_function
+        if omega is not None:
+            self.w = omega
             # Create a more precise version for plotting the fit
             self.w_fit = np.linspace(0, self.w.max(), self.w.size*10)
         else:
             pass
 
         # Plot the transfer function
-        self.transfer_function1.setData(x=self.w,
-                                        y=to_dB(np.abs(self.a)))
+        self.tf_plotDataItem.setData(x=self.w,
+                                        y=to_dB(np.abs(self.tf)))
 
-        self.transfer_function2.setData(x=self.w,
-                                        y=to_dB(np.abs(self.a)))
+        self.region_select_plotDataItem.setData(x=self.w,
+                                        y=to_dB(np.abs(self.tf)))
 
         self.transfer_func_plot.autoRange()
         self.transfer_func_plot.setXRange(self.w.min(), self.w.max())
@@ -414,15 +414,15 @@ class CircleFitWidget(QWidget):
 
     def construct_transfer_fn(self):
         self.show_transfer_fn_checkbox.setChecked(True)
-        self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["plot_data"])
+        self.constructed_tf = np.zeros_like(self.modal_peaks[-1]["plot_data"])
         for i, peak in enumerate(self.modal_peaks):
             if self.row_list[i]["selectbox"].isChecked():
-                self.constructed_transfer_fn += peak["plot_data"]
+                self.constructed_tf += peak["plot_data"]
 
-        self.constructed_transfer_fn1.setData(x=self.w_fit,
-                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
-        self.constructed_transfer_fn2.setData(x=self.w_fit,
-                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
+        self.constructed_tf1.setData(x=self.w_fit,
+                                              y=to_dB(np.abs(self.constructed_tf)))
+        self.constructed_tf2.setData(x=self.w_fit,
+                                              y=to_dB(np.abs(self.constructed_tf)))
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
@@ -445,8 +445,8 @@ class CircleFitWidget(QWidget):
 
         w_in_display = (self.w >= w_axis_lower) & (self.w <= w_axis_upper)
 
-        self.w_reg = np.extract(w_in_display, self.w)
-        self.a_reg = np.extract(w_in_display, self.a)
+        self.w_region = np.extract(w_in_display, self.w)
+        self.tf_region = np.extract(w_in_display, self.tf)
 
         # Do something similar for the more precise w_fit - but get the indices
         # rather than the values
@@ -482,7 +482,7 @@ class CircleFitWidget(QWidget):
                                                               self.modal_peaks[self.tableWidget.currentRow()]["phi"])
 
             # Plot the raw data
-            self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
+            self.circle_plot_points.setData(self.tf_region.real, self.tf_region.imag, pen=None,
                                   ymbol='o', symbolPen=None, symbolBrush='k',
                                   symbolSize=6)
 
@@ -504,7 +504,7 @@ class CircleFitWidget(QWidget):
 
     def update_from_plot(self):
         # Recalculate the geometric circle fit
-        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
+        self.x0, self.y0, self.R0 = circle_fit(self.tf_region)
 
         # Recalculate the parameters
         wr, zr, cr, phi = self.sdof_get_parameters()
@@ -568,13 +568,13 @@ class CircleFitWidget(QWidget):
         # # Find initial parameters for curve fitting
         # Find where the peak is - the maximum magnitude of the amplitude
         # within the region
-        i = np.where(np.abs(self.a_reg) == np.abs(self.a_reg).max())[0][0]
+        i = np.where(np.abs(self.tf_region) == np.abs(self.tf_region).max())[0][0]
         # Take the frequency at the max amplitude as a
         # first resonant frequency guess
-        wr0 = self.w_reg[i]
+        wr0 = self.w_region[i]
         # Take the max amplitude as a first guess for the modal constant
-        cr0 = np.abs(self.a_reg[i])
-        phi0 = np.angle(self.a_reg[i])
+        cr0 = np.abs(self.tf_region[i])
+        phi0 = np.angle(self.tf_region[i])
         #phi0 = 0
         # First guess of damping factor of 1% (Q of 100)
         zr0 = 0.01
@@ -582,10 +582,10 @@ class CircleFitWidget(QWidget):
         # # Find the parameter values that give a minimum of
         # the optimisation function
         wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_from_circlefit,
-                                    self.w_reg,
-                                    np.append(self.a_reg.real, self.a_reg.imag),
+                                    self.w_region,
+                                    np.append(self.tf_region.real, self.tf_region.imag),
                                     [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
+                                    bounds=([self.w_region.min(), 0, 0, -np.pi], [self.w_region.max(), np.inf, np.inf, np.pi]))[0]
 
         return wr, zr, cr, phi
 
