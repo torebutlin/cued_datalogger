@@ -111,12 +111,13 @@ class ChannelSet():
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
-            output = []
+            #output = []
             # Iterate through the given channels
-            for channel in self.channels[channel_index]:
+            #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
-                output.append(channel.get_ids())
-            return output
+                #output.append(channel.get_ids()) 
+            #return output
+            return [chan.get_ids() for chan in self.channels[channel_index]]
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_ids()
@@ -126,8 +127,8 @@ class ChannelSet():
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
-            for channel in self.channels[channel_index]:
-                return channel.get_data(id_)
+            #for channel in self.channels[channel_index]:
+            return [chan.get_data(id_) for chan in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_data(id_)
 
