@@ -10,11 +10,11 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit,QApplication)
 from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
-QPalette,QPainter,QStyleOption,QStyle)
+QPalette,QPainter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.Qt import QStyleOption,QStyle
 
 import pyqtgraph as pg
-from pyqtgraph.WidgetGroup import WidgetGroup
 
 import numpy as np
 import functools as fct
@@ -167,8 +167,8 @@ class LiveplotApp(QMainWindow):
         self.timeplotcanvas = CustomPlot(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setMouseEnabled(x=True,y = True)
+        #self.timeplot.disableAutoRange(axis=None)
+        #self.timeplot.setMouseEnabled(x=True,y = True)
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
@@ -177,6 +177,7 @@ class LiveplotApp(QMainWindow):
         self.fftplot.disableAutoRange(axis=None)
         
         self.ResetPlots()
+        
         self.mid_splitter.addWidget(self.timeplotcanvas)
         self.mid_splitter.addWidget(self.fftplotcanvas)
         
@@ -306,7 +307,6 @@ class LiveplotApp(QMainWindow):
         self.chan_toggle_ext = AdvToggleUI(self.main_widget)
         self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
         self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
-    
      
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -798,9 +798,6 @@ class LiveplotApp(QMainWindow):
                 fplot.sigClicked.connect(self.display_chan_config)
                 self.plotlines.append(fplot)
                 
-            
-            self.timeplot.setLimits(xMin = 0,xMax = self.timedata[-1])
-            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1*self.rec.channels))
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
             self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     

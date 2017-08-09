@@ -4,6 +4,8 @@ Created on Wed Aug  9 11:00:36 2017
 
 @author: eyt21
 """
+import weakref 
+
 import pyqtgraph as pg
 from PyQt5.QtWidgets import( QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGridLayout,
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
@@ -14,23 +16,40 @@ from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication
 
 class CustomPlot(pg.PlotWidget):
     def __init__(self,*arg, **kwarg):
-        super().__init__(*arg, viewBox = CustomViewBox(),**kwarg)
+        super().__init__(*arg, viewBox = CustomViewBox(cparent = self),**kwarg)
+        self.disableAutoRange(axis=None)
+        
+        # Removing some plot options
+        ext_menu = self.plotItem.ctrlMenu
+        ext_submenus = self.plotItem.subMenus
+        ext_menu.removeAction(ext_submenus[1].menuAction())
+        ext_menu.removeAction(ext_submenus[2].menuAction())
+        ext_menu.removeAction(ext_submenus[3].menuAction())
+        ext_menu.removeAction(ext_submenus[5].menuAction())
         
 class CustomViewBox(pg.ViewBox):    
-    def __init__(self, *arg,**kwarg):
+    def __init__(self, *arg,cparent = None,**kwarg):
         super().__init__(*arg,**kwarg)
+        self.cparent = cparent
         self.menu = CustomViewMenu(self)
         
     def raiseContextMenu(self, ev):
         menu = self.getMenu(ev)
+        menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint()) 
+        
+    def autoRange(self, padding= None, items=None):
+        super().autoRange(padding=padding, items= items)
+        r = self.viewRect()
+        self.setLimits(xMin = r.left(), xMax = r.right())
         
 class CustomViewMenu(QMenu):
     def __init__(self, view):
         QMenu.__init__(self)
         
-        self.view = view
+        self.view = weakref.ref(view)  ## keep weakref to view to avoid circular reference (don't know why, but this prevents the ViewBox from being collected)
         self.valid = False  ## tells us whether the ui needs to be updated
+        self.viewMap = weakref.WeakValueDictionary()  ## weakrefs to all views listed in the link combos
 
         self.setTitle("ViewBox options")
         self.viewAll = QAction("View All", self)
@@ -63,15 +82,26 @@ class CustomViewMenu(QMenu):
                 (ui.autoRadio.clicked, 'AutoClicked'),
                 (ui.autoPercentSpin.valueChanged, 'AutoSpinChanged'),
                 (ui.linkCombo.currentIndexChanged, 'LinkComboChanged'),
+                (ui.autoPanCheck.toggled, 'AutoPanToggled'),
+                (ui.visibleOnlyCheck.toggled, 'VisibleOnlyToggled')
             ]
             
             for sig, fn in connects:
                 sig.connect(getattr(self, axis.lower()+fn))
-                
+
+        self.ctrl[0].invertCheck.toggled.connect(self.xInvertToggled)
+        self.ctrl[1].invertCheck.toggled.connect(self.yInvertToggled)
+      
         self.leftMenu = QMenu("Mouse Mode")
         group = QActionGroup(self)
-        pan = self.leftMenu.addAction("3 button", self.set3ButtonMode)
-        zoom = self.leftMenu.addAction("1 button", self.set1ButtonMode)
+        
+        pan = QAction("3 button", self.leftMenu)
+        zoom = QAction("1 button", self.leftMenu)
+        self.leftMenu.addAction(pan)
+        self.leftMenu.addAction(zoom)
+        pan.triggered.connect(self.set3ButtonMode)
+        zoom.triggered.connect(self.set1ButtonMode)
+        
         pan.setCheckable(True)
         zoom.setCheckable(True)
         pan.setActionGroup(group)
@@ -79,32 +109,9 @@ class CustomViewMenu(QMenu):
         self.mouseModes = [pan, zoom]
         self.addMenu(self.leftMenu)
         
-        self.view.sigStateChanged.connect(self.viewStateChanged)
+        self.view().sigStateChanged.connect(self.viewStateChanged)
         
-        self.updateState()
-
-    def copy(self):
-        m = QMenu()
-        for sm in self.subMenus():
-            if isinstance(sm, QMenu):
-                m.addMenu(sm)
-            else:
-                m.addAction(sm)
-        m.setTitle(self.title())
-        return m
-
-    def subMenus(self):
-        if not self.valid:
-            self.updateState()
-        return [self.viewAll] + self.axes + [self.leftMenu]
-
-
-    def setExportMethods(self, methods):
-        self.exportMethods = methods
-        self.export.clear()
-        for opt, fn in methods.iteritems():
-            self.export.addAction(opt, self.exportMethod)
-        
+        self.updateState()        
 
     def viewStateChanged(self):
         self.valid = False
@@ -112,34 +119,34 @@ class CustomViewMenu(QMenu):
             self.updateState()
         
     def updateState(self):
-        state = self.view.getState(copy=False)
+        ## Something about the viewbox has changed; update the menu GUI
+        state = self.view().getState(copy=False)
         if state['mouseMode'] == pg.ViewBox.PanMode:
             self.mouseModes[0].setChecked(True)
         else:
             self.mouseModes[1].setChecked(True)
             
-            
-        for i in [0,1]:
+        for i in [0,1]:  # x, y
             tr = state['targetRange'][i]
             self.ctrl[i].minText.setText("%0.5g" % tr[0])
             self.ctrl[i].maxText.setText("%0.5g" % tr[1])
             if state['autoRange'][i] is not False:
                 self.ctrl[i].autoRadio.setChecked(True)
+                if state['autoRange'][i] is not True:
+                    self.ctrl[i].autoPercentSpin.setValue(state['autoRange'][i]*100)
             else:
                 self.ctrl[i].manualRadio.setChecked(True)
             self.ctrl[i].mouseCheck.setChecked(state['mouseEnabled'][i])
             
+            ## Update combo to show currently linked view
             c = self.ctrl[i].linkCombo
             c.blockSignals(True)
             try:
-                view = state['linkedViews'][i]
+                view = state['linkedViews'][i]  ## will always be string or None
                 if view is None:
                     view = ''
-                
-                if isinstance(view, str):
-                    ind = c.findText(view)
-                else:
-                    ind = c.findText(view.name)
+                    
+                ind = c.findText(view)
                     
                 if ind == -1:
                     ind = 0
@@ -147,85 +154,122 @@ class CustomViewMenu(QMenu):
             finally:
                 c.blockSignals(False)
             
+            self.ctrl[i].autoPanCheck.setChecked(state['autoPan'][i])
+            self.ctrl[i].visibleOnlyCheck.setChecked(state['autoVisibleOnly'][i])
+            xy = ['x', 'y'][i]
+            self.ctrl[i].invertCheck.setChecked(state.get(xy+'Inverted', False))
+        
         self.valid = True
         
+    def popup(self, *args):
+        if not self.valid:
+            self.updateState()
+        QMenu.popup(self, *args)
+        
     def autoRange(self):
-        self.view.autoRange()  ## don't let signal call this directly--it'll add an unwanted argument
+        self.view().autoRange()  ## don't let signal call this directly--it'll add an unwanted argument
 
     def xMouseToggled(self, b):
-        self.view.setMouseEnabled(x=b)
+        self.view().setMouseEnabled(x=b)
 
     def xManualClicked(self):
-        self.view.enableAutoRange(pg.ViewBox.XAxis, False)
+        self.view().enableAutoRange(pg.ViewBox.XAxis, False)
         
     def xMinTextChanged(self):
         self.ctrl[0].manualRadio.setChecked(True)
-        self.view.setXRange(float(self.ctrl[0].minText.text()), float(self.ctrl[0].maxText.text()), padding=0)
+        self.view().setXRange(float(self.ctrl[0].minText.text()), float(self.ctrl[0].maxText.text()), padding=0)
 
     def xMaxTextChanged(self):
         self.ctrl[0].manualRadio.setChecked(True)
-        self.view.setXRange(float(self.ctrl[0].minText.text()), float(self.ctrl[0].maxText.text()), padding=0)
+        self.view().setXRange(float(self.ctrl[0].minText.text()), float(self.ctrl[0].maxText.text()), padding=0)
         
     def xAutoClicked(self):
         val = self.ctrl[0].autoPercentSpin.value() * 0.01
-        self.view.enableAutoRange(pg.ViewBox.XAxis, val)
+        self.view().enableAutoRange(pg.ViewBox.XAxis, val)
         
     def xAutoSpinChanged(self, val):
         self.ctrl[0].autoRadio.setChecked(True)
-        self.view.enableAutoRange(pg.ViewBox.XAxis, val*0.01)
+        self.view().enableAutoRange(pg.ViewBox.XAxis, val*0.01)
 
     def xLinkComboChanged(self, ind):
-        self.view.setXLink(str(self.ctrl[0].linkCombo.currentText()))
+        self.view().setXLink(str(self.ctrl[0].linkCombo.currentText()))
+
+    def xAutoPanToggled(self, b):
+        self.view().setAutoPan(x=b)
+    
+    def xVisibleOnlyToggled(self, b):
+        self.view().setAutoVisible(x=b)
+
 
     def yMouseToggled(self, b):
-        self.view.setMouseEnabled(y=b)
+        self.view().setMouseEnabled(y=b)
 
     def yManualClicked(self):
-        self.view.enableAutoRange(pg.ViewBox.YAxis, False)
+        self.view().enableAutoRange(pg.ViewBox.YAxis, False)
         
     def yMinTextChanged(self):
         self.ctrl[1].manualRadio.setChecked(True)
-        self.view.setYRange(float(self.ctrl[1].minText.text()), float(self.ctrl[1].maxText.text()), padding=0)
+        self.view().setYRange(float(self.ctrl[1].minText.text()), float(self.ctrl[1].maxText.text()), padding=0)
         
     def yMaxTextChanged(self):
         self.ctrl[1].manualRadio.setChecked(True)
-        self.view.setYRange(float(self.ctrl[1].minText.text()), float(self.ctrl[1].maxText.text()), padding=0)
+        self.view().setYRange(float(self.ctrl[1].minText.text()), float(self.ctrl[1].maxText.text()), padding=0)
         
     def yAutoClicked(self):
         val = self.ctrl[1].autoPercentSpin.value() * 0.01
-        self.view.enableAutoRange(pg.ViewBox.YAxis, val)
-    
+        self.view().enableAutoRange(pg.ViewBox.YAxis, val)
+        
     def yAutoSpinChanged(self, val):
         self.ctrl[1].autoRadio.setChecked(True)
-        self.view.enableAutoRange(pg.ViewBox.YAxis, val*0.01)
+        self.view().enableAutoRange(pg.ViewBox.YAxis, val*0.01)
 
     def yLinkComboChanged(self, ind):
-        self.view.setYLink(str(self.ctrl[1].linkCombo.currentText()))
+        self.view().setYLink(str(self.ctrl[1].linkCombo.currentText()))
+
+    def yAutoPanToggled(self, b):
+        self.view().setAutoPan(y=b)
+    
+    def yVisibleOnlyToggled(self, b):
+        self.view().setAutoVisible(y=b)
+
+    def yInvertToggled(self, b):
+        self.view().invertY(b)
+
+    def xInvertToggled(self, b):
+        self.view().invertX(b)
 
     def exportMethod(self):
         act = self.sender()
         self.exportMethods[str(act.text())]()
 
-
     def set3ButtonMode(self):
-        self.view.setLeftButtonAction('pan')
+        self.view().setLeftButtonAction('pan')
         
     def set1ButtonMode(self):
-        self.view.setLeftButtonAction('rect')
-        
+        self.view().setLeftButtonAction('rect')
         
     def setViewList(self, views):
-        views = [''] + views
+        names = ['']
+        self.viewMap.clear()
+        
+        ## generate list of views to show in the link combo
+        for v in views:
+            name = v.name
+            if name is None:  ## unnamed views do not show up in the view list (although they are linkable)
+                continue
+            names.append(name)
+            self.viewMap[name] = v
+            
         for i in [0,1]:
             c = self.ctrl[i].linkCombo
-            current = str(c.currentText())
+            current = c.currentText()
             c.blockSignals(True)
             changed = True
             try:
                 c.clear()
-                for v in views:
-                    c.addItem(v)
-                    if v == current:
+                for name in names:
+                    c.addItem(name)
+                    if name == current:
                         changed = False
                         c.setCurrentIndex(c.count()-1)
             finally:
@@ -234,7 +278,6 @@ class CustomViewMenu(QMenu):
             if changed:
                 c.setCurrentIndex(0)
                 c.currentIndexChanged.emit(c.currentIndex())
-                
                 
 class CustomUITemplate(object):
     def setupUi(self, Form):
