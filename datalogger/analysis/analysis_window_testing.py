@@ -3,9 +3,9 @@ import sys
 if __name__ == '__main__':
     sys.path.append('../')
 
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout,
-                             QMainWindow)
+from PyQt5.QtCore import QCoreApplication, QSize, Qt
+from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout,
+                             QMainWindow, QPushButton, QMouseEventTransition, QTabBar, QSplitter)
 
 from circle_fit import CircleFitWidget
 from sonogram import SonogramWidget
@@ -16,11 +16,30 @@ import pyqtgraph as pg
 
 from bin.channel import ChannelSet
 
+
+class SideTabWidget(QTabWidget):
+    def __init__(self, widget_side='left'):
+        super().__init__()
+
+        self.tabBar().tabBarDoubleClicked.connect(self.toggle_collapse)
+
+        self.setMinimumWidth(1)
+        self.setMaximumWidth(100)
+
+        self.setTabsClosable(False)
+        self.setMovable(False)
+
+        if widget_side == 'left':
+            self.setTabPosition(QTabWidget.East)
+        if widget_side == 'right':
+            self.setTabPosition(QTabWidget.West)
+
 class AnalysisTools_TabWidget(QTabWidget):
     def __init__(self):
         super().__init__()
 
         self.init_ui()
+        self.show()
 
     def init_ui(self):
         self.setMovable(False)
@@ -56,20 +75,40 @@ class AnalysisWindow(QMainWindow):
         self.menubar.addMenu("View")
         self.menubar.addMenu("Addons")
 
-        # #Create the main widget
+        # # Create the main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
 
-        self.main_layout = QGridLayout()
+        self.main_layout = QHBoxLayout()
         self.main_widget.setLayout(self.main_layout)
 
+        # Add the sidetabwidget
+        self.sidetabwidget = SideTabWidget('left')
+
+        page1 = QWidget()
+        page1_layout = QGridLayout()
+        page1.setLayout(page1_layout)
+        page1_layout.addWidget(QPushButton(page1))
+        self.sidetabwidget.addTab(page1, "Empty 1")
+
+        page2 = QWidget()
+        page2_layout = QGridLayout()
+        page2.setLayout(page2_layout)
+
+        self.sidetabwidget.addTab(page2, "Empty 2")
+        self.main_layout.addWidget(self.sidetabwidget)
+
         # Add the analysis tools tab widget
-        self.main_layout.addWidget(AnalysisTools_TabWidget())
+        self.analysistools_tabwidget = AnalysisTools_TabWidget()
+        self.main_layout.addWidget(self.analysistools_tabwidget)
+
+
+
 
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
 
-    w = AnalysisWindow()
+    w = AnalysisTools_TabWidget()
 
     sys.exit(app.exec_())
