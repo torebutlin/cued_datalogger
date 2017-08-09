@@ -8,19 +8,21 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication )
+    QCheckBox,QButtonGroup,QTextEdit,QApplication)
 from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
 QPalette,QPainter,QStyleOption,QStyle)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+
 import pyqtgraph as pg
+from pyqtgraph.WidgetGroup import WidgetGroup
+
 import numpy as np
 import functools as fct
-import ast
-
 
 from collections.abc import Sequence
 from acquisition.ChanLineText import ChanLineText
 from acquisition.ChanMetaWin import ChanMetaWin
+from acquisition.CustomPlot import CustomPlot
 import acquisition.myRecorder as mR
 try:
     import acquisition.NIRecorder as NIR
@@ -162,29 +164,11 @@ class LiveplotApp(QMainWindow):
     #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
+        self.timeplotcanvas = CustomPlot(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         self.timeplot.disableAutoRange(axis=None)
         self.timeplot.setMouseEnabled(x=True,y = True)
-        
-        print('-------PLOT TEST-------')
-        try:
-            con_menu = self.timeplot.getViewBox().menu
-            #con_menu.axes = None
-            #con_menu.removeAction(con_menu.viewAll)
-            con_menu.removeAction(con_menu.leftMenu.menuAction())
-            self.timeplotcanvas.sceneObj.contextMenu = []
-            
-            ext_menu = self.timeplot.ctrlMenu
-            ext_submenus = self.timeplot.subMenus
-            ext_menu.removeAction(ext_submenus[1].menuAction())
-            ext_menu.removeAction(ext_submenus[2].menuAction())
-            ext_menu.removeAction(ext_submenus[3].menuAction())
-            ext_menu.removeAction(ext_submenus[5].menuAction())
-        except Exception as e:
-            print(e)
-        print('-------PLOT TEST-------')
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
@@ -1231,7 +1215,7 @@ class AdvToggleUI(BaseWidget):
         lay.addWidget(self.chan_text4)
         lay.addWidget(self.search_status)
                 
-        self.search_status.showMessage('Awaiting...')
+        self.search_status.showMessage('Awaiting...')        
         
 if __name__ == '__main__':
     app = 0 
