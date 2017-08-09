@@ -4,7 +4,7 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 from PyQt5.QtCore import QCoreApplication, QSize, Qt
-from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout,
+from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout, QVBoxLayout,
                              QMainWindow, QPushButton, QMouseEventTransition, QTabBar, QSplitter)
 
 from circle_fit import CircleFitWidget
@@ -54,13 +54,16 @@ class AnalysisWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+
         self.init_ui()
 
         self.setFocus()
         self.showMaximized()
 
+
         cs = ChannelSet()
         import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+
         self.analysistools_tabwidget.widget(3).transfer_function_type = 'acceleration'
         self.analysistools_tabwidget.widget(3).set_data(cs.get_channel_data(0, "omega"), cs.get_channel_data(0, "spectrum"))
 
@@ -86,11 +89,10 @@ class AnalysisWindow(QMainWindow):
         # Add the sidetabwidget
         self.sidetabwidget = SideTabWidget('left')
 
-        page1 = QWidget()
-        page1_layout = QGridLayout()
-        page1.setLayout(page1_layout)
-        page1_layout.addWidget(QPushButton(page1))
-        self.sidetabwidget.addTab(page1, "Empty 1")
+        self.channel_page = QWidget()
+        self.channel_page_layout = QVBoxLayout()
+        self.channel_page.setLayout(self.channel_page_layout)
+        self.sidetabwidget.addTab(self.channel_page, "Channels")
 
         page2 = QWidget()
         page2_layout = QGridLayout()
