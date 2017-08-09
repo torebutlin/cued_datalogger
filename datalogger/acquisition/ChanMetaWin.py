@@ -48,11 +48,11 @@ class ChanMetaWin(QDialog):
         title = QLabel('CHANNEL METADATA',self)
         title.setAlignment(Qt.AlignCenter)
         channel_meta_form.addWidget(title,0,0,1,3)
-        meta_dname = ('Channel','Name','Calibration Factor','Units','Tags','Comments')
-        meta_dtype = ('','name','cal_factor','units','tags','comments')
+        meta_dname = ('Channel','Name','Calibration Factor','Tags','Comments')
+        meta_dtype = ('','name','calibration_factor','tags','comments')
         
         self.meta_configs = []
-        UI_type = (QLabel,QLineEdit,QLineEdit,QLineEdit,QLineEdit,CommentBox)
+        UI_type = (QLabel,QLineEdit,QLineEdit,QLineEdit,CommentBox)
         
         row = 1
         for m,UI,md in zip(meta_dname,UI_type,meta_dtype):
@@ -79,9 +79,11 @@ class ChanMetaWin(QDialog):
         
     def display_metadata(self):
         sel_num = self.channel_listview.currentRow()
-        meta_values = [sel_num] + list(self.all_info[sel_num].values())
-        for cbox,v in zip(self.meta_configs,meta_values):
-            cbox.setText(str(v).strip('[]'))
+        self.meta_configs[0].setText(str(sel_num))
+        meta_dtype = ('name','calibration_factor','tags','comments')
+        
+        for n,md in enumerate(meta_dtype,1):
+            self.meta_configs[n].setText(str(self.all_info[sel_num][md]))
             
     def update_metadata(self,meta_name,UI):
         chan_num = self.channel_listview.currentRow()

@@ -68,8 +68,11 @@ class ChannelSet():
         return info_string
 
     def add_channels(self, num_channels=1):
+        num = len(self)
         for i in range(num_channels):
-            self.channels.append(Channel())
+            def_name = 'Channel %i' % num
+            self.channels.append(Channel(name = def_name))
+            num +=1
 
     def add_channel_dataset(self, channel_index, id_, data=None, units=None):
         """Add an empty dataset to the specified channel(s)"""

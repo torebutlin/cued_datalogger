@@ -458,6 +458,7 @@ class LiveplotApp(QMainWindow):
                 
     def meta_win_closed(self):
         self.meta_window = None
+        self.update_chan_names()
 
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
@@ -858,6 +859,8 @@ class LiveplotApp(QMainWindow):
                     self.chantoggle_UI.checkbox_layout.removeWidget(chan_btn)
                     self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
+            
+        self.update_chan_names()
                     
     def ResetRecConfigs(self):
         self.RecUI.rec_boxes[3].clear()
@@ -889,18 +892,24 @@ class LiveplotApp(QMainWindow):
     def ResetMetaData(self):
         self.live_chanset = ch.ChannelSet(self.rec.channels)
         
+        
     def ResetSplitterSizes(self):
         #self.left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
         self.main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2]) 
         self.mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
         self.right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
+        
+    def update_chan_names(self):
+        names = self.live_chanset.get_channel_metadata(tuple(range(self.rec.channels)),'name')
+        for n,name in enumerate(names):
+            chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
+            chan_btn.setText(name)
+        
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-        # Save the time series
-        #self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
-        # Save the values
+        self.parent.cs.set_channel_metadata(0,self.live_chanset.get_channel_metadata(0))
         self.parent.cs.set_channel_data(0,'y',data)
         self.dataSaved.emit()        
         print('Data saved!')
