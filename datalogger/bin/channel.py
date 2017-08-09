@@ -1,5 +1,5 @@
 import numpy as np
-from numpy_functions import MatlabList
+from .numpy_functions import MatlabList
 
 
 class ChannelSet():
