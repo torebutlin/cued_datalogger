@@ -7,8 +7,9 @@ Created on Tue Jul 11 11:44:12 2017
 import sys,traceback
 
 
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QApplication, QMessageBox, QDesktopWidget,QTabWidget,QTabBar)
+from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,QLabel,
+    QPushButton, QApplication, QMessageBox, QDesktopWidget,QTabWidget,QTabBar,
+    QFormLayout)
 #from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import QCoreApplication,QTimer
 
@@ -39,7 +40,7 @@ class DataWindow(QMainWindow):
         
         # Initialise the channels
         self.init_channels()
-        
+        self.display_metadata()
         # Center and show window
         self.center()
         self.setFocus()
@@ -83,8 +84,20 @@ class DataWindow(QMainWindow):
         # Add tab containing a plot widget
         self.data_tabs.addTab(data_tab_widget(self), "Time Series")
         self.data_tabs.addTab(data_tab_widget(self), "Frequency domain")
-
         
+        self.meta_display = QWidget()
+        meta_disp_layout = QFormLayout(self.meta_display)
+        
+        meta_dname = ('Channel','Name','Calibration Factor','Units','Tags','Comments')
+        self.meta_labels = []
+        
+        for m in meta_dname:
+            dbox = QLabel(self)
+            meta_disp_layout.addRow(QLabel(m,self),dbox)
+            self.meta_labels.append(dbox)
+          
+        vbox.addWidget(self.meta_display)    
+            
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
@@ -103,6 +116,13 @@ class DataWindow(QMainWindow):
         # Add one input channel
         self.cs.add_channel_dataset(0,'y')
         self.cs.add_channel_dataset(0,'s')
+        
+    def display_metadata(self):
+        for i in range(len(self.cs)):
+            self.meta_labels[0].setText(str(i))
+            meta_dtype = ('name','calibration_factor','units','tags','comments')
+            for n,md in enumerate(meta_dtype,1):
+                self.meta_labels[n].setText(str(self.cs.get_channel_metadata(i,md)))
             
     #------------- UI callback methods--------------------------------       
     def toggle_liveplot(self):
@@ -114,7 +134,7 @@ class DataWindow(QMainWindow):
 		
 		# Plot when data received
             self.liveplot.dataSaved.connect(self.plot_time_series)
-            
+            self.liveplot.dataSaved.connect(self.display_metadata)
         else:
             self.liveplot.close()
             self.liveplot = None

@@ -909,9 +909,7 @@ class LiveplotApp(QMainWindow):
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-        # Save the time series
-        #self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
-        # Save the values
+        self.parent.cs.set_channel_metadata(0,self.live_chanset.get_channel_metadata(0))
         self.parent.cs.set_channel_data(0,'y',data)
         self.dataSaved.emit()        
         print('Data saved!')
