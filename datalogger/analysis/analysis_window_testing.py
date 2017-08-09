@@ -60,6 +60,7 @@ class collapsibleSideTabs(QWidget):
          
         self.splitter.addWidget(self.stack_widgets)
         self.splitter.addWidget(self.tab_bar)
+        self.splitter.setCollapsible(1,False)
         
         self.UI_layout.addWidget(self.splitter)
         
