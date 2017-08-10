@@ -60,7 +60,7 @@ class collapsibleSideTabs(QWidget):
         self.stack_widgets.setAutoFillBackground(True)
         self.stack_widgets.setPalette(pal)
         '''
-        
+
         self.tab_bar = QTabBar(self.splitter)
         self.tab_bar.addTab('Tab1')
         self.tab_bar.addTab('Tab2')
@@ -69,23 +69,23 @@ class collapsibleSideTabs(QWidget):
         self.tab_bar.currentChanged.connect(self.change_widget)
         self.tab_bar.tabBarDoubleClicked.connect(self.toggle_collapse)
 
-        
-        
+
+
         self.splitter.addWidget(self.stack_widgets)
         self.splitter.addWidget(self.tab_bar)
-        
+
         #self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
         #self.splitter.addWidget(self.analysistools_tabwidget)
-        
+
         self.tab_bar.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Maximum)
-        self.splitter.setStretchFactor(0,0)
+        self.splitter.setStretchFactor(0,1)
         self.splitter.setStretchFactor(1,0)
-        self.splitter.setStretchFactor(2,10)
+        #self.splitter.setStretchFactor(2,10)
         self.splitter.setChildrenCollapsible(False)
 
         #self.splitter.splitterMoved.connect(self.resize_self)
         self.UI_layout.addWidget(self.splitter)
-        
+
         self.setStyleSheet('''
                  .QWidget{
                        background: white;
@@ -100,32 +100,33 @@ class collapsibleSideTabs(QWidget):
                            ''')
 
         self.splitter.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Minimum)
-        
+
     def resize_self(self, pos,ind):
          w = min(pos-21,100)
          if ind == 1:
              self.splitter.setSizes([w,21,500-21-w])
          if ind == 2:
              self.splitter.setSizes([w,21,pos])
-             
+
     def resize_self2(self, pos,ind):
          print('beep')
          w = min(pos-21,100)
          self.splitter.setSizes([w,21])
-        
+
     def change_widget(self,num):
         self.stack_layout.setCurrentIndex(num)
 
     def toggle_collapse(self):
-        pass 
-        '''
         if self.collapsed:
             self.stack_widgets.show()
+            #self.splitter.setSizes(self.last_sizes)
             self.collapsed = False
         else:
             self.stack_widgets.hide()
+            #self.last_sizes = self.splitter.sizes()
+            #self.splitter.setSizes([0 for w in self.splitter.count()])
             self.collapsed = True
-            '''
+
 
 class AnalysisTools_TabWidget(QTabWidget):
     def __init__(self, *arg, **kwarg):
@@ -163,7 +164,7 @@ class AnalysisWindow(QMainWindow):
 
         self.setFocus()
         self.show()
-        
+
 
         self.cs = ChannelSet()
 
@@ -184,6 +185,8 @@ class AnalysisWindow(QMainWindow):
         #self.main_widget = QWidget(self)
         #self.main_layout = QHBoxLayout(self.main_widget)
         self.main_widget = QSplitter(self)
+        self.main_widget.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+
         # Add the sidetabwidget
         try:
             self.sidetabwidget = collapsibleSideTabs(self)
@@ -194,19 +197,19 @@ class AnalysisWindow(QMainWindow):
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-        
-        
-       
+
+
+
 
         # Add the analysis tools tab widget
         self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
         self.main_widget.addWidget(self.analysistools_tabwidget)
-        self.sidetabwidget.tab_bar.tabBarDoubleClicked.connect(self.toggle_collapse)
+        #self.sidetabwidget.tab_bar.tabBarDoubleClicked.connect(self.toggle_collapse)
         self.main_widget.setChildrenCollapsible(False)
-        
-        
+
+
         self.setCentralWidget(self.main_widget)
-        
+
         self.main_widget.setStyleSheet('''
                    .QSplitter{
                    border : 1px solid black;
@@ -215,7 +218,9 @@ class AnalysisWindow(QMainWindow):
                        background: green ;
                        }
                            ''')
-        
+        self.main_widget.setStretchFactor(0, 0)
+        self.main_widget.setStretchFactor(1, 2)
+    """
     def toggle_collapse(self):
         if self.sidetabwidget.collapsed:
             self.sidetabwidget.stack_widgets.show()
@@ -223,13 +228,13 @@ class AnalysisWindow(QMainWindow):
         else:
             self.sidetabwidget.stack_widgets.hide()
             self.sidetabwidget.collapsed = True
-        self.sidetabwidget.update()  
+        self.sidetabwidget.update()
         w = self.sidetabwidget.sizeHint().width()
         print(w)
-        self.main_widget.setSizes([w,500-w])
+        #self.main_widget.setSizes([w,500-w])
         print(self.main_widget.sizes())
         print(self.sidetabwidget.splitter.sizes())
-        
+    """
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
