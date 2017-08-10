@@ -248,6 +248,7 @@ class CircleFitWidget(QWidget):
             # Fit using just this channel
             self.current_channel = combobox_index - 1
 
+            # Set all the channels to grey
             for data_item in self.tf_plot_plotDataItems:
                 data_item.setPen()
             for data_item in self.region_select_plot_plotDataItems:
@@ -255,12 +256,17 @@ class CircleFitWidget(QWidget):
             for data_item in self.circle_plot_plotDataItems:
                 data_item.setPen()
 
+            # Set this channel to black
             self.tf_plot_plotDataItems[self.current_channel].setPen(defaultpen)
             self.region_select_plot_plotDataItems[self.current_channel].setPen(defaultpen)
             self.circle_plot_plotDataItems[self.current_channel].setPen(defaultpen)
 
+            # Set the data
+            self.row_list = []
             self.set_data(self.channels[self.current_channel].get_data("omega"),
                           self.channels[self.current_channel].get_data("spectrum"))
+
+
 
     def add_peak(self):
         # Add the new row at the end
