@@ -35,6 +35,7 @@ except ModuleNotFoundError:
     NI_drivers = False
 
 from bin import channel as ch
+from bin.custom_plot import CustomPlotWidget
 
 import math
 
