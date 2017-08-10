@@ -22,7 +22,7 @@ import functools as fct
 from collections.abc import Sequence
 from acquisition.ChanLineText import ChanLineText
 from acquisition.ChanMetaWin import ChanMetaWin
-from acquisition.CustomPlot import CustomPlot
+#from acquisition.CustomPlot import CustomPlot
 import acquisition.myRecorder as mR
 try:
     import acquisition.NIRecorder as NIR
@@ -165,7 +165,7 @@ class LiveplotApp(QMainWindow):
     #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = CustomPlot(self.mid_splitter, background = 'default')
+        self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.timeplot.disableAutoRange(axis=None)
