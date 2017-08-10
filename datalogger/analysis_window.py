@@ -32,7 +32,7 @@ class DataWindow(QMainWindow):
         super().__init__()
         
         # Set window parameter
-        self.setGeometry(200,500,1000,500)
+        self.setGeometry(200,500,700,700)
         self.setWindowTitle('DataWindow')
 
         # Construct UI        
@@ -154,9 +154,9 @@ class DataWindow(QMainWindow):
         t = np.arange(len(y),dtype = np.float32)/44100 
         d5y = np.gradient(y,2)
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.clear()
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, clear=False, pen='b')
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y+np.mean(y), clear=False, pen='y')
+        self.data_tabs.currentWidget().resetPlotWidget()
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, pen='b')
+        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y+np.mean(y), pen='y')
                 
         
     def plot_sonogram(self):
@@ -188,7 +188,8 @@ class DataWindow(QMainWindow):
         self.cs.set_channel_data(0,'s', ft)
 
         # Plot data
-        self.data_tabs.currentWidget().canvasplot.plot(x=freqs, y=ft, clear=True, pen='g')
+        self.data_tabs.currentWidget().resetPlotWidget()
+        self.data_tabs.currentWidget().canvasplot.plot(x=freqs, y=ft, pen='g')
         
     #----------------Overrding methods------------------------------------
     # The method to call when the mainWindow is being close       
