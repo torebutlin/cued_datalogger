@@ -19,4 +19,22 @@ class data_tab_widget(QWidget):
         self.canvas = pg.PlotWidget(self, background = 'default')
         vbox.addWidget(self.canvas)
         self.canvasplot = self.canvas.getPlotItem()
-        #self.canvasplot.setLabels(title="Time Plot", bottom = 'Time(s)')
+        self.vb = self.canvas.getViewBox()
+        print(self.canvasplot.scene())
+        
+        self.label = pg.LabelItem(angle = 0)
+        self.label.setParentItem(self.vb)
+        #self.vb.addItem(self.label)
+        
+        self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+        
+    def mouseMoved(self,evt):
+        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+        if self.canvasplot.sceneBoundingRect().contains(pos):
+            mousePoint = self.vb.mapSceneToView(pos)
+            self.label.setText(("<span style='font-size: 12pt'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
+                                % (mousePoint.x(), mousePoint.y()) ))
+        
+    def closeEvent(self,event):
+        self.proxy.disconnect()
+        event.accept()

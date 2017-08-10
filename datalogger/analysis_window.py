@@ -82,7 +82,13 @@ class DataWindow(QMainWindow):
         vbox.addWidget(self.data_tabs)
         
         # Add tab containing a plot widget
-        self.data_tabs.addTab(data_tab_widget(self), "Time Series")
+        try:
+            self.data_tabs.addTab(data_tab_widget(self), "Time Series")
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
         self.data_tabs.addTab(data_tab_widget(self), "Frequency domain")
         
         self.meta_display = QWidget()
