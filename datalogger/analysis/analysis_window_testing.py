@@ -5,9 +5,9 @@ if __name__ == '__main__':
 
 from PyQt5.QtCore import QCoreApplication, QSize, Qt
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout,
-                             QMainWindow, QPushButton, QMouseEventTransition, 
-                             QTabBar, QSplitter,QStackedLayout,QLabel )
-from PyQt5.QtGui import QSizePolicy
+                             QMainWindow, QPushButton, QMouseEventTransition,
+                             QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy)
+#from PyQt5.QtGui import QSizePolicy
 
 from circle_fit import CircleFitWidget
 from sonogram import SonogramWidget
@@ -39,52 +39,63 @@ class SideTabWidget(QTabWidget):
 class collapsibleSideTabs(QWidget):
     def __init__(self, *arg, widget_side='left', **kwarg):
         super().__init__(*arg, **kwarg)
-        
+
+        self.collapsed = False
+
         self.UI_layout = QHBoxLayout(self)
-        
+
         self.splitter = QSplitter(Qt.Horizontal,self)
-        
+
         self.stack_widgets = QWidget(self.splitter)
         self.stack_layout = QStackedLayout(self.stack_widgets)
         self.stack_layout.addWidget(QLabel('Here',self.stack_widgets))
         self.stack_layout.addWidget(QLabel('There',self.stack_widgets))
         self.stack_layout.setCurrentIndex(0)
-        
-        
+
+
         self.tab_bar = QTabBar(self.splitter)
         self.tab_bar.addTab('Tab1')
         self.tab_bar.addTab('Tab2')
         self.tab_bar.setShape(QTabBar.RoundedEast)
         self.tab_bar.setCurrentIndex(0)
         self.tab_bar.currentChanged.connect(self.change_widget)
-        
+        self.tab_bar.tabBarDoubleClicked.connect(self.toggle_collapse)
+
         self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
-        
+
         self.splitter.addWidget(self.stack_widgets)
         self.splitter.addWidget(self.tab_bar)
         self.splitter.addWidget(self.analysistools_tabwidget)
-        
+
         self.tab_bar.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         self.splitter.setStretchFactor(0,0)
         self.splitter.setStretchFactor(1,0)
         self.splitter.setStretchFactor(2,10)
         self.splitter.setCollapsible(1,False)
-        
+
         self.UI_layout.addWidget(self.splitter)
-        
+
         self.splitter.splitterMoved.connect(self.resize_self)
-        
+
     def resize_self(self, pos,ind):
         w = min(pos-21,100)
         if ind == 1:
             self.splitter.setSizes([w,21,500-21-w])
         if ind == 2:
             self.splitter.setSizes([w,21,pos])
-    
+
     def change_widget(self):
 
         self.stack_layout.setCurrentIndex(num)
-        
+
+    def toggle_collapse(self):
+        if self.collapsed:
+            self.stack_widgets.show()
+            self.collapsed = False
+        else:
+            self.stack_widgets.hide()
+            self.collapsed = True
+
 class AnalysisTools_TabWidget(QTabWidget):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
@@ -105,10 +116,10 @@ class AnalysisTools_TabWidget(QTabWidget):
 class AnalysisWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        
+
         self.setGeometry(500,300,500,500)
         self.setWindowTitle('data')
-        
+
         try:
             self.init_ui()
         except:
@@ -150,13 +161,13 @@ class AnalysisWindow(QMainWindow):
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
-            print(traceback.format_tb(tb))   
-        
+            print(traceback.format_tb(tb))
+
 
         # Add the analysis tools tab widget
         #self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
         #self.main_widget.addWidget(self.analysistools_tabwidget)
-        
+
         #self.main_widget.setChildrenCollapsible(False)
         self.setCentralWidget(self.main_widget)
 
