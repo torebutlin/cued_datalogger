@@ -3,7 +3,7 @@ import sys,traceback
 if __name__ == '__main__':
     sys.path.append('../')
 
-from PyQt5.QtCore import QCoreApplication, QSize, Qt
+from PyQt5.QtCore import QCoreApplication, QSize, Qt,QTimer
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout,
                              QMainWindow, QPushButton, QMouseEventTransition,
                              QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
@@ -25,8 +25,14 @@ from liveplotUI import DevConfigUI,ChanToggleUI
 class CollapsingSideTabWidget(QSplitter):
     def __init__(self, widget_side='left'):
         super().__init__()
-
+        
+        self.collapsetimer = QTimer(self)
+        self.collapsetimer.timeout.connect(self.update_splitter)
+        
         self.collapsed = False
+        
+        self.spacer = QWidget(self)
+        self.spacer.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
 
         # # Create the tab bar
         self.tabBar = QTabBar()
@@ -46,26 +52,42 @@ class CollapsingSideTabWidget(QSplitter):
             self.tabBar.setShape(QTabBar.RoundedEast)
             self.addWidget(self.tabPages)
             self.addWidget(self.tabBar)
-            self.setStretchFactor(0, 1)
-            self.setStretchFactor(1, 0)
+            #self.setStretchFactor(0, 1)
+            #self.setStretchFactor(1, 0)
+            self.addWidget(self.spacer)
+            self.PAGE_IND = 0
+            self.SPACE_IND = 2
         if widget_side == 'right':
+            self.addWidget(self.spacer)
             self.tabBar.setShape(QTabBar.RoundedWest)
             self.addWidget(self.tabBar)
             self.addWidget(self.tabPages)
-            self.setStretchFactor(0, 0)
-            self.setStretchFactor(1, 1)
+            #self.setStretchFactor(0, 0)
+            #self.setStretchFactor(1, 1)
+            self.PAGE_IND = 2
+            self.SPACE_IND = 0
+        self.TAB_SIZE = self.tabBar.sizeHint().width()
+        
+        
+        self.setCollapsible(self.PAGE_IND,False)
+        self.spacer.hide()    
 
     def addTab(self, widget, title):
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
 
     def toggle_collapse(self):
+        '''
         if self.collapsed:
-            self.tabPages.show()
+            #self.tabPages.show()
             self.collapsed = False
         else:
-            self.tabPages.hide()
+            #self.tabPages.hide()
             self.collapsed = True
+            '''
+        self.spacer.show() 
+        self.collapsed = not self.collapsed
+        self.collapsetimer.start(20)
 
     def changePage(self, index):
         self.tabBar.setCurrentIndex(index)
@@ -75,8 +97,31 @@ class CollapsingSideTabWidget(QSplitter):
         for i in range(self.tabBar.count()):
             self.tabBar.removeTab(0)
             self.tabPages.removeWidget(self.tabPages.currentWidget())
+            
+    def update_splitter(self):
+        sz = self.sizes()
+        self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
+        sz[1] = self.tabBar.sizeHint().width()
+        if self.collapsed:
+            if not sz[self.PAGE_IND] < 5:
+                sz[self.SPACE_IND] += sz[self.PAGE_IND] * 0.5
+                sz[self.PAGE_IND] *= 0.5
+            else:
+                self.tabPages.hide()
+                self.spacer.hide() 
+                self.collapsetimer.stop()
+        else:
+            self.tabPages.show()
+            if not sz[self.SPACE_IND] <5:
+                sz[self.SPACE_IND] -= sz[self.PAGE_IND] * 0.5
+                sz[self.PAGE_IND] *= 1.5
+            else:
+                self.tabPages.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+                self.spacer.hide() 
+                self.collapsetimer.stop()
+            
+        self.setSizes(sz)
         
-
 class AnalysisTools_TabWidget(QTabWidget):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
