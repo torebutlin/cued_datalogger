@@ -112,6 +112,7 @@ class AnalysisWindow(QMainWindow):
         self.tools = []
         self.tools.append(TimeTools(self))
         self.tools.append(FreqTools(self))
+        self.tools.append(ModalTools(self))
         
     def prepare_global_tools(self):
         self.global_toolbox = CollapsingSideTabWidget(widget_side='right')
@@ -133,16 +134,18 @@ class AnalysisWindow(QMainWindow):
         # Add the analysis tools tab widget
         self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
         self.main_layout.addWidget(self.analysistools_tabwidget)
-        
-        self.prepare_global_tools()
-        self.main_layout.addWidget(self.global_toolbox)
-        
+                
         self.analysistools_tabwidget.currentChanged.connect(self.switch_tools)
         self.switch_tools(0)
+        
+        # Add the global tools tab widget
+        self.prepare_global_tools()
+        self.main_layout.addWidget(self.global_toolbox)
 
         # Set the stretch factors
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.analysistools_tabwidget, 1)
+        self.main_layout.setStretchFactor(self.global_toolbox, 0)
         
     def switch_tools(self,num):
         self.toolbox.clear()
@@ -186,15 +189,19 @@ class FreqTools(BaseTools):
         widget_layout.addWidget(fft_convert_btn)
         self.add_tools(convert_widget,'Conversion')
 
-class SonoTools(BaseTools):
-    pass
-
 class ModalTools(BaseTools):
-    pass
+    def initTools(self):
+        convert_widget = QWidget()
+        widget_layout = QVBoxLayout(convert_widget)
+        fft_convert_btn = QPushButton('Transfer Function', convert_widget)
+        widget_layout.addWidget(fft_convert_btn)
+        self.add_tools(convert_widget,'Conversion')
 
 class GlobalTools(BaseTools):
     def initTools(self):
-        self.add_tools(DevConfigUI(),'Oscilloscope')
+        dev_configUI = DevConfigUI()
+        dev_configUI.config_button.setText('Open Oscilloscope')
+        self.add_tools(dev_configUI,'Oscilloscope')
         self.add_tools(ChanToggleUI(),'Channel Toggle')
         
 if __name__ == '__main__':
