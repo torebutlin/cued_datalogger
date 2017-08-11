@@ -7,7 +7,7 @@ Created on Tue Jul 11 13:41:44 2017
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QPushButton,QLabel,
                              QFormLayout)
 import pyqtgraph as pg
-
+import functools as fct
 
 # Widget for the tabs inside dataWindow
 class data_tab_widget(QWidget):
@@ -24,8 +24,9 @@ class data_tab_widget(QWidget):
         self.vb = self.canvas.getViewBox()
         self.vline = pg.InfiniteLine(angle=90)
         self.hline = pg.InfiniteLine(angle=0)
-        self.canvasplot.addItem(self.vline)
-        self.canvasplot.addItem(self.hline)
+        self.linregion = pg.LinearRegionItem(values = [0.4,0.6],bounds = [0,None])
+        self.linregion.sigRegionChanged.connect(self.checkRegion)
+        self.resetPlotWidget()
         
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.vb)
@@ -33,15 +34,22 @@ class data_tab_widget(QWidget):
         
         self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
         
-        form = QFormLayout()
+        ui_layout = QHBoxLayout()
         t1 = QLabel('XLimit',self)
         self.sp1 = pg.SpinBox(self)
         t2 = QLabel('YLimit',self)
         self.sp2 = pg.SpinBox(self)
-        form.addRow(t1,self.sp1)
-        form.addRow(t2,self.sp2)
+        self.zoom_btn = QPushButton(self)
+        ui_layout.addWidget(t1)
+        ui_layout.addWidget(self.sp1)
+        ui_layout.addWidget(t2)
+        ui_layout.addWidget(self.sp2)
+        ui_layout.addWidget(self.zoom_btn)
         
-        vbox.addLayout(form)
+        self.sp1.sigValueChanging.connect(self.updateRegion)
+        self.sp2.sigValueChanging.connect(self.updateRegion)
+        self.zoom_btn.clicked.connect(self.zoomToRegion)
+        vbox.addLayout(ui_layout)
         
     def mouseMoved(self,evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
@@ -56,6 +64,25 @@ class data_tab_widget(QWidget):
         self.canvasplot.clear()
         self.canvasplot.addItem(self.vline)
         self.canvasplot.addItem(self.hline)
+        self.canvasplot.addItem(self.linregion)
+        
+    def updateRegion(self):
+        pos = [self.sp1.value(),self.sp2.value()]
+        pos.sort()
+        self.linregion.setRegion(pos)
+        self.sp1.setValue(pos[0])
+        self.sp2.setValue(pos[1])
+        
+    def checkRegion(self):
+        pos = list(self.linregion.getRegion())
+        pos.sort()
+        self.linregion.setRegion(pos)
+        self.sp1.setValue(pos[0])
+        self.sp2.setValue(pos[1])
+        
+    def zoomToRegion(self):
+        pos = self.linregion.getRegion()
+        self.canvasplot.setXRange(pos[0],pos[1],padding = 0.1)
         
         
     def closeEvent(self,event):
