@@ -11,14 +11,15 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QLineEdit)
 from PyQt5.QtGui import QPalette,QColor
 
-from circle_fit import CircleFitWidget
-from sonogram import SonogramWidget
-from time_domain import TimeDomainWidget
-from frequency_domain import FrequencyDomainWidget
+from analysis.circle_fit import CircleFitWidget
+from analysis.sonogram import SonogramWidget
+from analysis.time_domain import TimeDomainWidget
+from analysis.frequency_domain import FrequencyDomainWidget
 
 import pyqtgraph as pg
 
 from bin.channel import ChannelSet
+from liveplotUI import DevConfigUI,ChanToggleUI
 
 
 class CollapsingSideTabWidget(QSplitter):
@@ -112,6 +113,12 @@ class AnalysisWindow(QMainWindow):
         self.tools.append(TimeTools(self))
         self.tools.append(FreqTools(self))
         
+    def prepare_global_tools(self):
+        self.global_toolbox = CollapsingSideTabWidget(widget_side='right')
+        gtool = GlobalTools(self)
+        for i in range(len(gtool)):
+            self.global_toolbox.addTab(gtool.tool_pages[i],gtool.tabs_titles[i])
+        
     def init_ui(self):
         # # Create the main widget
         self.main_widget = QWidget(self)
@@ -127,9 +134,7 @@ class AnalysisWindow(QMainWindow):
         self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
         self.main_layout.addWidget(self.analysistools_tabwidget)
         
-        self.global_toolbox = CollapsingSideTabWidget(widget_side='right')
-        gtool = GlobalTools(self)
-        self.global_toolbox.addTab(gtool.tool_pages[0],gtool.tabs_titles[0])
+        self.prepare_global_tools()
         self.main_layout.addWidget(self.global_toolbox)
         
         self.analysistools_tabwidget.currentChanged.connect(self.switch_tools)
@@ -189,51 +194,8 @@ class ModalTools(BaseTools):
 
 class GlobalTools(BaseTools):
     def initTools(self):
-        osc_widget = QWidget()
-        # TODO: import this whole part LivePlotUI
-        config_form = QFormLayout(osc_widget)
-        config_form.setSpacing(2)
-        
-        # Set up the device type radiobuttons group
-        self.typegroup = QGroupBox('Input Type', osc_widget)
-        typelbox = QHBoxLayout(self.typegroup)
-        pyaudio_button = QRadioButton('SoundCard',self.typegroup)
-        NI_button = QRadioButton('NI',self.typegroup)
-        typelbox.addWidget(pyaudio_button)
-        typelbox.addWidget(NI_button)
-        
-        # Set that to the layout of the group
-        self.typegroup.setLayout(typelbox)
-        
-        # TODO: Give id to the buttons?
-        # Set up QbuttonGroup to manage the buttons' Signals
-        self.typebtngroup = QButtonGroup(osc_widget)
-        self.typebtngroup.addButton(pyaudio_button)
-        self.typebtngroup.addButton(NI_button)
-        print('a',self.typebtngroup)
-        
-        config_form.addRow(self.typegroup)
-        
-        # Add the remaining settings to Acquisition settings form
-        configs = ['Source','Rate','Channels','Chunk Size','Number of Chunks']
-        self.configboxes = []
-        
-        for c in configs:
-            if c == 'Source':
-                cbox = QComboBox(osc_widget)
-                config_form.addRow(QLabel(c,osc_widget),cbox)
-                self.configboxes.append(cbox)
-                
-            else:
-                cbox = QLineEdit(osc_widget)
-                config_form.addRow(QLabel(c,osc_widget),cbox)
-                self.configboxes.append(cbox)  
-    
-        # Add a button to device setting form
-        self.config_button = QPushButton('Set Config', osc_widget)
-        config_form.addRow(self.config_button)
-        
-        self.add_tools(osc_widget,'Oscilloscope')
+        self.add_tools(DevConfigUI(),'Oscilloscope')
+        self.add_tools(ChanToggleUI(),'Channel Toggle')
         
 if __name__ == '__main__':
     app = 0
