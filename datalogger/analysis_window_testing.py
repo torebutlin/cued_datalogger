@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QMainWindow, QPushButton, QMouseEventTransition,
                              QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
                              QVBoxLayout,QFormLayout,QGroupBox,QRadioButton,QButtonGroup,QComboBox,
-                             QLineEdit)
+                             QLineEdit,QAction,QMenu)
 from PyQt5.QtGui import QPalette,QColor
 
 from analysis.circle_fit import CircleFitWidget
@@ -121,6 +121,10 @@ class AnalysisWindow(QMainWindow):
             self.global_toolbox.addTab(gtool.tool_pages[i],gtool.tabs_titles[i])
         
     def init_ui(self):
+       
+        menubar = self.menuBar()
+        menubar.addMenu(ProjectMenu(self))
+        
         # # Create the main widget
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
@@ -153,6 +157,26 @@ class AnalysisWindow(QMainWindow):
         for i in range(len(self.tools[num])):
             self.toolbox.addTab(self.tools[num].tool_pages[i],
                                 self.tools[num].tabs_titles[i])
+            
+class ProjectMenu(QMenu):
+    def __init__(self,parent):
+        super().__init__('Project',parent)
+        self.parent = parent
+        self.initMenu()
+        
+    def initMenu(self):
+        newAct = QAction('&New', self)        
+        newAct.setShortcut('Ctrl+N')
+        
+        setAct = QAction('&Settings', self)
+        
+        exitAct = QAction('&Exit', self)        
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+        
+        self.addActions([newAct,setAct,exitAct])
+
+        
         
 class BaseTools():
     def __init__(self,parent):
