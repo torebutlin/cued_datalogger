@@ -157,8 +157,9 @@ class DataWindow(QMainWindow):
         self.data_tabs.currentWidget().resetPlotWidget()
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, pen='b')
         self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y+np.mean(y), pen='y')
+        self.data_tabs.currentWidget().canvasplot.setLimits(xMin = 0,xMax = t[-1])
         self.data_tabs.currentWidget().linregion.setBounds((0,t[-1]))
-        self.data_tabs.currentWidget().linregion.setRegion((t[-1]*0.50,t[-1]*0.51))
+        self.data_tabs.currentWidget().linregion.setRegion((t[-1]*0.49,t[-1]*0.51))
                 
         
     def plot_sonogram(self):

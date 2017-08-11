@@ -781,27 +781,27 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
     def ResetPlots(self):
-            n_plotlines = len(self.plotlines)
-            self.ResetXdata()
+        n_plotlines = len(self.plotlines)
+        self.ResetXdata()
+        
+        for _ in range(n_plotlines):
+            line = self.plotlines.pop()
+            line.clear()
+            del line
             
-            for _ in range(n_plotlines):
-                line = self.plotlines.pop()
-                line.clear()
-                del line
-                
-            for i in range(self.rec.channels):
-                tplot = self.timeplot.plot(pen = self.plot_colours[i])
-                tplot.curve.setClickable(True,width = 4)
-                tplot.sigClicked.connect(self.display_chan_config)
-                self.plotlines.append(tplot)
-                
-                fplot = self.fftplot.plot(pen = self.plot_colours[i])
-                fplot.curve.setClickable(True,width = 4)
-                fplot.sigClicked.connect(self.display_chan_config)
-                self.plotlines.append(fplot)
-                
-            self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
-            self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
+        for i in range(self.rec.channels):
+            tplot = self.timeplot.plot(pen = self.plot_colours[i])
+            tplot.curve.setClickable(True,width = 4)
+            tplot.sigClicked.connect(self.display_chan_config)
+            self.plotlines.append(tplot)
+            
+            fplot = self.fftplot.plot(pen = self.plot_colours[i])
+            fplot.curve.setClickable(True,width = 4)
+            fplot.sigClicked.connect(self.display_chan_config)
+            self.plotlines.append(fplot)
+        
+        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
+        self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
