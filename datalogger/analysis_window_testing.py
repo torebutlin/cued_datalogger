@@ -46,7 +46,7 @@ class CollapsingSideTabWidget(QSplitter):
         self.tabPages = QStackedWidget()
 
         # # Link the signals
-        self.tabBar.tabBarDoubleClicked.connect(self.toggle_collapse)
+        #self.tabBar.tabBarDoubleClicked.connect(self.toggle_collapse)
         self.tabBar.currentChanged.connect(self.changePage)
 
         # # Add them to self
@@ -54,8 +54,6 @@ class CollapsingSideTabWidget(QSplitter):
             self.tabBar.setShape(QTabBar.RoundedEast)
             self.addWidget(self.tabPages)
             self.addWidget(self.tabBar)
-            #self.setStretchFactor(0, 1)
-            #self.setStretchFactor(1, 0)
             self.addWidget(self.spacer)
             self.PAGE_IND = 0
             self.SPACE_IND = 2
@@ -64,8 +62,6 @@ class CollapsingSideTabWidget(QSplitter):
             self.tabBar.setShape(QTabBar.RoundedWest)
             self.addWidget(self.tabBar)
             self.addWidget(self.tabPages)
-            #self.setStretchFactor(0, 0)
-            #self.setStretchFactor(1, 1)
             self.PAGE_IND = 2
             self.SPACE_IND = 0
         self.TAB_SIZE = self.tabBar.sizeHint().width()
@@ -123,15 +119,16 @@ class StackedToolbox(QStackedWidget):
     """A stack of CollapsingSideTabWidgets"""
     def __init__(self):
         super().__init__()
+        self.layout().setStackingMode(QStackedLayout.StackAll)
 
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
         for i in range(self.count()):
             # The current one will toggle by default, so we don't want
             # to toggle it again
-            if i == self.currentIndex():
-                continue
-            else:
+            #if i == self.currentIndex():
+            #    continue
+            #else:
                 self.widget(i).toggle_collapse()
 
     def addToolbox(self, toolbox):
