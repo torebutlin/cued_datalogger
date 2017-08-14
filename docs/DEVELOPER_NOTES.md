@@ -2,6 +2,8 @@
 
 These notes are intended to give a comprehensive breakdown of the Datalogger structure.
 
+## TODO: Maybe move this to Sphinx / ReadTheDocs as an `API Reference` page? eg. PyQtGraph
+
 ## Contents ##
 
 1. Infrastructure
