@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QMainWindow, QPushButton, QMouseEventTransition,
                              QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
                              QVBoxLayout,QFormLayout,QGroupBox,QRadioButton,QButtonGroup,QComboBox,
-                             QLineEdit,QAction,QMenu)
+                             QLineEdit,QAction,QMenu, QCheckBox)
 from PyQt5.QtGui import QPalette,QColor
 
 from analysis.circle_fit import CircleFitWidget
@@ -20,7 +20,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from bin.channel import ChannelSet
-from liveplotUI import DevConfigUI,ChanToggleUI
+from liveplotUI import DevConfigUI,ChanToggleUI,AdvToggleUI
 
 
 class CollapsingSideTabWidget(QSplitter):
@@ -118,8 +118,30 @@ class CollapsingSideTabWidget(QSplitter):
                 self.spacer.hide() 
                 self.collapsetimer.stop()   
         self.setSizes(sz)
-        
-class AnalysisTools_TabWidget(QTabWidget):
+
+class StackedToolbox(QStackedWidget):
+    """A stack of CollapsingSideTabWidgets"""
+    def __init__(self):
+        super().__init__()
+
+    def toggleCollapse(self):
+        """Toggle collapse of all the widgets in the stack"""
+        for i in range(self.count()):
+            # The current one will toggle by default, so we don't want
+            # to toggle it again
+            if i == self.currentIndex():
+                continue
+            else:
+                self.widget(i).toggle_collapse()
+
+    def addToolbox(self, toolbox):
+        """Add a toolbox to the stack"""
+        # Make sure that when this toolbox is collapsed, all the toolboxes
+        # collapse
+        toolbox.tabBar.tabBarDoubleClicked.connect(self.toggleCollapse)
+        self.addWidget(toolbox)
+
+class AnalysisDisplayTabWidget(QTabWidget):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
 
@@ -128,13 +150,13 @@ class AnalysisTools_TabWidget(QTabWidget):
     def init_ui(self):
         self.setMovable(False)
         self.setTabsClosable(False)
-
+        
+        self.timedomain_widget = TimeDomainWidget(self)
         # Create the tabs
-        self.addTab(TimeDomainWidget(self), "Time Domain")
+        self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(FrequencyDomainWidget(self), "Frequency Domain")
         self.addTab(SonogramWidget(self), "Sonogram")
         self.addTab(CircleFitWidget(self), "Modal Fitting")
-
 
 class AnalysisWindow(QMainWindow):
     def __init__(self):
@@ -144,6 +166,7 @@ class AnalysisWindow(QMainWindow):
         self.setWindowTitle('AnalysisWindow')
 
         #self.prepare_tools()
+        self.prepare_channelsets()
         self.init_ui()
 
         self.setFocus()
@@ -174,12 +197,11 @@ class AnalysisWindow(QMainWindow):
 
     def init_global_toolbox(self):
         self.global_toolbox = CollapsingSideTabWidget('right')
-
-        dev_configUI = DevConfigUI()
-        dev_configUI.config_button.setText('Open Oscilloscope')
-
-        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
-        self.global_toolbox.addTab(ChanToggleUI(),'Channel Toggle')
+        
+        self.gtools = GlobalTools(self)
+        
+        for i in range(len(self.gtools)):
+            self.global_toolbox.addTab(self.gtools.tool_pages[i],self.gtools.tabs_titles[i])
 
     def init_ui(self):
         menubar = self.menuBar()
@@ -191,23 +213,55 @@ class AnalysisWindow(QMainWindow):
         self.main_layout = QHBoxLayout()
         self.main_widget.setLayout(self.main_layout)
 
-        # Add the toolbox
-        self.toolbox = CollapsingSideTabWidget()
+       # Create the toolbox
+        self.init_toolbox()
+
+        # Create the global toolbox
+        self.init_global_toolbox()
+
+        # Create the analysis tools tab widget
+        self.display_tabwidget = AnalysisDisplayTabWidget(self)
+        self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
+        
+        datas = self.cs.get_channel_data(tuple(range(3)),'t')
+        self.plot_colours = ['r','g','b']
+        self.timeplots = []
+        for dt,p,i in zip(datas,self.plot_colours,range(len(self.cs))):
+            self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
+            
+        self.gtools.ResetChanBtns()
+        self.gtools.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+
+        # Add the widgets
         self.main_layout.addWidget(self.toolbox)
         self.main_layout.addWidget(self.display_tabwidget)
         self.main_layout.addWidget(self.global_toolbox)
-
         # Set the stretch factors
         self.main_layout.setStretchFactor(self.toolbox, 0)
-        self.main_layout.setStretchFactor(self.analysistools_tabwidget, 1)
+        self.main_layout.setStretchFactor(self.display_tabwidget, 1)
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
-
+        
+    def prepare_channelsets(self):
+        self.cs = ChannelSet(3)
+        t = np.arange(1000)/44100
+        y = np.sin(2*np.pi*1e3*t)
+        self.cs.add_channel_dataset(0,'t',data=y)
+        self.cs.add_channel_dataset(1,'t',data=y*np.sin(2*np.pi*10*t))
+        self.cs.add_channel_dataset(2,'t',data=np.sign(y))
+        
     def switch_tools(self,num):
         self.toolbox.clear()
         num = min(num,len(self.tools)-1)
         for i in range(len(self.tools[num])):
             self.toolbox.addTab(self.tools[num].tool_pages[i],
                                 self.tools[num].tabs_titles[i])
+
+    def display_channel_plots(self, btn):
+        chan_num = self.gtools.chantoggle_ui.chan_btn_group.id(btn)
+        if btn.isChecked():
+            self.timeplots[chan_num].setPen(self.plot_colours[chan_num])
+        else:
+            self.timeplots[chan_num].setPen(None)
             
 class ProjectMenu(QMenu):
     def __init__(self,parent):
@@ -226,8 +280,6 @@ class ProjectMenu(QMenu):
         exitAct.setStatusTip('Exit application')
         
         self.addActions([newAct,setAct,exitAct])
-
-        
         
 class BaseTools():
     def __init__(self,parent):
