@@ -65,11 +65,14 @@ class AddonWidget(QWidget):
 
     def discover_addons(self, path):
         """Find any addons contained in path and load them"""
+        print("Discovering addons...")
+        print("\t Found:")
         for file in os.listdir(path):
             if file.endswith(".py"):
                 with open(path + file, 'r') as f:
                     line1 = f.readline()
                 if line1 == "#datalogger_addon\n":
+                    print("\t {}".format(path+file))
                     self.add_addon(path + file)
 
     def load_new(self):

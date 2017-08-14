@@ -177,7 +177,6 @@ class AnalysisWindow(QMainWindow):
         self.init_ui()
 
         self.setFocus()
-        self.show()
 
     def init_toolbox(self):
         self.time_toolbox = CollapsingSideTabWidget('left')
@@ -270,5 +269,6 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     w = AnalysisWindow()
+    w.show()
 
     sys.exit(app.exec_())

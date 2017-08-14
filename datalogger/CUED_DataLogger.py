@@ -16,7 +16,8 @@ if __name__ == '__main__':
     # Create the window
     w = AnalysisWindow()
 
-    w.addon_widget.discover_addons(CurrentWorkspace.path + "/addons/")
+    w.addon_widget.discover_addons(CurrentWorkspace.path + "addons/")
 
     # Run the program
+    w.show()
     sys.exit(app.exec_())
