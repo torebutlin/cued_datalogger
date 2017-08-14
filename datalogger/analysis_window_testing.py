@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QMainWindow, QPushButton, QMouseEventTransition,
                              QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
                              QVBoxLayout,QFormLayout,QGroupBox,QRadioButton,QButtonGroup,QComboBox,
-                             QLineEdit,QAction,QMenu,QCheckBox)
+                             QLineEdit,QAction,QMenu)
 from PyQt5.QtGui import QPalette,QColor
 
 from analysis.circle_fit import CircleFitWidget
@@ -20,7 +20,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from bin.channel import ChannelSet
-from liveplotUI import DevConfigUI,ChanToggleUI,AdvToggleUI
+from liveplotUI import DevConfigUI,ChanToggleUI
 
 
 class CollapsingSideTabWidget(QSplitter):
@@ -128,11 +128,9 @@ class AnalysisTools_TabWidget(QTabWidget):
     def init_ui(self):
         self.setMovable(False)
         self.setTabsClosable(False)
-        
-        self.timedomain_widget = TimeDomainWidget(self)
-        
+
         # Create the tabs
-        self.addTab(self.timedomain_widget, "Time Domain")
+        self.addTab(TimeDomainWidget(self), "Time Domain")
         self.addTab(FrequencyDomainWidget(self), "Frequency Domain")
         self.addTab(SonogramWidget(self), "Sonogram")
         self.addTab(CircleFitWidget(self), "Modal Fitting")
@@ -144,34 +142,45 @@ class AnalysisWindow(QMainWindow):
 
         self.setGeometry(500,300,800,500)
         self.setWindowTitle('AnalysisWindow')
-        
-        self.prepare_channelsets()
-        self.prepare_tools()
+
+        #self.prepare_tools()
         self.init_ui()
 
         self.setFocus()
         self.show()
-        
-    def prepare_tools(self):
-        self.tools = []
-        self.tools.append(TimeTools(self))
-        self.tools.append(FreqTools(self))
-        self.tools.append(ModalTools(self))
-        
-    def prepare_global_tools(self):
-        self.global_toolbox = CollapsingSideTabWidget(widget_side='right')
-        self.gtools = GlobalTools(self)
-        for i in range(len(self.gtools)):
-            self.global_toolbox.addTab(self.gtools.tool_pages[i],self.gtools.tabs_titles[i])
-            
-    def prepare_channelsets(self):
-        self.cs = ChannelSet(3)
-        t = np.arange(1000)/44100
-        y = np.sin(2*np.pi*1e3*t)
-        self.cs.add_channel_dataset(0,'t',data=y)
-        self.cs.add_channel_dataset(1,'t',data=y*np.sin(2*np.pi*10*t))
-        self.cs.add_channel_dataset(2,'t',data=np.sign(y))
-        
+
+    def init_toolbox(self):
+        self.time_toolbox = CollapsingSideTabWidget('left')
+        self.time_toolbox.addTab(QPushButton("Button 1"), "TimeTab1")
+        self.time_toolbox.addTab(QPushButton("Button 2"), "TimeTab2")
+
+        self.frequency_toolbox = CollapsingSideTabWidget('left')
+        self.frequency_toolbox.addTab(QPushButton("Button 1"), "FreqTab1")
+        self.frequency_toolbox.addTab(QPushButton("Button 2"), "FreqTab2")
+
+        self.sonogram_toolbox = CollapsingSideTabWidget('left')
+        self.sonogram_toolbox.addTab(QPushButton("Button 1"), "SonTab1")
+        self.sonogram_toolbox.addTab(QPushButton("Button 2"), "SonTab2")
+
+        self.modal_analysis_toolbox = CollapsingSideTabWidget('left')
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 1"), "ModalTab1")
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 2"), "ModalTab2")
+
+        self.toolbox = StackedToolbox()
+        self.toolbox.addToolbox(self.time_toolbox)
+        self.toolbox.addToolbox(self.frequency_toolbox)
+        self.toolbox.addToolbox(self.sonogram_toolbox)
+        self.toolbox.addToolbox(self.modal_analysis_toolbox)
+
+    def init_global_toolbox(self):
+        self.global_toolbox = CollapsingSideTabWidget('right')
+
+        dev_configUI = DevConfigUI()
+        dev_configUI.config_button.setText('Open Oscilloscope')
+
+        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
+        self.global_toolbox.addTab(ChanToggleUI(),'Channel Toggle')
+
     def init_ui(self):
         menubar = self.menuBar()
         menubar.addMenu(ProjectMenu(self))
@@ -185,42 +194,14 @@ class AnalysisWindow(QMainWindow):
         # Add the toolbox
         self.toolbox = CollapsingSideTabWidget()
         self.main_layout.addWidget(self.toolbox)
-
-        # Add the analysis tools tab widget
-        self.analysistools_tabwidget = AnalysisTools_TabWidget(self)
-        datas = self.cs.get_channel_data(tuple(range(3)),'t')
-        self.plot_colours = ['r','g','b']
-        self.timeplots = []
-        for dt,p,i in zip(datas,self.plot_colours,range(len(self.cs))):
-            self.timeplots.append(self.analysistools_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
-        
-        self.main_layout.addWidget(self.analysistools_tabwidget)
-                
-        self.analysistools_tabwidget.currentChanged.connect(self.switch_tools)
-        self.switch_tools(0)
-        
-        # Add the global tools tab widget
-        self.prepare_global_tools()
+        self.main_layout.addWidget(self.display_tabwidget)
         self.main_layout.addWidget(self.global_toolbox)
 
         # Set the stretch factors
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.analysistools_tabwidget, 1)
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
-        
-        self.gtools.ResetChanBtns()
-        self.gtools.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
-        
-        ###--------------------- UI CallBack --------------------------------
-    
-        
-    def display_channel_plots(self, btn):
-        chan_num = self.gtools.chantoggle_ui.chan_btn_group.id(btn)
-        if btn.isChecked():
-            self.timeplots[chan_num].setPen(self.plot_colours[chan_num])
-        else:
-            self.timeplots[chan_num].setPen(None)
-                
+
     def switch_tools(self,num):
         self.toolbox.clear()
         num = min(num,len(self.tools)-1)
