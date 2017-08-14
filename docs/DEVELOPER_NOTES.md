@@ -101,14 +101,7 @@ The `Workspace` class stores the workspace attributes and has methods for saving
 #### ChannelSets, Channels and DataSets:
 The Datalogger uses a three-tier structure for storing data, comprising of ChannelSets, Channels and DataSets. See `channel.py` for further information.
 
-                                               ChannelSet
-               _____________________________________|_________________________________...
-              /                         |                         |
-          Channel 0                  Channel 1                 Channel 2              ...
-         /         \                /         \               /         \      
-     MetaData    DataSets       MetaData    DataSets       MetaData    DataSets       ...
-        |        | | | |           |        | | | |           |        | | | |
-       ...         ...            ...         ...            ...         ...          ...
+![ChannelSet structure](channel_structure.png)
 
 *DataSets*: These are the lowest structure, effectively a vector of values with a name (id\_) and units. 
 
