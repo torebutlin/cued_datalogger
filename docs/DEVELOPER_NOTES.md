@@ -297,16 +297,16 @@ Both the left and right widgets are custom tabwidget, written to be collapsible 
 Read on 4.4 for the implementation
 
 ### 4.3 Menus
-A simple menu is implemented by subclassing QMenu and adding QActions or another QMenu to the QMenu. Then, the subclassed QMenu can be added to the Main Window's menubar. 
+A simple menu is implemented by subclassing **QMenu** and adding **QActions** or another **QMenu** to the **QMenu**. Then, the subclassed **QMenu** can be added to the Main Window's _menubar_. 
 In the menubar, there are the following menus:
 
-* Project - ProjectMenu class
+* Project - _ProjectMenu_ class
 
-* Data - DataMenu Class
+* Data - _DataMenu_ Class
 
-* View - ViewMenu Class
+* View - _ViewMenu_ Class
 
-* Addons - AddonsMenu Class
+* Addons - _AddonsMenu_ Class
 
 #### Project menu
 
@@ -327,24 +327,25 @@ Not implemented yet.
 This menu contains any additional addons that are installed.
 
 ### 4.4 Collapsible Tabs
-The collapsible left and right widgets mentioned in 4.2 is a custom class CollapsingSideTabWidget that subclasses QSplitter. 
+The collapsible left and right widgets mentioned in 4.2 is a custom class **CollapsingSideTabWidget** that subclasses **QSplitter**. 
 
-The widget is then mainly made up of two widgets: QStackedWidget and QTabBar. QStackedWidget is to contain all the analysis tools but showing one tool at a time, while QTabBar shows all the tools available and switch the respective tool when clicked on.
+The widget is then mainly made up of two widgets: **QStackedWidget** and **QTabBar**. **QStackedWidget** is to contain all the analysis tools but showing one tool at a time, while **QTabBar** shows all the tools available and switch the respective tool when clicked on.
 
-Animation is implemented to take advantage of the QSplitter resizing capabilities, which involves a third empty widget.
+Animation is implemented to take advantage of the **QSplitter** resizing capabilities, which involves a third empty widget.
 
 ### 4.5 Tools
-Currently, the idea is each type of analysis has its own set of tools, e.g. time series analysis and frequency series analysis has distinct set of tools. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.
+Currently, the idea is each type of analysis has its own set of tools, _e.g. time series analysis and frequency series analysis has distinct set of tools_. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.
 
-An abstract class BaseTools is written to streamline the process of adding and display tools in the collapsible tabs. This is merely to contain the tools and the label to the respective tools
+An _abstract_ class **BaseTools** is written to streamline the process of addi ng and display tools in the collapsible tabs. This merely contains the tools and the label to the respective analysis.
 
-To properly utilise this class, it must be derived and redefine the initTools method. Under here, a tool can be written as a QWidget, and then added using the method add_tool, supplying a name for that tool.
+To properly utilise this class, it must be derived and redefine the `initTools` method. Under here, a tool can be written as a **QWidget**, and then added using the method `add_tool`, supplying a name for that tool.
 
-Four Tools are created:
-* TimeTools: Tools for time series analysis
-* FreqTools: Tools for frequency series analysis
-* ModalTools: Tools for modal analysis
-* GlobalTools: Tools that is common for all analysis, this is added to the right widget mentioned before
+A variable  named _parent_ is provided to allow any signal and slots to be made to the main window. 
 
-A new Tools class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the prepare_tools method in the Main Window
+Four **Tools** are created:
+* __TimeTools__: Tools for time series analysis
+* __FreqTools__: Tools for frequency series analysis
+* __ModalTools__: Tools for modal analysis
+* __GlobalTools__: Tools that is common for all analysis, this is added to the right widget mentioned before
 
+A new **Tools** class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the `prepare_tools` method in the Main Window, and check that it opens for the correct analysis.
