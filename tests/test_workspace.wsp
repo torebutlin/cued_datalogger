@@ -1,0 +1,8 @@
+# Workspace metadata
+name='Test Workspace'
+path='/path/to/test/workspace.wsp'
+
+# Workspace preferences
+add_ons_enabled=0
+pyqtgraph_inverted=1
+pyqtgraph_antialias=0

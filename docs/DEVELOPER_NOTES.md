@@ -2,6 +2,8 @@
 
 These notes are intended to give a comprehensive breakdown of the Datalogger structure.
 
+## TODO: Maybe move this to Sphinx / ReadTheDocs as an `API Reference` page? eg. PyQtGraph
+
 ## Contents ##
 
 1. Infrastructure
@@ -14,7 +16,7 @@ These notes are intended to give a comprehensive breakdown of the Datalogger str
 
 2. Datalogger: Universal components
 
-    2.1 Projects
+    2.1 Workspaces
     
     2.2 Data storage and interaction
 
@@ -67,28 +69,39 @@ See the [SciPy Reference](https://docs.scipy.org/doc/scipy-0.19.1/reference/).
 
 ### 1.3 Code style and formatting
 
-Please adhere to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) as closely as possible.
+Please adhere to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) as closely as possible. 
 
 
 ## 2. Datalogger: Universal components
 
-### 2.1 Projects
+### 2.1 Workspaces
 
-Not implemented yet.
+Workspaces provide a way for the user to set up, save, and load customised configurations of the DataLogger. In this way, specific workspaces can be created (eg. for undergraduate teaching) to limit the functionality available.
+
+#### The `.wsp` format
+Workspaces are saved in a unique format, `.wsp`. WSP files are effectively a list of the settings for the DataLogger, allowing the user to enable add ons, set display options and suchlike. An example of a `.wsp` file can be found in `tests/test_workspace.wsp`.
+
+*Rules for a `.wsp` file*:
+
+* Only settings defined in the `Workspace` class are permitted (see below)
+
+* Settings that are strings (eg. workspace names, paths) must use single quotes `''`
+
+* Either boolean (`False / True`) or integer (`0 / 1`) values may be used for flags. It is recommended to use integers, for clarity
+
+* The only form of line that will be interpreted as a setting is `variable_name=variable_value` where `variable_value` can either be a string (`variable_name='example'`), integer `variable_name=1`, or boolean (`variable_name=False`)
+
+* Hence comments may be inserted into the `.wsp` file. It is recommended to use Python comment syntax (`#` and `""" """`)
+
+#### The `Workspace` class
+The `Workspace` class stores the workspace attributes and has methods for saving, loading, configuring, and displaying the workspace settings. Normally, a `CurrentWorkspace` instance is initiated that will store the current settings and all the workspace functionality will be accessed through the `CurrentWorkspace`.
 
 ### 2.2 Data storage and interaction
 
 #### ChannelSets, Channels and DataSets:
 The Datalogger uses a three-tier structure for storing data, comprising of ChannelSets, Channels and DataSets. See `channel.py` for further information.
 
-                                               ChannelSet
-               _____________________________________|_________________________________...
-              /                         |                         |
-          Channel 0                  Channel 1                 Channel 2              ...
-         /         \                /         \               /         \      
-     MetaData    DataSets       MetaData    DataSets       MetaData    DataSets       ...
-        |        | | | |           |        | | | |           |        | | | |
-       ...         ...            ...         ...            ...         ...          ...
+![ChannelSet structure](channel_structure.png)
 
 *DataSets*: These are the lowest structure, effectively a vector of values with a name (id\_) and units. 
 
@@ -110,12 +123,13 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 * `omega`\* - Angular frequency (rad), calculated from the sample rate and number of samples
 
-* `spectrum` - The spectral amplitudes given by the Fourier Transform
+* `spectrum` - The complex spectrum given by the Fourier Transform
 
-* `sonogram` - The sonogram array, shape (number of FFTs, frequencies)
+* `sonogram` - The complex sonogram array, with shape (number of FFTs, frequencies)
 
-* `sonogram_phase` - Phase data associated with the sonogram (rad)
+* `sonogram_frequency`\* - The frequency bins (Hz) used in plotting the sonogram. Not implemented yet, but will be calculated from the sonogram parameters.
 
+* `sonogram_omega`\* - The frequency bins (rad) used in plotting the sonogram. Not implemented yet, but will be calculated from the sonogram parameters.
 
 *Metadata*:
 
@@ -129,7 +143,7 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 * `calibration_factor` - Not implemented yet
 
-* `transfer_function_type` - either `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
+* `transfer_function_type` - either `None`, `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
 
 
 ### 2.3 Graph interaction
@@ -146,8 +160,7 @@ After that, initialise a [`PlotItem`](http://www.pyqtgraph.org/documentation/gra
 In addition to mouse interactions, pyqtgraph also included interactive data selection. 
 The [documentation](http://www.pyqtgraph.org/documentation/region_of_interest.html) includes a basic introduction. 
     
-For our purposes, the [`LinearRegionItem`](http://www.pyqtgraph.org/documentation/graphicsItems/linearregionitem.html#pyqtgraph.LinearRegionItem) 
-and [`InfiniteLine`](http://www.pyqtgraph.org/documentation/graphicsItems/infiniteline.html#pyqtgraph.InfiniteLine) from pyqtgraph are used. 
+For our purposes, the [`LinearRegionItem`](http://www.pyqtgraph.org/documentation/graphicsItems/linearregionitem.html#pyqtgraph.LinearRegionItem) and [`InfiniteLine`](http://www.pyqtgraph.org/documentation/graphicsItems/infiniteline.html#pyqtgraph.InfiniteLine) from pyqtgraph are used. 
 In general, the item is initialised and added to a PlotItem, Then, its Signal (usually emitted when its position has changed) is connected to a method which does something to the data in the selected region.
     
 Examples by pyqtgraph on graph interaction can be accessed by inputting the line on command line after installing pyqtgraph:
@@ -157,8 +170,20 @@ Examples by pyqtgraph on graph interaction can be accessed by inputting the line
 ### 2.4 Import / export
 Not implemented yet.
 
+There will be options for importing and exporting from:
+
+* `.mat` files from the old Datalogger
+
+* CSV, Excel, spreadsheet, text files etc
+
+* Any custom file types (eg. George Stoppani)
+
+* `.wav`, `.mp3` and other audio filetypes.
+
 ### 2.5 History Tree
 Not implemented yet.
+
+There will be some exciting and ideally simple way of undoing operations, perhaps using a PhotoShop/GIMP-style history tree that stores what operations have been performed and offers the ability to revert back to a specific point.
 
 ## 3. Datalogger: Acquisition module
 
@@ -263,24 +288,25 @@ Not implemented yet.
 The master analysis window has:
 
 * A menubar (see 4.3)
+* A widget containing the tools used for analysis on the left
+* A TabWidget to display the results of the different tools in the middle for different type of analysis
+* A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right
 
-* A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection
+Both the left and right widgets are custom tabwidget, written to be collapsible tabs. The idea of this is to hide away the tools to allow maximum view of the results in the middle, while having the tabs visible to the user, allowing them to open up the tools.
 
-* A TabWidget containing the tools used for analysis
+Read on 4.4 for the implementation
 
 ### 4.3 Menus
-
-Not implemented yet.
-
+A simple menu is implemented by subclassing **QMenu** and adding **QActions** or another **QMenu** to the **QMenu**. Then, the subclassed **QMenu** can be added to the Main Window's _menubar_. 
 In the menubar, there are the following menus:
 
-* Project
+* Project - _ProjectMenu_ class
 
-* Data
+* Data - _DataMenu_ Class
 
-* View
+* View - _ViewMenu_ Class
 
-* Addons
+* Addons - _AddonsMenu_ Class
 
 #### Project menu
 
@@ -299,3 +325,27 @@ This menu contains options for importing and exporting data.
 Not implemented yet.
 
 This menu contains any additional addons that are installed.
+
+### 4.4 Collapsible Tabs
+The collapsible left and right widgets mentioned in 4.2 is a custom class **CollapsingSideTabWidget** that subclasses **QSplitter**. 
+
+The widget is then mainly made up of two widgets: **QStackedWidget** and **QTabBar**. **QStackedWidget** is to contain all the analysis tools but showing one tool at a time, while **QTabBar** shows all the tools available and switch the respective tool when clicked on.
+
+Animation is implemented to take advantage of the **QSplitter** resizing capabilities, which involves a third empty widget.
+
+### 4.5 Tools
+Currently, the idea is each type of analysis has its own set of tools, _e.g. time series analysis and frequency series analysis has distinct set of tools_. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.
+
+An _abstract_ class **BaseTools** is written to streamline the process of addi ng and display tools in the collapsible tabs. This merely contains the tools and the label to the respective analysis.
+
+To properly utilise this class, it must be derived and redefine the `initTools` method. Under here, a tool can be written as a **QWidget**, and then added using the method `add_tool`, supplying a name for that tool.
+
+A variable  named _parent_ is provided to allow any signal and slots to be made to the main window. 
+
+Four **Tools** are created:
+* __TimeTools__: Tools for time series analysis
+* __FreqTools__: Tools for frequency series analysis
+* __ModalTools__: Tools for modal analysis
+* __GlobalTools__: Tools that is common for all analysis, this is added to the right widget mentioned before
+
+A new **Tools** class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the `prepare_tools` method in the Main Window, and check that it opens for the correct analysis.

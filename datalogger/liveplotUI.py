@@ -8,19 +8,21 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication )
+    QCheckBox,QButtonGroup,QTextEdit,QApplication)
 from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
-QPalette,QPainter,QStyleOption,QStyle)
+QPalette,QPainter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.Qt import QStyleOption,QStyle
+
 import pyqtgraph as pg
+
 import numpy as np
 import functools as fct
-import ast
-
 
 from collections.abc import Sequence
 from acquisition.ChanLineText import ChanLineText
 from acquisition.ChanMetaWin import ChanMetaWin
+#from acquisition.CustomPlot import CustomPlot
 import acquisition.myRecorder as mR
 try:
     import acquisition.NIRecorder as NIR
@@ -33,6 +35,7 @@ except ModuleNotFoundError:
     NI_drivers = False
 
 from bin import channel as ch
+from bin.custom_plot import CustomPlotWidget
 
 import math
 
@@ -162,29 +165,11 @@ class LiveplotApp(QMainWindow):
     #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
+        self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        self.timeplot.disableAutoRange(axis=None)
-        self.timeplot.setMouseEnabled(x=True,y = True)
-        
-        print('-------PLOT TEST-------')
-        try:
-            con_menu = self.timeplot.getViewBox().menu
-            #con_menu.axes = None
-            #con_menu.removeAction(con_menu.viewAll)
-            con_menu.removeAction(con_menu.leftMenu.menuAction())
-            self.timeplotcanvas.sceneObj.contextMenu = []
-            
-            ext_menu = self.timeplot.ctrlMenu
-            ext_submenus = self.timeplot.subMenus
-            ext_menu.removeAction(ext_submenus[1].menuAction())
-            ext_menu.removeAction(ext_submenus[2].menuAction())
-            ext_menu.removeAction(ext_submenus[3].menuAction())
-            ext_menu.removeAction(ext_submenus[5].menuAction())
-        except Exception as e:
-            print(e)
-        print('-------PLOT TEST-------')
+        #self.timeplot.disableAutoRange(axis=None)
+        #self.timeplot.setMouseEnabled(x=True,y = True)
         
         # Set up FFT plot, add to splitter
         self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
@@ -193,6 +178,7 @@ class LiveplotApp(QMainWindow):
         self.fftplot.disableAutoRange(axis=None)
         
         self.ResetPlots()
+        
         self.mid_splitter.addWidget(self.timeplotcanvas)
         self.mid_splitter.addWidget(self.fftplotcanvas)
         
@@ -322,7 +308,6 @@ class LiveplotApp(QMainWindow):
         self.chan_toggle_ext = AdvToggleUI(self.main_widget)
         self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
         self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
-    
      
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -474,6 +459,7 @@ class LiveplotApp(QMainWindow):
                 
     def meta_win_closed(self):
         self.meta_window = None
+        self.update_chan_names()
 
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
@@ -787,12 +773,12 @@ class LiveplotApp(QMainWindow):
             print(traceback.format_tb(tb))
             print('Cannot recording configs')
 
-            # Reset and change channel toggles
-        self.ResetChanBtns()
+        # Reset and change channel toggles
         self.ResetMetaData()
+        self.ResetChanBtns()
+        self.connect_rec_signals()
         
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
-        self.connect_rec_signals()
         
     def ResetPlots(self):
             n_plotlines = len(self.plotlines)
@@ -814,9 +800,6 @@ class LiveplotApp(QMainWindow):
                 fplot.sigClicked.connect(self.display_chan_config)
                 self.plotlines.append(fplot)
                 
-            
-            self.timeplot.setLimits(xMin = 0,xMax = self.timedata[-1])
-            self.timeplot.setRange(xRange = (0,self.timedata[-1]),yRange = (-1,1*self.rec.channels))
             self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
             self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
@@ -877,6 +860,8 @@ class LiveplotApp(QMainWindow):
                     self.chantoggle_UI.checkbox_layout.removeWidget(chan_btn)
                     self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
+            
+        self.update_chan_names()
                     
     def ResetRecConfigs(self):
         self.RecUI.rec_boxes[3].clear()
@@ -908,18 +893,24 @@ class LiveplotApp(QMainWindow):
     def ResetMetaData(self):
         self.live_chanset = ch.ChannelSet(self.rec.channels)
         
+        
     def ResetSplitterSizes(self):
         #self.left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
         self.main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2]) 
         self.mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
         self.right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
+        
+    def update_chan_names(self):
+        names = self.live_chanset.get_channel_metadata(tuple(range(self.rec.channels)),'name')
+        for n,name in enumerate(names):
+            chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
+            chan_btn.setText(name)
+        
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-        # Save the time series
-        #self.parent.cs.chan_set_data('t', np.arange(len(data))/self.rec.rate,num=0)
-        # Save the values
+        self.parent.cs.set_channel_metadata(0,self.live_chanset.get_channel_metadata(0))
         self.parent.cs.set_channel_data(0,'y',data)
         self.dataSaved.emit()        
         print('Data saved!')
@@ -1231,7 +1222,7 @@ class AdvToggleUI(BaseWidget):
         lay.addWidget(self.chan_text4)
         lay.addWidget(self.search_status)
                 
-        self.search_status.showMessage('Awaiting...')
+        self.search_status.showMessage('Awaiting...')        
         
 if __name__ == '__main__':
     app = 0 
