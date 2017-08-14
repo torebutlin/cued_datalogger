@@ -35,7 +35,8 @@ class MatlabList(list):
                 elif isinstance(i, int):
                     output.append(self[i])
             # Remove any multiple occurrences using set
-            return list(set(sorted(output)))
+            #return list(set(sorted(output)))
+            return list(set(output))
         else:
             return super().__getitem__(index)
 

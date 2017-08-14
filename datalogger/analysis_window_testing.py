@@ -17,6 +17,7 @@ from analysis.time_domain import TimeDomainWidget
 from analysis.frequency_domain import FrequencyDomainWidget
 
 import pyqtgraph as pg
+import numpy as np
 
 from bin.channel import ChannelSet
 from liveplotUI import DevConfigUI,ChanToggleUI
@@ -161,7 +162,11 @@ class AnalysisWindow(QMainWindow):
             self.global_toolbox.addTab(gtool.tool_pages[i],gtool.tabs_titles[i])
             
     def prepare_channelsets(self):
-        pass
+        self.cs = ChannelSet(3)
+        t = np.arange(1000)/44100
+        self.cs.add_channel_dataset(0,'t',data=np.sin(2*np.pi*t))
+        self.cs.add_channel_dataset(1,'t',data=np.sin(2*np.pi*1e3*t)*np.exp(-1))
+        self.cs.add_channel_dataset(2,'t',data=np.sign(np.sin(t)))
         
     def init_ui(self):
         menubar = self.menuBar()
