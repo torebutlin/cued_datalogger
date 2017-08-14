@@ -69,25 +69,18 @@ class CollapsingSideTabWidget(QSplitter):
             self.SPACE_IND = 0
         self.TAB_SIZE = self.tabBar.sizeHint().width()
         
-        
-        self.setCollapsible(self.PAGE_IND,False)
+        self.setHandleWidth(1)
+        for hd in [self.handle(i) for i in range(self.count())]:
+            hd.setDisabled(True)
         self.spacer.hide()    
 
     def addTab(self, widget, title):
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
 
-    def toggle_collapse(self):
-        '''
-        if self.collapsed:
-            self.tabPages.show()
-        else:
-            self.tabPages.hide()
-           ''' 
-            
+    def toggle_collapse(self):          
         self.spacer.show() 
         self.collapsed = not self.collapsed
-        
         self.collapsetimer.start(20)
 
     def changePage(self, index):
@@ -149,7 +142,6 @@ class AnalysisWindow(QMainWindow):
         self.setGeometry(500,300,800,500)
         self.setWindowTitle('AnalysisWindow')
         
-        
         self.prepare_tools()
         self.init_ui()
 
@@ -167,9 +159,11 @@ class AnalysisWindow(QMainWindow):
         gtool = GlobalTools(self)
         for i in range(len(gtool)):
             self.global_toolbox.addTab(gtool.tool_pages[i],gtool.tabs_titles[i])
+            
+    def prepare_channelsets(self):
+        pass
         
     def init_ui(self):
-       
         menubar = self.menuBar()
         menubar.addMenu(ProjectMenu(self))
         
@@ -198,7 +192,7 @@ class AnalysisWindow(QMainWindow):
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.analysistools_tabwidget, 1)
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
-        
+
     def switch_tools(self,num):
         self.toolbox.clear()
         num = min(num,len(self.tools)-1)
