@@ -1,8 +1,5 @@
 import numpy as np
-if __name__ == '__main__':
-    from numpy_functions import MatlabList
-else:
-    from .numpy_functions import MatlabList
+from .numpy_functions import MatlabList
 
 
 class ChannelSet():
