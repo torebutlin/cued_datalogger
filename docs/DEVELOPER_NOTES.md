@@ -14,7 +14,7 @@ These notes are intended to give a comprehensive breakdown of the Datalogger str
 
 2. Datalogger: Universal components
 
-    2.1 Projects
+    2.1 Workspaces
     
     2.2 Data storage and interaction
 
@@ -67,14 +67,32 @@ See the [SciPy Reference](https://docs.scipy.org/doc/scipy-0.19.1/reference/).
 
 ### 1.3 Code style and formatting
 
-Please adhere to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) as closely as possible.
+Please adhere to the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) as closely as possible. 
 
 
 ## 2. Datalogger: Universal components
 
-### 2.1 Projects
+### 2.1 Workspaces
 
-Not implemented yet.
+Workspaces provide a way for the user to set up, save, and load customised configurations of the DataLogger. In this way, specific workspaces can be created (eg. for undergraduate teaching) to limit the functionality available.
+
+#### The `.wsp` format
+Workspaces are saved in a unique format, `.wsp`. WSP files are effectively a list of the settings for the DataLogger, allowing the user to enable add ons, set display options and suchlike. An example of a `.wsp` file can be found in `tests/test_workspace.wsp`.
+
+*Rules for a `.wsp` file*:
+
+* Only settings defined in the `Workspace` class are permitted (see below)
+
+* Settings that are strings (eg. workspace names, paths) must use single quotes `''`
+
+* Either boolean (`False / True`) or integer (`0 / 1`) values may be used for flags. It is recommended to use integers, for clarity
+
+* The only form of line that will be interpreted as a setting is `variable_name=variable_value` where `variable_value` can either be a string (`variable_name='example'`), integer `variable_name=1`, or boolean (`variable_name=False`)
+
+* Hence comments may be inserted into the `.wsp` file. It is recommended to use Python comment syntax (`#` and `""" """`)
+
+#### The `Workspace` class
+The `Workspace` class stores the workspace attributes and has methods for saving, loading, configuring, and displaying the workspace settings. Normally, a `CurrentWorkspace` instance is initiated that will store the current settings and all the workspace functionality will be accessed through the `CurrentWorkspace`.
 
 ### 2.2 Data storage and interaction
 
@@ -110,12 +128,13 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 * `omega`\* - Angular frequency (rad), calculated from the sample rate and number of samples
 
-* `spectrum` - The spectral amplitudes given by the Fourier Transform
+* `spectrum` - The complex spectrum given by the Fourier Transform
 
-* `sonogram` - The sonogram array, shape (number of FFTs, frequencies)
+* `sonogram` - The complex sonogram array, with shape (number of FFTs, frequencies)
 
-* `sonogram_phase` - Phase data associated with the sonogram (rad)
+* `sonogram_frequency`\* - The frequency bins (Hz) used in plotting the sonogram. Not implemented yet, but will be calculated from the sonogram parameters.
 
+* `sonogram_omega`\* - The frequency bins (rad) used in plotting the sonogram. Not implemented yet, but will be calculated from the sonogram parameters.
 
 *Metadata*:
 
@@ -129,7 +148,7 @@ For consistency, only the following names are permitted for DataSets and metadat
 
 * `calibration_factor` - Not implemented yet
 
-* `transfer_function_type` - either `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
+* `transfer_function_type` - either `None`, `'displacement'`, `'velocity'`, or `'acceleration'`, indicating what type of transfer function is stored
 
 
 ### 2.3 Graph interaction
@@ -157,8 +176,20 @@ Examples by pyqtgraph on graph interaction can be accessed by inputting the line
 ### 2.4 Import / export
 Not implemented yet.
 
+There will be options for importing and exporting from:
+
+* `.mat` files from the old Datalogger
+
+* CSV, Excel, spreadsheet, text files etc
+
+* Any custom file types (eg. George Stoppani)
+
+* `.wav`, `.mp3` and other audio filetypes.
+
 ### 2.5 History Tree
 Not implemented yet.
+
+There will be some exciting and ideally simple way of undoing operations, perhaps using a PhotoShop/GIMP-style history tree that stores what operations have been performed and offers the ability to revert back to a specific point.
 
 ## 3. Datalogger: Acquisition module
 
