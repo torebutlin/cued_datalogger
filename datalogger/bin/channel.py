@@ -111,12 +111,13 @@ class ChannelSet():
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
-            output = []
+            #output = []
             # Iterate through the given channels
-            for channel in self.channels[channel_index]:
+            #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
-                output.append(channel.get_ids())
-            return output
+            #    output.append(channel.get_ids())
+            #return output
+            return [channel.get_ids() for channel in self.channels[channel_index]]
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_ids()
@@ -126,8 +127,9 @@ class ChannelSet():
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
-            for channel in self.channels[channel_index]:
-                return channel.get_data(id_)
+            #for channel in self.channels[channel_index]:
+            #    return channel.get_data(id_)
+            return [channel.get_data(id_) for channel in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_data(id_)
 
@@ -136,8 +138,9 @@ class ChannelSet():
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
-            for channel in self.channels[channel_index]:
-                return channel.get_units(id_)
+            #for channel in self.channels[channel_index]:
+            #    return channel.get_units(id_)
+            return [channel.get_units(id_) for channel in self.channels[channel_index]] 
         else:
             return self.channels[channel_index].get_units(id_)
 
@@ -147,9 +150,10 @@ class ChannelSet():
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
             # Iterate through the given channels
-            for channel in self.channels[channel_index]:
+            #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
-                return channel.get_metadata(metadata_id)
+                #return channel.get_metadata(metadata_id)
+            return [channel.get_metadata(metadata_id) for channel in self.channels[channel_index]] 
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)
