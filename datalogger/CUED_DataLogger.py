@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from bin.workspace import Workspace
-from analysis_window import AnalysisWindow
+from analysis_window_testing import AnalysisWindow
 
 
 if __name__ == '__main__':
@@ -15,6 +15,8 @@ if __name__ == '__main__':
 
     # Create the window
     w = AnalysisWindow()
+
+    w.addon_widget.discover_addons(CurrentWorkspace.path + "/addons/")
 
     # Run the program
     sys.exit(app.exec_())

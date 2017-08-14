@@ -9,7 +9,7 @@ class Workspace():
     def __init__(self):
         # Set default values:
         self.name = "Default Workspace"
-        self.path = None
+        self.path = "."
         self.add_ons_enabled = 1
         self.pyqtgraph_inverted = 0
         self.pyqtgraph_antialias = 1
