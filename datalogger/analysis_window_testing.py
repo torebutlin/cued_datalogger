@@ -155,6 +155,24 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.addTab(SonogramWidget(self), "Sonogram")
         self.addTab(CircleFitWidget(self), "Modal Fitting")
 
+class ProjectMenu(QMenu):
+    def __init__(self,parent):
+        super().__init__('Project',parent)
+        self.parent = parent
+        self.initMenu()
+        
+    def initMenu(self):
+        newAct = QAction('&New', self)        
+        newAct.setShortcut('Ctrl+N')
+        
+        setAct = QAction('&Settings', self)
+        
+        exitAct = QAction('&Exit', self)        
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+        
+        self.addActions([newAct,setAct,exitAct])
+
 class AnalysisWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -192,13 +210,28 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.addToolbox(self.sonogram_toolbox)
         self.toolbox.addToolbox(self.modal_analysis_toolbox)
 
-    def init_global_toolbox(self):
-        self.global_toolbox = CollapsingSideTabWidget('right')
+    def init_global_toolbox(self):        
+        self.gtools = CollapsingSideTabWidget('right')
         
-        self.gtools = GlobalTools(self)
+        dev_configUI = DevConfigUI()
+        dev_configUI.config_button.setText('Open Oscilloscope')
+        self.gtools.addTab(dev_configUI,'Oscilloscope')
         
-        for i in range(len(self.gtools)):
-            self.global_toolbox.addTab(self.gtools.tool_pages[i],self.gtools.tabs_titles[i])
+        
+        chan_toggle = QWidget()
+        chan_toggle_layout = QVBoxLayout(chan_toggle)
+        self.chantoggle_ui = ChanToggleUI()
+        self.chantoggle_ui.toggle_ext_button.deleteLater()
+        self.chantoggle_ui.chan_text.deleteLater()
+        advtoggle_ui = AdvToggleUI()
+        advtoggle_ui.close_ext_toggle.deleteLater()
+         
+        chan_toggle_layout.addWidget(self.chantoggle_ui)
+        chan_toggle_layout.addWidget(advtoggle_ui)
+        self.gtools.addTab(chan_toggle,'Channel Toggle')  
+        
+        self.global_toolbox = StackedToolbox()
+        self.global_toolbox.addToolbox(self.gtools)
 
     def init_ui(self):
         menubar = self.menuBar()
@@ -226,8 +259,8 @@ class AnalysisWindow(QMainWindow):
         for dt,p,i in zip(datas,self.plot_colours,range(len(self.cs))):
             self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
             
-        self.gtools.ResetChanBtns()
-        self.gtools.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+        self.ResetChanBtns()
+        self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
 
         # Add the widgets
         self.main_layout.addWidget(self.toolbox)
@@ -254,107 +287,24 @@ class AnalysisWindow(QMainWindow):
                                 self.tools[num].tabs_titles[i])
 
     def display_channel_plots(self, btn):
-        chan_num = self.gtools.chantoggle_ui.chan_btn_group.id(btn)
+        chan_num = self.chantoggle_ui.chan_btn_group.id(btn)
         if btn.isChecked():
             self.timeplots[chan_num].setPen(self.plot_colours[chan_num])
         else:
             self.timeplots[chan_num].setPen(None)
             
-class ProjectMenu(QMenu):
-    def __init__(self,parent):
-        super().__init__('Project',parent)
-        self.parent = parent
-        self.initMenu()
-        
-    def initMenu(self):
-        newAct = QAction('&New', self)        
-        newAct.setShortcut('Ctrl+N')
-        
-        setAct = QAction('&Settings', self)
-        
-        exitAct = QAction('&Exit', self)        
-        exitAct.setShortcut('Ctrl+Q')
-        exitAct.setStatusTip('Exit application')
-        
-        self.addActions([newAct,setAct,exitAct])
-        
-class BaseTools():
-    def __init__(self,parent):
-        self.parent = parent
-        self.tool_pages = []
-        self.tabs_titles = []
-        self.initTools()
-        
-    def __len__(self):
-        return (len(self.tool_pages))
-        
-    def initTools(self):
-        pass
-    
-    def add_tools(self,widget,name = None):
-        self.tool_pages.append(widget)
-        if name == None:
-            name = 'Blank'
-        self.tabs_titles.append(name)
-        
-class TimeTools(BaseTools):
-    def initTools(self):
-        convert_widget = QWidget()
-        widget_layout = QHBoxLayout(convert_widget)
-        fft_convert_btn = QPushButton('Calculate FFT', convert_widget)
-        fft_convert_btn2 = QPushButton('Calculate FFT', convert_widget)
-        widget_layout.addWidget(fft_convert_btn)
-        widget_layout.addWidget(fft_convert_btn2)
-        self.add_tools(convert_widget,'Conversion')
-
-class FreqTools(BaseTools):
-    def initTools(self):
-        convert_widget = QWidget()
-        widget_layout = QVBoxLayout(convert_widget)
-        fft_convert_btn = QPushButton('Calculate Sonogram', convert_widget)
-        widget_layout.addWidget(fft_convert_btn)
-        self.add_tools(convert_widget,'Conversion')
-
-class ModalTools(BaseTools):
-    def initTools(self):
-        convert_widget = QWidget()
-        widget_layout = QVBoxLayout(convert_widget)
-        fft_convert_btn = QPushButton('Transfer Function', convert_widget)
-        widget_layout.addWidget(fft_convert_btn)
-        self.add_tools(convert_widget,'Conversion')
-
-class GlobalTools(BaseTools):
-    def initTools(self):
-        dev_configUI = DevConfigUI()
-        dev_configUI.config_button.setText('Open Oscilloscope')
-        self.add_tools(dev_configUI,'Oscilloscope')
-        
-        chan_toggle = QWidget()
-        chan_toggle_layout = QVBoxLayout(chan_toggle)
-        
-        self.chantoggle_ui = ChanToggleUI()
-        self.chantoggle_ui.toggle_ext_button.deleteLater()
-        self.chantoggle_ui.chan_text.deleteLater()
-        
-        advtoggle_ui = AdvToggleUI()
-        advtoggle_ui.close_ext_toggle.deleteLater()
-         
-        chan_toggle_layout.addWidget(self.chantoggle_ui)
-        chan_toggle_layout.addWidget(advtoggle_ui)
-        self.add_tools(chan_toggle,'Channel Toggle')
-        
     def ResetChanBtns(self):
         for btn in self.chantoggle_ui.chan_btn_group.buttons():
             btn.setCheckState(Qt.Checked)
         
         n_buttons = self.chantoggle_ui.checkbox_layout.count()
-        extra_btns = abs(len(self.parent.cs) - n_buttons)
+        extra_btns = abs(len(self.cs) - n_buttons)
         if extra_btns:
-            if len(self.parent.cs) > n_buttons:
+            if len(self.cs) > n_buttons:
                 columns_limit = 2
                 current_y = (n_buttons-1)//columns_limit
                 current_x = (n_buttons-1)%columns_limit
-                for n in range(n_buttons,len(self.parent.cs)):
+                for n in range(n_buttons,len(self.cs)):
                     current_x +=1
                     if current_x%columns_limit == 0:
                         current_y +=1
@@ -365,7 +315,7 @@ class GlobalTools(BaseTools):
                     self.chantoggle_ui.checkbox_layout.addWidget(chan_btn,current_y,current_x)
                     self.chantoggle_ui.chan_btn_group.addButton(chan_btn,n)
             else:
-                for n in range(n_buttons-1,len(self.parent.cs)-1,-1):
+                for n in range(n_buttons-1,len(self.cs)-1,-1):
                     chan_btn = self.chantoggle_ui.chan_btn_group.button(n)
                     self.chantoggle_ui.checkbox_layout.removeWidget(chan_btn)
                     self.chantoggle_ui.chan_btn_group.removeButton(chan_btn)
