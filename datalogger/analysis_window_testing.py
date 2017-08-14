@@ -30,6 +30,7 @@ class CollapsingSideTabWidget(QSplitter):
         self.collapsetimer.timeout.connect(self.update_splitter)
         
         self.collapsed = False
+        self.prev_sz = None
         
         self.spacer = QWidget(self)
         self.spacer.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
@@ -79,14 +80,14 @@ class CollapsingSideTabWidget(QSplitter):
     def toggle_collapse(self):
         '''
         if self.collapsed:
-            #self.tabPages.show()
-            self.collapsed = False
+            self.tabPages.show()
         else:
-            #self.tabPages.hide()
-            self.collapsed = True
-            '''
+            self.tabPages.hide()
+           ''' 
+            
         self.spacer.show() 
         self.collapsed = not self.collapsed
+        
         self.collapsetimer.start(20)
 
     def changePage(self, index):
@@ -102,24 +103,26 @@ class CollapsingSideTabWidget(QSplitter):
         sz = self.sizes()
         self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
         sz[1] = self.tabBar.sizeHint().width()
+        
         if self.collapsed:
             if not sz[self.PAGE_IND] < 5:
                 sz[self.SPACE_IND] += sz[self.PAGE_IND] * 0.5
                 sz[self.PAGE_IND] *= 0.5
             else:
+                self.prev_sz = sz
                 self.tabPages.hide()
                 self.spacer.hide() 
                 self.collapsetimer.stop()
         else:
             self.tabPages.show()
+            sz = self.prev_sz
             if not sz[self.SPACE_IND] <5:
                 sz[self.SPACE_IND] -= sz[self.PAGE_IND] * 0.5
                 sz[self.PAGE_IND] *= 1.5
             else:
-                self.tabPages.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+                self.tabPages.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
                 self.spacer.hide() 
-                self.collapsetimer.stop()
-            
+                self.collapsetimer.stop()   
         self.setSizes(sz)
         
 class AnalysisTools_TabWidget(QTabWidget):
@@ -245,9 +248,11 @@ class BaseTools():
 class TimeTools(BaseTools):
     def initTools(self):
         convert_widget = QWidget()
-        widget_layout = QVBoxLayout(convert_widget)
+        widget_layout = QHBoxLayout(convert_widget)
         fft_convert_btn = QPushButton('Calculate FFT', convert_widget)
+        fft_convert_btn2 = QPushButton('Calculate FFT', convert_widget)
         widget_layout.addWidget(fft_convert_btn)
+        widget_layout.addWidget(fft_convert_btn2)
         self.add_tools(convert_widget,'Conversion')
 
 class FreqTools(BaseTools):
