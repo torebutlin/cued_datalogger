@@ -3,7 +3,11 @@ import re
 
 
 class Workspace():
+    """The Workspace class, containing all the attributes and functions of a
+    Workspace (configuration of the DataLogger)"""
+
     def __init__(self):
+        # Set default values:
         self.name = "Default Workspace"
         self.path = None
         self.add_ons_enabled = 1
@@ -14,9 +18,13 @@ class Workspace():
         self.configure()
 
     def settings(self):
+        """A quick method of accessing this workspace's configuration"""
+
         return vars(self)
 
     def save(self, destination):
+        """Save this workspace to the `destination` (/path/to/workspace.wsp)"""
+
         print("Saving current workspace to {} ...".format(destination))
         print("\t Settings found:")
         # Open the destination file
@@ -33,6 +41,9 @@ class Workspace():
         print("Done.")
 
     def load(self, workspace):
+        """Load the settings found in the .wsp file given by `workspace`
+        (/path/to/workspace.wsp)"""
+
         print("Loading workspace {} ...".format(workspace))
         print("\t Settings found:")
         # Open as a read-only file object
@@ -70,6 +81,9 @@ class Workspace():
         self.configure()
 
     def configure(self):
+        """Set the global configuration to be the configuration of this
+        workspace"""
+
         print("Configuring workspace...", end=' ')
 
         # # Set other settings
