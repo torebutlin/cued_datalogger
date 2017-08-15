@@ -13,7 +13,7 @@ prints to the console, and draws a sine curve in the time domain window.",
 #------------------------------------------------------------------------------
 # Master run function - put your code in this function
 #------------------------------------------------------------------------------
-def run(analysis_window):
+def run(parent_window):
     #------------------------------------------------------------------------------
     # Your addon functions
     #------------------------------------------------------------------------------
@@ -31,8 +31,8 @@ def run(analysis_window):
     print("Hello World!")
 
     # Addons can access things in the analysis window
-    default_pen = analysis_window.CurrentWorkspace.default_pen
-    time_domain = analysis_window.display_tabwidget.widget(0)
+    default_pen = parent_window.CurrentWorkspace.default_pen
+    time_domain = parent_window.display_tabwidget.widget(0)
     plot_item = time_domain.time_domain_plot.getPlotItem()
     # And can interact with them
     plot_sine(plot_item, default_pen)

@@ -61,6 +61,7 @@ class AddonManager(QWidget):
         self.analysis.setText(0, "Analysis")
         self.plotting = QTreeWidgetItem(self.tree)
         self.plotting.setText(0, "Plotting")
+        self.tree.itemDoubleClicked.connect(self.run_selected)
         self.layout.addWidget(self.tree)
 
         self.load_btn = QPushButton(self)
@@ -124,6 +125,7 @@ class AddonManager(QWidget):
         addon_item = QTreeWidgetItem(parent, [metadata["name"],
                                               metadata["author"],
                                               metadata["description"]])
+
         # Save the addon function
         self.addon_functions[metadata["name"]] = self.addon_global_vars["run"]
 
