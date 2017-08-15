@@ -174,29 +174,6 @@ class ProjectMenu(QMenu):
 
         self.addActions([newAct,setAct,exitAct])
 
-class StackedToolbox(QStackedWidget):
-    """A stack of CollapsingSideTabWidgets"""
-    def __init__(self):
-        super().__init__()
-
-    def toggleCollapse(self):
-        """Toggle collapse of all the widgets in the stack"""
-        for i in range(self.count()):
-            # The current one will toggle by default, so we don't want
-            # to toggle it again
-            if i == self.currentIndex():
-                continue
-            else:
-                self.widget(i).toggle_collapse()
-
-    def addToolbox(self, toolbox):
-        """Add a toolbox to the stack"""
-        # Make sure that when this toolbox is collapsed, all the toolboxes
-        # collapse
-        toolbox.tabBar.tabBarDoubleClicked.connect(self.toggleCollapse)
-        self.addWidget(toolbox)
-
-
 class AnalysisWindow(QMainWindow):
     def __init__(self):
         super().__init__()
