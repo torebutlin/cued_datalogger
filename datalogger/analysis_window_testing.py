@@ -18,7 +18,7 @@ from analysis.frequency_domain import FrequencyDomainWidget
 
 import pyqtgraph as pg
 
-from bin.channel import ChannelSet
+from bin.channel import ChannelSet, ChannelSelectWidget
 from bin.addons import AddonManager
 from liveplotUI import DevConfigUI,ChanToggleUI
 
@@ -210,7 +210,7 @@ class AnalysisWindow(QMainWindow):
         self.addon_widget = AddonManager(self)
 
         self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
-        self.global_toolbox.addTab(ChanToggleUI(),'Channel Toggle')
+        self.global_toolbox.addTab(ChannelSelectWidget(),'Channel Select')
         self.global_toolbox.addTab(self.addon_widget, "Addons")
 
     def init_ui(self):
