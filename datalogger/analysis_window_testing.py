@@ -246,8 +246,8 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
         self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
 
-        data = self.cs.get_channel_data((0,1,2),'t')
-        self.plot_colours = ['r','g','b']
+        data = self.cs.get_channel_data((0,1,2,3,4),'t')
+        self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
         for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
             self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
@@ -264,12 +264,13 @@ class AnalysisWindow(QMainWindow):
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
 
     def create_test_channelset(self):
-        self.cs = ChannelSet(3)
+        self.cs = ChannelSet(5)
+
         t = np.arange(1000)/44100
         y = np.sin(2*np.pi*1e3*t)
-        self.cs.add_channel_dataset(0,'t',data=y)
-        self.cs.add_channel_dataset(1,'t',data=y*np.sin(2*np.pi*10*t))
-        self.cs.add_channel_dataset(2,'t',data=np.sign(y))
+
+        for i, channel in enumerate(self.cs.channels):
+            self.cs.add_channel_dataset(i, 't', np.sin(t*2*np.pi*100*(i+1)))
 
     def display_channel_plots(self, selected_channel_list):
         plotitem = self.display_tabwidget.timedomain_widget.plotitem
