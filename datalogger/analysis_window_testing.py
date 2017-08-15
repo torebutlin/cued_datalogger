@@ -19,7 +19,7 @@ from analysis.frequency_domain import FrequencyDomainWidget
 import pyqtgraph as pg
 
 from bin.channel import ChannelSet
-from bin.addons import AddonWidget
+from bin.addons import AddonManager
 from liveplotUI import DevConfigUI,ChanToggleUI
 
 
@@ -207,7 +207,7 @@ class AnalysisWindow(QMainWindow):
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
 
-        self.addon_widget = AddonWidget(self)
+        self.addon_widget = AddonManager(self)
 
         self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
         self.global_toolbox.addTab(ChanToggleUI(),'Channel Toggle')
