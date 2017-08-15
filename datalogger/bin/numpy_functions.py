@@ -18,19 +18,16 @@ class MatlabList(list):
     """
     def __getitem__(self, index):
         output = []
-        # Allow tuples eg. (1,2)
-        if isinstance(index, tuple):
-            # Iterate through the tuple
+        if isinstance(index, tuple) or isinstance(index, range):
             for i in index:
-                # If the item is a slice, indexing with it will give
-                # a list so it must be concatenated to the output
-                if isinstance(i, slice):
-                    output += self[i]
-                # If it's an integer, we indexing with it will give one item
-                # so it must be appended to the output
-                elif isinstance(i, int):
+                if isinstance(i, range):
+                    range_list = list(i)
+                    for r in range_list:
+                        if r not in index:
+                            output.append(self[r])
+                else:
                     output.append(self[i])
-            # Remove any multiple occurrences using set
             return output
         else:
             return super().__getitem__(index)
+

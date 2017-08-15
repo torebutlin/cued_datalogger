@@ -125,10 +125,6 @@ class LiveplotApp(QMainWindow):
     #---------------------CHANNEL TOGGLE UI----------------------------------
         #chantoggle_UI = QWidget(self.left_splitter)
         self.chantoggle_UI = ChanToggleUI(parent = self)
-
-        self.chantoggle_UI.sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
-        self.chantoggle_UI.desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
-        self.chantoggle_UI.inv_sel_btn.clicked.connect(self.invert_checkboxes)
         
         self.ResetChanBtns()
         self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
@@ -324,16 +320,7 @@ class LiveplotApp(QMainWindow):
         else:
             self.plotlines[2*chan_num].setPen(None)
             self.plotlines[2*chan_num+1].setPen(None)
-                
-    def invert_checkboxes(self):
-        for btn in self.chantoggle_UI.channels_box.findChildren(QCheckBox):
-            btn.click()
-         
-    def toggle_all_checkboxes(self,state):
-        for btn in self.chantoggle_UI.channels_box.findChildren(QCheckBox):
-            if not btn.checkState() == state:
-                btn.click()
-                
+   
     def toggle_ext_toggling(self,toggle):
         if toggle:
             tlpoint = self.chantoggle_UI.chan_text.mapTo(self,QPoint(0,0))
@@ -1034,6 +1021,19 @@ class ChanToggleUI(BaseWidget):
         
         chans_toggle_layout.addLayout(sel_btn_layout)
         #chanUI_layout.addLayout(chans_settings_layout)
+        
+        self.sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
+        self.desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
+        self.inv_sel_btn.clicked.connect(self.invert_checkboxes)
+        
+    def invert_checkboxes(self):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            btn.click()
+         
+    def toggle_all_checkboxes(self,state):
+        for btn in self.channels_box.findChildren(QCheckBox):
+            if not btn.checkState() == state:
+                btn.click()
         
 class ChanConfigUI(BaseWidget):
     def initUI(self):

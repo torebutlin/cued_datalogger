@@ -9,5 +9,6 @@ class TimeDomainWidget(QWidget):
         layout = QGridLayout(self)
 
         self.time_domain_plot = pg.PlotWidget(self)
+        self.plotitem = self.time_domain_plot.getPlotItem()
 
         layout.addWidget(self.time_domain_plot)
