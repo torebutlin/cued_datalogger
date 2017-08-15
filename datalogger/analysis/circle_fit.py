@@ -1,11 +1,9 @@
 import sys
 if __name__ == '__main__':
-    sys.path.append('../bin')
-    from channel import ChannelSet
-    from file_import import import_from_mat
-else:
-    from ..bin.channel import ChannelSet
-    from ..bin.import_export.file_import import import_from_mat
+    sys.path.append('..')
+
+from bin.channel import ChannelSet
+from bin.file_import import import_from_mat
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
