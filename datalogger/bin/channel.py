@@ -63,19 +63,19 @@ class ChannelSelectWidget(QWidget):
     def select_all(self):
         self.text_select_box.clear()
 
-        for checkbox in self.checkbox_dict.values():
+        for checkbox in self.checkbox_list:
             checkbox.setChecked(True)
 
     def deselect_all(self):
        self.text_select_box.clear()
 
-       for checkbox in self.checkbox_dict.values():
+       for checkbox in self.checkbox_list:
             checkbox.setChecked(False)
 
     def invert_select(self):
         self.text_select_box.clear()
 
-        for checkbox in self.checkbox_dict.values():
+        for checkbox in self.checkbox_list:
             checkbox.toggle()
 
     def select_by_text(self):
@@ -117,7 +117,7 @@ class ChannelSelectWidget(QWidget):
     def set_selected(self, list_to_select):
         for channel_num, channel in enumerate(self.cs.channels):
             if channel_num in list_to_select:
-                self.checkbox_dict[channel.name].setChecked(True)
+                self.checkbox_list[channel_num].setChecked(True)
 
         self.on_channel_selection_change()
 
@@ -130,7 +130,7 @@ class ChannelSelectWidget(QWidget):
     def set_channel_set(self, channel_set):
         self.cs = channel_set
 
-        self.checkbox_dict = {}
+        self.checkbox_list = []
 
         # Clear the old layout
         while self.viewbox_layout.count():
@@ -142,10 +142,10 @@ class ChannelSelectWidget(QWidget):
                                  self.checkbox_viewbox)
             checkbox.setChecked(True)
             checkbox.clicked.connect(self.on_channel_selection_change)
-            # Add it to the dict
-            self.checkbox_dict[channel.name] = checkbox
+            # Add it to the list
+            self.checkbox_list.append(checkbox)
             # Add it to the layout
-            self.viewbox_layout.addWidget(self.checkbox_dict[channel.name])
+            self.viewbox_layout.addWidget(self.checkbox_list[i])
 
         # Send out a signal with the updated channels
         self.on_channel_selection_change()
@@ -155,7 +155,7 @@ class ChannelSelectWidget(QWidget):
         selected_list = []
 
         for i, channel in enumerate(self.cs.channels):
-            if self.checkbox_dict[channel.name].isChecked():
+            if self.checkbox_list[i].isChecked():
                 selected_list.append(i)
 
         return selected_list
@@ -296,7 +296,7 @@ class ChannelSet():
         if isinstance(channel_index, tuple):
             #for channel in self.channels[channel_index]:
             #    return channel.get_units(id_)
-            return [channel.get_units(id_) for channel in self.channels[channel_index]] 
+            return [channel.get_units(id_) for channel in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_units(id_)
 
@@ -309,7 +309,7 @@ class ChannelSet():
             #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 #return channel.get_metadata(metadata_id)
-            return [channel.get_metadata(metadata_id) for channel in self.channels[channel_index]] 
+            return [channel.get_metadata(metadata_id) for channel in self.channels[channel_index]]
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)
