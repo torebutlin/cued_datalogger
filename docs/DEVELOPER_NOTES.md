@@ -36,6 +36,11 @@ These notes are intended to give a comprehensive breakdown of the Datalogger str
     
     4.3 Menus
 
+5. Addons
+
+	5.1 Addon structure
+
+	5.2 Addon Manager
 
 ## 1. Infrastructure ##
 
@@ -101,7 +106,7 @@ The `Workspace` class stores the workspace attributes and has methods for saving
 #### ChannelSets, Channels and DataSets:
 The Datalogger uses a three-tier structure for storing data, comprising of ChannelSets, Channels and DataSets. See `channel.py` for further information.
 
-![ChannelSet structure](channel_structure.png)
+![ChannelSet tree image](channel_structure.png)
 
 *DataSets*: These are the lowest structure, effectively a vector of values with a name (id\_) and units. 
 
@@ -184,6 +189,7 @@ There will be options for importing and exporting from:
 Not implemented yet.
 
 There will be some exciting and ideally simple way of undoing operations, perhaps using a PhotoShop/GIMP-style history tree that stores what operations have been performed and offers the ability to revert back to a specific point.
+
 
 ## 3. Datalogger: Acquisition module
 
@@ -288,9 +294,9 @@ Not implemented yet.
 The master analysis window has:
 
 * A menubar (see 4.3)
-* A widget containing the tools used for analysis on the left
+* A widget containing the tools used for analysis on the left ('Toolbox')
 * A TabWidget to display the results of the different tools in the middle for different type of analysis
-* A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right
+* A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right ('Global Toolbox')
 
 Both the left and right widgets are custom tabwidget, written to be collapsible tabs. The idea of this is to hide away the tools to allow maximum view of the results in the middle, while having the tabs visible to the user, allowing them to open up the tools.
 
@@ -306,7 +312,6 @@ In the menubar, there are the following menus:
 
 * View - _ViewMenu_ Class
 
-* Addons - _AddonsMenu_ Class
 
 #### Project menu
 
@@ -320,11 +325,6 @@ Not implemented yet.
 
 This menu contains options for importing and exporting data.
 
-#### Addons menu
-
-Not implemented yet.
-
-This menu contains any additional addons that are installed.
 
 ### 4.4 Collapsible Tabs
 The collapsible left and right widgets mentioned in 4.2 is a custom class **CollapsingSideTabWidget** that subclasses **QSplitter**. 
@@ -349,3 +349,71 @@ Four **Tools** are created:
 * __GlobalTools__: Tools that is common for all analysis, this is added to the right widget mentioned before
 
 A new **Tools** class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the `prepare_tools` method in the Main Window, and check that it opens for the correct analysis.
+
+## 5. Addons
+Addons (extra extension scripts)  may be written to extend the functionality of the DataLogger.
+
+### 5.1 Addon structure
+#### File structure
+See `datalogger/addons/example_addon.py` and `datalogger/addons/addon_template.py` for examples of addons.
+
+Addons must all be structured according to the `addon_template.py`. That is:
+
+    #datalogger_addon
+
+    #------------------------------------------------------------------------------
+    # Put metadata about this addon here
+    #------------------------------------------------------------------------------
+    addon_metadata = {
+            "name": "<name>",
+            "author": "<author>",
+            "description": "<description>",
+            "category": "<category>"}
+
+    #------------------------------------------------------------------------------
+    # Master run function - put your code in this function
+    #------------------------------------------------------------------------------
+    def run(parent_window):
+        #------------------------------------------------------------------------------
+        # Your addon functions
+        #------------------------------------------------------------------------------
+		<any user defined functions>
+        #--------------------------------------------------------------------------
+        # Your addon code:
+        #--------------------------------------------------------------------------
+        <code goes here>
+
+*Header* (`#datalogger_addon`): This informs the datalogger that this is an addon file.
+
+*Metadata* (`addon_metadata`): Contains information about the addon. Displayed in the Addon Manager. Addons are sorted according to their `"category"`.
+
+*Main code* (`run`): The actual addon code is all kept under the `run` function. This is the function that is called when the addon is run. Only variables, functions, classes etc defined within the `run` function will be accessible by the addon, so don't put any code outside of `run`.
+
+#### What addons can do
+In an addon, it is possible to:
+
+* Import modules
+
+* Define functions, classes and variables
+
+* Access widgets, attributes, and methods of the `parent_window` (eg. to plot data in the Analysis Window, or to do calculations with the current data)
+
+* Display popups and Qt dialog boxes
+
+And probably a lot of other things as well.
+
+### 5.2 Addon Manager
+The Addon Manager provides a widget for loading, selecting, and running addons. It also has a console for displaying the addon output.
+
+The Addon Manager is included in the Global Toolbox of the Analysis Window.
+
+#### Creating addons
+Not implemented yet. It would be nice to have some way of creating addons from within the manager.
+
+#### Loading addons
+Addons located in `CurrentWorkspace.path/addons/` will be automatically discovered and added to the AddonManager. Other addons may be loaded from within the addon manager, using the `Load Addon` button, which opens up a file explorer. Multiple addons can be added simultaneously in this way.
+
+#### Running addons
+Addons are run using the `Run Selected` button in the addon manager, or by double clicking them in the tree. When the addon is run, a new `QThread` is created that routes `stdout` to the `QTextEdit` console widget in the manager. This means that anything the addon prints to `stdout` will be displayed in the console, so `print` calls can be used in the addon as normal to display results in the console widget.
+
+Note that the thread will route everything that goes to `stdout` to the console widget, including things printed from the main window.

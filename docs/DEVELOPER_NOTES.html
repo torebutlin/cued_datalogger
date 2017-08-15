@@ -44,6 +44,11 @@
 	<p>4.2 Window layout</p>
 	<p>4.3 Menus</p>
 	</li>
+	<li>
+	<p>Addons</p>
+	<p>5.1 Addon structure</p>
+	<p>5.2 Addon Manager</p>
+	</li>
 	</ol>
 	<h2>1. Infrastructure</h2>
 	<h3>1.1 GUI</h3>
@@ -90,7 +95,7 @@
 	<h3>2.2 Data storage and interaction</h3>
 	<h4>ChannelSets, Channels and DataSets:</h4>
 	<p>The Datalogger uses a three-tier structure for storing data, comprising of ChannelSets, Channels and DataSets. See <code>channel.py</code> for further information.</p>
-	<p><img alt="ChannelSet structure" src="channel_structure.png" /></p>
+	<p><img alt="ChannelSet tree image" src="channel_structure.png" /></p>
 	<p><em>DataSets</em>: These are the lowest structure, effectively a vector of values with a name (id_) and units. </p>
 	<p><em>Channels</em>: Normally created from one stream of input data, Channels include the original DataSet, any derived DataSets (eg. frequency spectra, sonogram) and metadata about the channel. They also have methods for getting and setting the attributes of the DataSets.</p>
 	<p><em>ChannelSets</em>: The main object to interface with, with methods for getting and setting channel and dataset attributes. Each ChannelSet will typically be derived from one set of results or one run of the experiment.</p>
@@ -283,27 +288,24 @@
 	<p>The master analysis window has:</p>
 	<ul>
 	<li>A menubar (see 4.3)</li>
-	<li>A widget containing the tools used for analysis on the left</li>
+	<li>A widget containing the tools used for analysis on the left ('Toolbox')</li>
 	<li>A TabWidget to display the results of the different tools in the middle for different type of analysis</li>
-	<li>A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right</li>
+	<li>A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right ('Global Toolbox')</li>
 	</ul>
 	<p>Both the left and right widgets are custom tabwidget, written to be collapsible tabs. The idea of this is to hide away the tools to allow maximum view of the results in the middle, while having the tabs visible to the user, allowing them to open up the tools.</p>
 	<p>Read on 4.4 for the implementation</p>
 	<h3>4.3 Menus</h3>
-	<p>A simple menu is implemented by subclassing QMenu and adding QActions or another QMenu to the QMenu. Then, the subclassed QMenu can be added to the Main Window's menubar. 
+	<p>A simple menu is implemented by subclassing <strong>QMenu</strong> and adding <strong>QActions</strong> or another <strong>QMenu</strong> to the <strong>QMenu</strong>. Then, the subclassed <strong>QMenu</strong> can be added to the Main Window's <em>menubar</em>. 
 	In the menubar, there are the following menus:</p>
 	<ul>
 	<li>
-	<p>Project - ProjectMenu class</p>
+	<p>Project - <em>ProjectMenu</em> class</p>
 	</li>
 	<li>
-	<p>Data - DataMenu Class</p>
+	<p>Data - <em>DataMenu</em> Class</p>
 	</li>
 	<li>
-	<p>View - ViewMenu Class</p>
-	</li>
-	<li>
-	<p>Addons - AddonsMenu Class</p>
+	<p>View - <em>ViewMenu</em> Class</p>
 	</li>
 	</ul>
 	<h4>Project menu</h4>
@@ -312,21 +314,81 @@
 	<h4>Data menu</h4>
 	<p>Not implemented yet.</p>
 	<p>This menu contains options for importing and exporting data.</p>
-	<h4>Addons menu</h4>
-	<p>Not implemented yet.</p>
-	<p>This menu contains any additional addons that are installed.</p>
 	<h3>4.4 Collapsible Tabs</h3>
-	<p>The collapsible left and right widgets mentioned in 4.2 is a custom class CollapsingSideTabWidget that subclasses QSplitter. </p>
-	<p>The widget is then mainly made up of two widgets: QStackedWidget and QTabBar. QStackedWidget is to contain all the analysis tools but showing one tool at a time, while QTabBar shows all the tools available and switch the respective tool when clicked on.</p>
-	<p>Animation is implemented to take advantage of the QSplitter resizing capabilities, which involves a third empty widget.</p>
+	<p>The collapsible left and right widgets mentioned in 4.2 is a custom class <strong>CollapsingSideTabWidget</strong> that subclasses <strong>QSplitter</strong>. </p>
+	<p>The widget is then mainly made up of two widgets: <strong>QStackedWidget</strong> and <strong>QTabBar</strong>. <strong>QStackedWidget</strong> is to contain all the analysis tools but showing one tool at a time, while <strong>QTabBar</strong> shows all the tools available and switch the respective tool when clicked on.</p>
+	<p>Animation is implemented to take advantage of the <strong>QSplitter</strong> resizing capabilities, which involves a third empty widget.</p>
 	<h3>4.5 Tools</h3>
-	<p>Currently, the idea is each type of analysis has its own set of tools, e.g. time series analysis and frequency series analysis has distinct set of tools. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.</p>
-	<p>An abstract class BaseTools is written to streamline the process of adding and display tools in the collapsible tabs. This is merely to contain the tools and the label to the respective tools</p>
-	<p>To properly utilise this class, it must be derived and redefine the initTools method. Under here, a tool can be written as a QWidget, and then added using the method add_tool, supplying a name for that tool.</p>
-	<p>Four Tools are created:
-	<em> TimeTools: Tools for time series analysis
-	</em> FreqTools: Tools for frequency series analysis
-	<em> ModalTools: Tools for modal analysis
-	</em> GlobalTools: Tools that is common for all analysis, this is added to the right widget mentioned before</p>
-	<p>A new Tools class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the prepare_tools method in the Main Window</p>
+	<p>Currently, the idea is each type of analysis has its own set of tools, <em>e.g. time series analysis and frequency series analysis has distinct set of tools</em>. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.</p>
+	<p>An <em>abstract</em> class <strong>BaseTools</strong> is written to streamline the process of addi ng and display tools in the collapsible tabs. This merely contains the tools and the label to the respective analysis.</p>
+	<p>To properly utilise this class, it must be derived and redefine the <code>initTools</code> method. Under here, a tool can be written as a <strong>QWidget</strong>, and then added using the method <code>add_tool</code>, supplying a name for that tool.</p>
+	<p>A variable  named <em>parent</em> is provided to allow any signal and slots to be made to the main window. </p>
+	<p>Four <strong>Tools</strong> are created:
+	<em> <strong>TimeTools</strong>: Tools for time series analysis
+	</em> <strong>FreqTools</strong>: Tools for frequency series analysis
+	<em> <strong>ModalTools</strong>: Tools for modal analysis
+	</em> <strong>GlobalTools</strong>: Tools that is common for all analysis, this is added to the right widget mentioned before</p>
+	<p>A new <strong>Tools</strong> class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the <code>prepare_tools</code> method in the Main Window, and check that it opens for the correct analysis.</p>
+	<h2>5. Addons</h2>
+	<p>Addons (extra extension scripts)  may be written to extend the functionality of the DataLogger.</p>
+	<h3>5.1 Addon structure</h3>
+	<h4>File structure</h4>
+	<p>See <code>datalogger/addons/example_addon.py</code> and <code>datalogger/addons/addon_template.py</code> for examples of addons.</p>
+	<p>Addons must all be structured according to the <code>addon_template.py</code>. That is:</p>
+	<div class="codehilite"><pre><span></span>#datalogger_addon
+
+	#------------------------------------------------------------------------------
+	# Put metadata about this addon here
+	#------------------------------------------------------------------------------
+	addon_metadata = {
+			&quot;name&quot;: &quot;&lt;name&gt;&quot;,
+			&quot;author&quot;: &quot;&lt;author&gt;&quot;,
+			&quot;description&quot;: &quot;&lt;description&gt;&quot;,
+			&quot;category&quot;: &quot;&lt;category&gt;&quot;}
+
+	#------------------------------------------------------------------------------
+	# Master run function - put your code in this function
+	#------------------------------------------------------------------------------
+	def run(parent_window):
+		#------------------------------------------------------------------------------
+		# Your addon functions
+		#------------------------------------------------------------------------------
+		&lt;any user defined functions&gt;
+		#--------------------------------------------------------------------------
+		# Your addon code:
+		#--------------------------------------------------------------------------
+		&lt;code goes here&gt;
+	</pre></div>
+
+
+	<p><em>Header</em> (<code>#datalogger_addon</code>): This informs the datalogger that this is an addon file.</p>
+	<p><em>Metadata</em> (<code>addon_metadata</code>): Contains information about the addon. Displayed in the Addon Manager. Addons are sorted according to their <code>"category"</code>.</p>
+	<p><em>Main code</em> (<code>run</code>): The actual addon code is all kept under the <code>run</code> function. This is the function that is called when the addon is run. Only variables, functions, classes etc defined within the <code>run</code> function will be accessible by the addon, so don't put any code outside of <code>run</code>.</p>
+	<h4>What addons can do</h4>
+	<p>In an addon, it is possible to:</p>
+	<ul>
+	<li>
+	<p>Import modules</p>
+	</li>
+	<li>
+	<p>Define functions, classes and variables</p>
+	</li>
+	<li>
+	<p>Access widgets, attributes, and methods of the <code>parent_window</code> (eg. to plot data in the Analysis Window, or to do calculations with the current data)</p>
+	</li>
+	<li>
+	<p>Display popups and Qt dialog boxes</p>
+	</li>
+	</ul>
+	<p>And probably a lot of other things as well.</p>
+	<h3>5.2 Addon Manager</h3>
+	<p>The Addon Manager provides a widget for loading, selecting, and running addons. It also has a console for displaying the addon output.</p>
+	<p>The Addon Manager is included in the Global Toolbox of the Analysis Window.</p>
+	<h4>Creating addons</h4>
+	<p>Not implemented yet. It would be nice to have some way of creating addons from within the manager.</p>
+	<h4>Loading addons</h4>
+	<p>Addons located in <code>CurrentWorkspace.path/addons/</code> will be automatically discovered and added to the AddonManager. Other addons may be loaded from within the addon manager, using the <code>Load Addon</code> button, which opens up a file explorer. Multiple addons can be added simultaneously in this way.</p>
+	<h4>Running addons</h4>
+	<p>Addons are run using the <code>Run Selected</code> button in the addon manager, or by double clicking them in the tree. When the addon is run, a new <code>QThread</code> is created that routes <code>stdout</code> to the <code>QTextEdit</code> console widget in the manager. This means that anything the addon prints to <code>stdout</code> will be displayed in the console, so <code>print</code> calls can be used in the addon as normal to display results in the console widget.</p>
+	<p>Note that the thread will route everything that goes to <code>stdout</code> to the console widget, including things printed from the main window.</p>
 </article>
