@@ -19,7 +19,7 @@ import pyqtgraph as pg
 
 from bin.channel import ChannelSet
 
-class AddonWidget(QWidget):
+class AddonManager(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
