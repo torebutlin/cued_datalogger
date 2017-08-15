@@ -1,5 +1,164 @@
+if __name__ == '__main__':
+    import sys
+    sys.path.append('../')
+
 import numpy as np
-from .numpy_functions import MatlabList
+from bin.numpy_functions import MatlabList
+
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
+                             QLineEdit, QCheckBox, QScrollArea)
+
+
+class ChannelSelectWidget(QWidget):
+
+    channel_selection_changed = pyqtSignal(list)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        # Create the master layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # # Create the viewbox of checkboxes
+        # Create the viewbox
+        self.checkbox_viewbox = QWidget(self)
+        # Set the layout
+        self.viewbox_layout = QVBoxLayout()
+        self.checkbox_viewbox.setLayout(self.viewbox_layout)
+        # Create a scroll area so that the box can be scrollable
+        self.scrollbox = QScrollArea(self)
+        self.scrollbox.setWidget(self.checkbox_viewbox)
+        self.scrollbox.setWidgetResizable(True)
+        # Add the viewbox to the master layout
+        self.layout.addWidget(self.scrollbox)
+
+        # # Create the selection toggle buttons
+        self.selection_btns_layout = QVBoxLayout()
+        self.layout.addLayout(self.selection_btns_layout)
+
+        self.select_all_btn = QPushButton('Select All', self)
+        self.select_all_btn.clicked.connect(self.select_all)
+        self.select_all_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.select_all_btn)
+
+        self.deselect_all_btn = QPushButton('Deselect All', self)
+        self.deselect_all_btn.clicked.connect(self.deselect_all)
+        self.deselect_all_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.deselect_all_btn)
+
+        self.invert_select_btn = QPushButton('Invert Selection', self)
+        self.invert_select_btn.clicked.connect(self.invert_select)
+        self.invert_select_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.invert_select_btn)
+
+        # # Create the text selection box
+        self.text_select_box = QLineEdit(self)
+        self.text_select_box.returnPressed.connect(self.select_by_text)
+        self.selection_btns_layout.addWidget(self.text_select_box)
+
+    def select_all(self):
+        self.text_select_box.clear()
+
+        for checkbox in self.checkbox_dict.values():
+            checkbox.setChecked(True)
+
+    def deselect_all(self):
+       self.text_select_box.clear()
+
+       for checkbox in self.checkbox_dict.values():
+            checkbox.setChecked(False)
+
+    def invert_select(self):
+        self.text_select_box.clear()
+
+        for checkbox in self.checkbox_dict.values():
+            checkbox.toggle()
+
+    def select_by_text(self):
+        # Get the text from the box
+        string = self.text_select_box.text()
+        #print("Selecting by " + string)
+
+        selected_list = []
+
+        # Split the string by commas
+        index_list = string.split(",")
+        for index in index_list:
+            # If it's just a number, add it to the list
+            if index.isdigit():
+                selected_list.append(int(index))
+
+            # If it's a slice, add the sliced bits to the list
+            split_on_colon = index.split(":")
+            if len(split_on_colon) > 1:
+                # If it's a slice with no step
+                if len(split_on_colon) == 2:
+                    for i in range(int(split_on_colon[0]),
+                                   int(split_on_colon[1]) + 1):
+                        selected_list.append(i)
+                # If it's a slice with step
+                if len(split_on_colon) == 3:
+                    for i in range(int(split_on_colon[0]),
+                                   int(split_on_colon[1]) + 1,
+                                   int(split_on_colon[2])):
+                        selected_list.append(i)
+            else:
+                # Ignore anything else
+                continue
+
+        self.deselect_all()
+
+        self.set_selected(selected_list)
+
+    def set_selected(self, list_to_select):
+        for channel_num, channel in enumerate(self.cs.channels):
+            if channel_num in list_to_select:
+                self.checkbox_dict[channel.name].setChecked(True)
+
+        self.on_channel_selection_change()
+
+    def on_channel_selection_change(self):
+        # Emit the "Selection changed" signal with a list of channels
+        # that are currently selected
+        print(self.selected_channels())
+        self.channel_selection_changed.emit(self.selected_channels())
+
+    def set_channel_set(self, channel_set):
+        self.cs = channel_set
+
+        self.checkbox_dict = {}
+
+        # Clear the old layout
+        while self.viewbox_layout.count():
+            self.viewbox_layout.takeAt(0).widget().deleteLater()
+
+        for i, channel in enumerate(self.cs.channels):
+            # Create a checkbox for this channel
+            checkbox = QCheckBox("{}: {}".format(i, channel.name),
+                                 self.checkbox_viewbox)
+            checkbox.setChecked(True)
+            checkbox.clicked.connect(self.on_channel_selection_change)
+            # Add it to the dict
+            self.checkbox_dict[channel.name] = checkbox
+            # Add it to the layout
+            self.viewbox_layout.addWidget(self.checkbox_dict[channel.name])
+
+        # Send out a signal with the updated channels
+        self.on_channel_selection_change()
+
+    def selected_channels(self):
+        """Get a list of channel numbers of all currently selected channels"""
+        selected_list = []
+
+        for i, channel in enumerate(self.cs.channels):
+            if self.checkbox_dict[channel.name].isChecked():
+                selected_list.append(i)
+
+        return selected_list
 
 
 class ChannelSet():
@@ -368,3 +527,20 @@ class DataSet():
 
     def set_units(self, units):
         self.units = units
+
+if __name__ == '__main__':
+    from bin.file_import import import_from_mat
+    from PyQt5.QtWidgets import QApplication
+    app = 0
+    app = QApplication(sys.argv)
+
+    cs = ChannelSet()
+    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_grid.mat", cs)
+
+    w = ChannelSelectWidget()
+    w.set_channel_set(cs)
+
+    w.show()
+
+    sys.exit(app.exec_())
+
