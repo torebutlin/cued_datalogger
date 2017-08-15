@@ -66,18 +66,18 @@ class CollapsingSideTabWidget(QSplitter):
             self.PAGE_IND = 2
             self.SPACE_IND = 0
         self.TAB_SIZE = self.tabBar.sizeHint().width()
-        
+
         self.setHandleWidth(1)
         for hd in [self.handle(i) for i in range(self.count())]:
             hd.setDisabled(True)
-        self.spacer.hide()    
+        self.spacer.hide()
 
     def addTab(self, widget, title):
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
 
-    def toggle_collapse(self):          
-        self.spacer.show() 
+    def toggle_collapse(self):
+        self.spacer.show()
         self.collapsed = not self.collapsed
         self.collapsetimer.start(20)
 
@@ -148,7 +148,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
     def init_ui(self):
         self.setMovable(False)
         self.setTabsClosable(False)
-        
+
         self.timedomain_widget = TimeDomainWidget(self)
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
@@ -161,17 +161,17 @@ class ProjectMenu(QMenu):
         super().__init__('Project',parent)
         self.parent = parent
         self.initMenu()
-        
+
     def initMenu(self):
-        newAct = QAction('&New', self)        
+        newAct = QAction('&New', self)
         newAct.setShortcut('Ctrl+N')
-        
+
         setAct = QAction('&Settings', self)
-        
-        exitAct = QAction('&Exit', self)        
+
+        exitAct = QAction('&Exit', self)
         exitAct.setShortcut('Ctrl+Q')
         exitAct.setStatusTip('Exit application')
-        
+
         self.addActions([newAct,setAct,exitAct])
 
 class StackedToolbox(QStackedWidget):
@@ -205,7 +205,7 @@ class AnalysisWindow(QMainWindow):
         self.setWindowTitle('AnalysisWindow')
 
         #self.prepare_tools()
-        self.prepare_channelsets()
+        self.create_test_channelset()
         self.init_ui()
 
         self.setFocus()
@@ -234,26 +234,18 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.addToolbox(self.sonogram_toolbox)
         self.toolbox.addToolbox(self.modal_analysis_toolbox)
 
-    def init_global_toolbox(self):        
+    def init_global_toolbox(self):
         self.gtools = CollapsingSideTabWidget('right')
-        
+
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
         self.gtools.addTab(dev_configUI,'Oscilloscope')
-        
-        
-        chan_toggle = QWidget()
-        chan_toggle_layout = QVBoxLayout(chan_toggle)
-        self.chantoggle_ui = ChanToggleUI()
-        self.chantoggle_ui.toggle_ext_button.deleteLater()
-        self.chantoggle_ui.chan_text.deleteLater()
-        advtoggle_ui = AdvToggleUI()
-        advtoggle_ui.close_ext_toggle.deleteLater()
-         
-        chan_toggle_layout.addWidget(self.chantoggle_ui)
-        chan_toggle_layout.addWidget(advtoggle_ui)
-        self.gtools.addTab(chan_toggle,'Channel Toggle')  
-        
+
+        self.channel_select_widget = ChannelSelectWidget(self.gtools)
+        self.channel_select_widget.set_channel_set(self.cs)
+        self.channel_select_widget.channel_selection_changed.connect(self.display_channel_plots)
+        self.gtools.addTab(self.channel_select_widget, 'Channel Selection')
+
         self.global_toolbox = StackedToolbox()
         self.global_toolbox.addToolbox(self.gtools)
 
@@ -276,15 +268,14 @@ class AnalysisWindow(QMainWindow):
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
         self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
-        
-        datas = self.cs.get_channel_data(tuple(range(3)),'t')
+
+        data = self.cs.get_channel_data((0,1,2),'t')
         self.plot_colours = ['r','g','b']
         self.timeplots = []
-        for dt,p,i in zip(datas,self.plot_colours,range(len(self.cs))):
+        for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
             self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
-            
-        self.ResetChanBtns()
-        self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
+
+        #self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
 
         # Add the widgets
         self.main_layout.addWidget(self.toolbox)
@@ -294,57 +285,23 @@ class AnalysisWindow(QMainWindow):
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.display_tabwidget, 1)
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
-        
-    def prepare_channelsets(self):
+
+    def create_test_channelset(self):
         self.cs = ChannelSet(3)
         t = np.arange(1000)/44100
         y = np.sin(2*np.pi*1e3*t)
         self.cs.add_channel_dataset(0,'t',data=y)
         self.cs.add_channel_dataset(1,'t',data=y*np.sin(2*np.pi*10*t))
         self.cs.add_channel_dataset(2,'t',data=np.sign(y))
-        
-    def switch_tools(self,num):
-        self.toolbox.clear()
-        num = min(num,len(self.tools)-1)
-        for i in range(len(self.tools[num])):
-            self.toolbox.addTab(self.tools[num].tool_pages[i],
-                                self.tools[num].tabs_titles[i])
 
-    def display_channel_plots(self, btn):
-        chan_num = self.chantoggle_ui.chan_btn_group.id(btn)
-        if btn.isChecked():
-            self.timeplots[chan_num].setPen(self.plot_colours[chan_num])
-        else:
-            self.timeplots[chan_num].setPen(None)
-            
-    def ResetChanBtns(self):
-        for btn in self.chantoggle_ui.chan_btn_group.buttons():
-            btn.setCheckState(Qt.Checked)
-        
-        n_buttons = self.chantoggle_ui.checkbox_layout.count()
-        extra_btns = abs(len(self.cs) - n_buttons)
-        if extra_btns:
-            if len(self.cs) > n_buttons:
-                columns_limit = 2
-                current_y = (n_buttons-1)//columns_limit
-                current_x = (n_buttons-1)%columns_limit
-                for n in range(n_buttons,len(self.cs)):
-                    current_x +=1
-                    if current_x%columns_limit == 0:
-                        current_y +=1
-                    current_x = current_x%columns_limit
-                    
-                    chan_btn = QCheckBox('Channel %i' % n,self.chantoggle_ui.channels_box)
-                    chan_btn.setCheckState(Qt.Checked)
-                    self.chantoggle_ui.checkbox_layout.addWidget(chan_btn,current_y,current_x)
-                    self.chantoggle_ui.chan_btn_group.addButton(chan_btn,n)
-            else:
-                for n in range(n_buttons-1,len(self.cs)-1,-1):
-                    chan_btn = self.chantoggle_ui.chan_btn_group.button(n)
-                    self.chantoggle_ui.checkbox_layout.removeWidget(chan_btn)
-                    self.chantoggle_ui.chan_btn_group.removeButton(chan_btn)
-                    chan_btn.deleteLater()
-        
+    def display_channel_plots(self, selected_channel_list):
+        plotitem = self.display_tabwidget.timedomain_widget.plotitem
+        plotitem.clear()
+        for i, channel in enumerate(self.cs.channels):
+            if i in selected_channel_list:
+                plotitem.addItem(self.timeplots[i])
+
+
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
