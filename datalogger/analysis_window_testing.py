@@ -29,9 +29,10 @@ import liveplotUI  as lpUI
 COLLAPSE_FACTOR = 0.7
 
 class CollapsingSideTabWidget(QSplitter):
-    def __init__(self, widget_side='left'):
-        super().__init__()
+    def __init__(self, widget_side='left',parent = None):
+        super().__init__(parent)
 
+        self.parent = parent
         self.collapsetimer = QTimer(self)
         self.collapsetimer.timeout.connect(self.update_splitter)
 
@@ -42,14 +43,14 @@ class CollapsingSideTabWidget(QSplitter):
         self.spacer.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
 
         # # Create the tab bar
-        self.tabBar = QTabBar()
+        self.tabBar = QTabBar(self)
 
         self.tabBar.setTabsClosable(False)
         self.tabBar.setMovable(False)
 
         # # Create the Stacked widget
-        self.tabPages = QStackedWidget()
-
+        self.tabPages = QStackedWidget(self)
+        
         # # Link the signals
         #self.tabBar.tabBarDoubleClicked.connect(self.toggle_collapse)
         self.tabBar.currentChanged.connect(self.changePage)
@@ -69,13 +70,13 @@ class CollapsingSideTabWidget(QSplitter):
             self.addWidget(self.tabPages)
             self.PAGE_IND = 2
             self.SPACE_IND = 0
-        self.TAB_SIZE = self.tabBar.sizeHint().width()
 
-        self.setHandleWidth(1)
-        for hd in [self.handle(i) for i in range(self.count())]:
-            hd.setDisabled(True)
+        self.setHandleWidth(2)
+        self.setChildrenCollapsible(False)
+        #for hd in [self.handle(i) for i in range(self.count())]:
+        #    hd.setDisabled(True)
         self.spacer.hide()
-
+        
     def addTab(self, widget, title):
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
@@ -83,7 +84,7 @@ class CollapsingSideTabWidget(QSplitter):
     def toggle_collapse(self):
         self.spacer.show()
         self.collapsed = not self.collapsed
-        self.collapsetimer.start(20)
+        self.collapsetimer.start(25)
 
     def changePage(self, index):
         self.tabBar.setCurrentIndex(index)
@@ -98,7 +99,6 @@ class CollapsingSideTabWidget(QSplitter):
         sz = self.sizes()
         self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
         sz[1] = self.tabBar.sizeHint().width()
-
         if self.collapsed:
             if not sz[self.PAGE_IND] < 5:
                 sz[self.SPACE_IND] += sz[self.PAGE_IND] * COLLAPSE_FACTOR
@@ -106,6 +106,8 @@ class CollapsingSideTabWidget(QSplitter):
             else:
                 self.prev_sz = sz
                 self.tabPages.hide()
+                
+                print(self.prev_sz)
                 self.spacer.hide()
                 self.collapsetimer.stop()
         else:
@@ -117,6 +119,7 @@ class CollapsingSideTabWidget(QSplitter):
             else:
                 self.tabPages.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
                 self.spacer.hide()
+                print(self.prev_sz)
                 self.collapsetimer.stop()
         self.setSizes(sz)
 
@@ -124,17 +127,12 @@ class StackedToolbox(QStackedWidget):
     """A stack of CollapsingSideTabWidgets"""
     def __init__(self):
         super().__init__()
-        self.layout().setStackingMode(QStackedLayout.StackAll)
+        #self.layout().setStackingMode(QStackedLayout.StackAll)
 
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
         for i in range(self.count()):
-            # The current one will toggle by default, so we don't want
-            # to toggle it again
-            #if i == self.currentIndex():
-            #    continue
-            #else:
-                self.widget(i).toggle_collapse()
+            self.widget(i).toggle_collapse()
 
     def addToolbox(self, toolbox):
         """Add a toolbox to the stack"""
@@ -155,10 +153,11 @@ class AnalysisDisplayTabWidget(QTabWidget):
 
         self.timedomain_widget = DataPlotWidget(self)
         self.freqdomain_widget = DataPlotWidget(self)
+        self.sonogram_widget = SonogramWidget(self)
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
-        self.addTab(SonogramWidget(self), "Sonogram")
+        self.addTab(self.sonogram_widget, "Sonogram")
         self.addTab(CircleFitWidget(self), "Modal Fitting")
 
 class ProjectMenu(QMenu):
@@ -194,23 +193,29 @@ class AnalysisWindow(QMainWindow):
         self.show()
 
     def init_toolbox(self):
-        self.time_toolbox = CollapsingSideTabWidget('left')
-        fft_btn = QPushButton("Convert to FFT")
+        self.time_toolbox = CollapsingSideTabWidget('left',self)
+        wd = QWidget(self)
+        hb = QHBoxLayout(wd)
+        fft_btn = QPushButton("Convert to FFT",self.time_toolbox)
         fft_btn.clicked.connect(self.plot_fft)
-        self.time_toolbox.addTab(fft_btn, "TimeTab1")
-        self.time_toolbox.addTab(QPushButton("Button 2"), "TimeTab2")
+        sono_btn = QPushButton("Sonogram",self.time_toolbox)
+        sono_btn.clicked.connect(self.plot_sonogram)
+        hb.addWidget(fft_btn)
+        hb.addWidget(sono_btn)
+        self.time_toolbox.addTab(wd, "TimeTab1")
+        self.time_toolbox.addTab(QPushButton("Button 2",self.time_toolbox), "TimeTab2")
 
-        self.frequency_toolbox = CollapsingSideTabWidget('left')
-        self.frequency_toolbox.addTab(QPushButton("Button 1"), "FreqTab1")
-        self.frequency_toolbox.addTab(QPushButton("Button 2"), "FreqTab2")
+        self.frequency_toolbox = CollapsingSideTabWidget('left',self)
+        self.frequency_toolbox.addTab(QPushButton("Button 1",self.frequency_toolbox), "FreqTab1")
+        self.frequency_toolbox.addTab(QPushButton("Button 2",self.frequency_toolbox), "FreqTab2")
 
-        self.sonogram_toolbox = CollapsingSideTabWidget('left')
-        self.sonogram_toolbox.addTab(QPushButton("Button 1"), "SonTab1")
-        self.sonogram_toolbox.addTab(QPushButton("Button 2"), "SonTab2")
+        self.sonogram_toolbox = CollapsingSideTabWidget('left',self)
+        self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
+        self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
 
-        self.modal_analysis_toolbox = CollapsingSideTabWidget('left')
-        self.modal_analysis_toolbox.addTab(QPushButton("Button 1"), "ModalTab1")
-        self.modal_analysis_toolbox.addTab(QPushButton("Button 2"), "ModalTab2")
+        self.modal_analysis_toolbox = CollapsingSideTabWidget('left',self)
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")
 
         self.toolbox = StackedToolbox()
         self.toolbox.addToolbox(self.time_toolbox)
@@ -219,7 +224,7 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.addToolbox(self.modal_analysis_toolbox)
 
     def init_global_toolbox(self):
-        self.gtools = CollapsingSideTabWidget('right')
+        self.gtools = CollapsingSideTabWidget('right',self)
         
         self.liveplot = None
         dev_configUI = DevConfigUI()
@@ -228,12 +233,10 @@ class AnalysisWindow(QMainWindow):
         self.gtools.addTab(dev_configUI,'Oscilloscope')
 
         self.channel_select_widget = ChannelSelectWidget(self.gtools)
-        #self.channel_select_widget.set_channel_set(self.cs)
         self.channel_select_widget.channel_selection_changed.connect(self.display_channel_plots)
         self.gtools.addTab(self.channel_select_widget, 'Channel Selection')
 
         self.channel_metadata_widget = ChannelMetadataWidget(self.gtools)
-        #self.channel_metadata_widget.set_channel_set(self.cs)
         self.gtools.addTab(self.channel_metadata_widget, 'Channel Metadata')
 
         self.addon_widget = AddonManager(self)
@@ -261,6 +264,7 @@ class AnalysisWindow(QMainWindow):
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
         self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
+        self.display_tabwidget.currentChanged.connect(self.update)
         
         self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
@@ -279,7 +283,7 @@ class AnalysisWindow(QMainWindow):
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.display_tabwidget, 1)
         self.main_layout.setStretchFactor(self.global_toolbox, 0)
-
+        
     def create_test_channelset(self):
         self.cs = ChannelSet(5)
 
@@ -349,6 +353,11 @@ class AnalysisWindow(QMainWindow):
                                                                    yRange = (0,np.max(ft)),
                                                                    padding = 0.2)
         self.display_channel_plots(self.channel_select_widget.selected_channels())
+     
+    def plot_sonogram(self):
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+        signal = self.cs.get_channel_data(0,'timeseries')
+        self.display_tabwidget.currentWidget().plot(signal)
         
     def display_channel_plots(self, selected_channel_list):
         #plotitem = self.display_tabwidget.timedomain_widget.plotitem
