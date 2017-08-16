@@ -18,7 +18,10 @@ from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication
 class CustomPlotWidget(pg.PlotWidget):
     def __init__(self,*arg, **kwarg):
         super().__init__(*arg, viewBox = CustomViewBox(cparent = self),**kwarg)
-
+        
+        self.plotitem = self.getPlotItem()
+        self.viewbox = self.plotitem.getViewBox()
+        
         # Removing some plot options
         ext_menu = self.plotItem.ctrlMenu
         ext_submenus = self.plotItem.subMenus
