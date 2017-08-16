@@ -125,7 +125,7 @@ class ChannelSelectWidget(QWidget):
     def on_channel_selection_change(self):
         # Emit the "Selection changed" signal with a list of channels
         # that are currently selected
-        print(self.selected_channels())
+        print("Currently selected channels: {}".format(self.selected_channels()))
         self.channel_selection_changed.emit(self.selected_channels())
 
     def set_channel_set(self, channel_set):
@@ -196,6 +196,7 @@ class ChannelMetadataWidget(QWidget):
         self.button_layout.addWidget(self.save_button)
 
     def set_channel_set(self, channel_set):
+        print("Setting channel set...")
         self.tree.clear()
 
         self.cs = channel_set
@@ -222,9 +223,11 @@ class ChannelMetadataWidget(QWidget):
                 #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
                 dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
                 dataset_item.setData(2, Qt.DisplayRole, dataset.units)
+        print("Done.")
 
     def update_channelset(self):
-        print("Updating channelset from tree")
+        print("Updating channelset from tree...")
+
         for channel_number, channel_item in enumerate(self.channel_items):
             # Reset data that should be fixed (channel numbers)
             channel_item.setData(0, Qt.DisplayRole, channel_number)
@@ -247,7 +250,7 @@ class ChannelMetadataWidget(QWidget):
             self.cs.set_channel_metadata(channel_number, metadata_dict)
 
             # Update the datasets as well
-            for i in range(channel_item.childCount):
+            for i in range(channel_item.childCount()):
                 # Find the dataset item
                 dataset_item = channel_item.child(i)
                 # Extract the data from the tree
@@ -256,15 +259,17 @@ class ChannelMetadataWidget(QWidget):
                 # Set the dataset units
                 self.cs.set_channel_units(channel_number, id_, units)
 
+        print("Done.")
+
     def edit_item(self, item, column):
-        print("Editing item, column {}".format(column))
+        print("Editing item, column {}...".format(column))
         # Channel numbers are non-editable
         if column == 0:
-            print("Not editing channel numbers!")
+            print("Channel numbers are non-editable")
             pass
         # Dataset ids are a non-editable
         elif item.parent() is not None and column == 1:
-            print("Not editing dataset ids!")
+            print("Dataset ids are non-editable")
             pass
         else:
             # Set item to be editable
@@ -274,6 +279,7 @@ class ChannelMetadataWidget(QWidget):
             self.tree.editItem(item, column)
             # Set item to not be editable
             item.setFlags(old_flags)
+        print("Done.")
 
     def discard_changes(self):
         self.set_channel_set(self.cs)
