@@ -23,6 +23,7 @@ from bin.channel import ChannelSet, ChannelSelectWidget
 from bin.addons import AddonManager
 from bin.DataAnalysisPlot import DataPlotWidget
 from liveplotUI import DevConfigUI,ChanToggleUI
+import liveplotUI  as lpUI
 
 
 class CollapsingSideTabWidget(QSplitter):
@@ -214,9 +215,11 @@ class AnalysisWindow(QMainWindow):
 
     def init_global_toolbox(self):
         self.gtools = CollapsingSideTabWidget('right')
-
+        
+        self.liveplot = None
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
+        dev_configUI.config_button.clicked.connect(self.toggle_liveplot)
         self.gtools.addTab(dev_configUI,'Oscilloscope')
 
         self.channel_select_widget = ChannelSelectWidget(self.gtools)
@@ -278,6 +281,12 @@ class AnalysisWindow(QMainWindow):
 
         for i, channel in enumerate(self.cs.channels):
             self.cs.add_channel_dataset(i, 't', np.sin(t*2*np.pi*100*(i+1)))
+            
+    def toggle_liveplot(self):
+        if not self.liveplot:
+            #try:
+            self.liveplot = lpUI.LiveplotApp(self)
+            self.liveplot.show()
 
     def display_channel_plots(self, selected_channel_list):
         #plotitem = self.display_tabwidget.timedomain_widget.plotitem

@@ -160,6 +160,10 @@ class LiveplotApp(QMainWindow):
         
     #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
+        
+
+        pg.setConfigOption('foreground', 'w')
+        pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
