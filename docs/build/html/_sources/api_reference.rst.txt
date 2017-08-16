@@ -5,13 +5,15 @@ API Reference
 .. toctree::
   :maxdepth: 2
   :caption: Contents:
-   
-  infrastructure
 
-  universal_components
+  development/development  
+ 
+  infrastructure/infrastructure
 
-  acquisition_module
+  acquisition/acquisition
 
-  analysis_module
+  analysis/analysis
 
-  addons
+  addons/addons
+
+
