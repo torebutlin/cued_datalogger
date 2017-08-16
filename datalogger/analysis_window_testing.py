@@ -36,7 +36,7 @@ class CollapsingSideTabWidget(QSplitter):
         self.collapsetimer = QTimer(self)
         self.collapsetimer.timeout.connect(self.update_splitter)
 
-        self.prev_sz = None
+        #self.prev_sz = None
 
         self.spacer = QWidget(self)
         self.spacer.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
@@ -103,13 +103,13 @@ class CollapsingSideTabWidget(QSplitter):
                 sz[self.SPACE_IND] += sz[self.PAGE_IND] * COLLAPSE_FACTOR
                 sz[self.PAGE_IND] *= COLLAPSE_FACTOR
             else:
-                self.prev_sz = sz
+                #self.prev_sz = sz
                 self.tabPages.hide()
                 self.spacer.hide()
                 self.collapsetimer.stop()
         else:
             self.tabPages.show()
-            sz = self.prev_sz
+            #sz = self.prev_sz
             if not sz[self.SPACE_IND] <5:
                 sz[self.SPACE_IND] -= sz[self.PAGE_IND] * COLLAPSE_FACTOR
                 sz[self.PAGE_IND] *= 1+COLLAPSE_FACTOR
@@ -130,13 +130,15 @@ class StackedToolbox(QStackedWidget):
 
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
-        #self.currentWidget().toggle_collapse()
-        
+        self.currentWidget().toggle_collapse()
+        print(self.collapsed)
+        '''
         self.collapsed = not self.collapsed
         if self.collapsed:
             self.currentWidget().tabPages.hide()
         else:
             self.currentWidget().tabPages.show()
+        '''
         
     def show_toolbox(self,num):
         for i in range(self.count()):
@@ -146,6 +148,7 @@ class StackedToolbox(QStackedWidget):
     def switch_toolbox(self,num):
         self.currentWidget().tabPages.hide()
         if not self.collapsed:
+            self.widget(num).tabPages.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
             self.widget(num).tabPages.show()
         self.setCurrentIndex(num)
             
@@ -242,7 +245,9 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.show_toolbox(0)
 
     def init_global_toolbox(self):
-        self.gtools = CollapsingSideTabWidget('right',self)
+        
+        self.global_toolbox = StackedToolbox()
+        self.gtools = CollapsingSideTabWidget('right',self.global_toolbox)
         
         self.liveplot = None
         dev_configUI = DevConfigUI()
@@ -260,7 +265,6 @@ class AnalysisWindow(QMainWindow):
         self.addon_widget = AddonManager(self)
         self.gtools.addTab(self.addon_widget, 'Addon Manager')
 
-        self.global_toolbox = StackedToolbox()
         self.global_toolbox.addToolbox(self.gtools)
 
     def init_ui(self):
