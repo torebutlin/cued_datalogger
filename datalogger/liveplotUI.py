@@ -16,6 +16,7 @@ from PyQt5.Qt import QStyleOption,QStyle
 
 import pyqtgraph as pg
 
+import copy
 import numpy as np
 import functools as fct
 
@@ -53,6 +54,7 @@ class LiveplotApp(QMainWindow):
 #-------------------------- METADATA ----------------------------------  
     # Signal for when data has finished acquired
     dataSaved = pyqtSignal()
+    done = pyqtSignal()
     
 #---------------------- CONSTRUCTOR METHOD------------------------------    
     def __init__(self,parent = None):
@@ -69,7 +71,7 @@ class LiveplotApp(QMainWindow):
         
         # Set recorder object
         self.playing = False
-        self.rec = mR.Recorder(channels = 15,
+        self.rec = mR.Recorder(channels = 2,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
         # Connect the recorder Signals
@@ -622,8 +624,7 @@ class LiveplotApp(QMainWindow):
             btn.setEnabled(True)
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
-        print(data[0,:])
-        self.save_data(data[:,0])
+        self.save_data(data)
         self.stats_UI.statusbar.clearMessage()
     
     # Cancel the data recording
@@ -883,6 +884,7 @@ class LiveplotApp(QMainWindow):
     
     def ResetMetaData(self):
         self.live_chanset = ch.ChannelSet(self.rec.channels)
+        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'timeseries')
         
         
     def ResetSplitterSizes(self):
@@ -901,8 +903,9 @@ class LiveplotApp(QMainWindow):
     # Transfer data to main window      
     def save_data(self,data = None):
         print('Saving data...')
-        self.parent.cs.set_channel_metadata(0,self.live_chanset.get_channel_metadata(0))
-        self.parent.cs.set_channel_data(0,'y',data)
+        for i in range(data.shape[1]):
+            self.live_chanset.set_channel_data(i,'timeseries',data[:,i])
+        self.parent.cs = copy.copy(self.live_chanset)
         self.dataSaved.emit()        
         print('Data saved!')
 
@@ -964,17 +967,13 @@ class LiveplotApp(QMainWindow):
     def closeEvent(self,event):
         if self.plottimer.isActive():
             self.plottimer.stop()
+            
+        self.done.emit()
         self.rec.close()
+        self.dataSaved.disconnect()
         event.accept()
-        if self.parent:
-            self.parent.liveplot = None
-            try:
-                self.parent.liveplotbtn.setText('Open Oscilloscope')
-            except:
-                pass
-                    
-
-
+        self.deleteLater()
+            
 #----------------------WIDGET CLASSES------------------------------------            
 class BaseWidget(QWidget):
     def __init__(self, *arg, **kwarg):

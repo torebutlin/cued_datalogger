@@ -220,16 +220,16 @@ class AnalysisWindow(QMainWindow):
         self.liveplot = None
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
-        dev_configUI.config_button.clicked.connect(self.toggle_liveplot)
+        dev_configUI.config_button.clicked.connect(self.open_liveplot)
         self.gtools.addTab(dev_configUI,'Oscilloscope')
 
         self.channel_select_widget = ChannelSelectWidget(self.gtools)
-        self.channel_select_widget.set_channel_set(self.cs)
+        #self.channel_select_widget.set_channel_set(self.cs)
         self.channel_select_widget.channel_selection_changed.connect(self.display_channel_plots)
         self.gtools.addTab(self.channel_select_widget, 'Channel Selection')
 
         self.channel_metadata_widget = ChannelMetadataWidget(self.gtools)
-        self.channel_metadata_widget.set_channel_set(self.cs)
+        #self.channel_metadata_widget.set_channel_set(self.cs)
         self.gtools.addTab(self.channel_metadata_widget, 'Channel Metadata')
 
         self.addon_widget = AddonManager(self)
@@ -257,19 +257,12 @@ class AnalysisWindow(QMainWindow):
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
         self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
-
-        data = self.cs.get_channel_data((0,1,2,3,4),'t')
+        
         self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
-        for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
-            self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
-          
-        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
-        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100))    
-        self.display_tabwidget.timedomain_widget.sp2.setValue(len(data[0]))
-        self.display_tabwidget.timedomain_widget.updateRegion()
-        self.display_tabwidget.timedomain_widget.canvas.viewbox.autoRange()
-        
+        self.plot_time_series()
+        self.config_channelset()
+
         #self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
 
         # Add the widgets
@@ -285,17 +278,47 @@ class AnalysisWindow(QMainWindow):
         self.cs = ChannelSet(5)
 
         t = np.arange(1000)/44100
-        y = np.sin(2*np.pi*1e3*t)
-
         for i, channel in enumerate(self.cs.channels):
-            self.cs.add_channel_dataset(i, 't', np.sin(t*2*np.pi*100*(i+1)))
+            self.cs.add_channel_dataset(i, 'timeseries', np.sin(t*2*np.pi*100*(i+1)))
             
-    def toggle_liveplot(self):
+    def open_liveplot(self):
         if not self.liveplot:
-            #try:
             self.liveplot = lpUI.LiveplotApp(self)
+            self.liveplot.done.connect(self.done_liveplot)
+            self.liveplot.dataSaved.connect(self.plot_time_series)
+            self.liveplot.dataSaved.connect(self.config_channelset)
             self.liveplot.show()
 
+    def done_liveplot(self):
+        self.liveplot.done.disconnect()
+        self.liveplot = None
+     
+    def config_channelset(self):
+        self.channel_select_widget.set_channel_set(self.cs)
+        self.channel_metadata_widget.set_channel_set(self.cs)
+    
+    def plot_time_series(self):
+        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'timeseries')
+        self.timeplots = []
+        for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
+            self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
+        
+        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
+        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
+        
+        print('a')
+        self.display_tabwidget.timedomain_widget.sp1.setValue(int(len(data[0])*0.4))
+        print('b')
+        self.display_tabwidget.timedomain_widget.sp2.setValue(int(len(data[0])*0.2))
+        print('c')
+        print(self.display_tabwidget.timedomain_widget.sp1.value(),
+              self.display_tabwidget.timedomain_widget.sp2.value())
+        #self.display_tabwidget.timedomain_widget.updateRegion()
+        self.display_tabwidget.timedomain_widget.plotitem.setLimits(xMin = 0,
+                                                                    xMax = len(data[0]))
+        self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,len(data[0])),
+                                                                   padding = 0.2)
+        
     def display_channel_plots(self, selected_channel_list):
         #plotitem = self.display_tabwidget.timedomain_widget.plotitem
         self.display_tabwidget.timedomain_widget.resetPlotWidget()
