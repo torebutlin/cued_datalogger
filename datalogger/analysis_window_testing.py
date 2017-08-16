@@ -222,6 +222,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_select_widget.set_channel_set(self.cs)
         self.channel_select_widget.channel_selection_changed.connect(self.display_channel_plots)
         self.gtools.addTab(self.channel_select_widget, 'Channel Selection')
+        self.addon_widget = AddonManager(self)
 
         self.global_toolbox = StackedToolbox()
         self.global_toolbox.addToolbox(self.gtools)
