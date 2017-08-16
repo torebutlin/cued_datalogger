@@ -27,13 +27,16 @@ import acquisition.myRecorder as mR
 try:
     import acquisition.NIRecorder as NIR
     NI_drivers = True
+except:
+    pass
+"""
 except NotImplementedError:
     print("Seems like you don't have National Instruments drivers")
     NI_drivers = False
 except ModuleNotFoundError:
     print("Seems like you don't have pyDAQmx modules")
     NI_drivers = False
-
+"""
 from bin import channel as ch
 from bin.custom_plot import CustomPlotWidget
 

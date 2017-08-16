@@ -1,25 +1,19 @@
 import sys
-if __name__ == '__main__':
-    sys.path.append('../')
-    from analysis_window_testing import AnalysisWindow
+import os
+from queue import Queue
 
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QTreeWidgetItem, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QHBoxLayout, QFileDialog)
 
-from io import StringIO
-from queue import Queue
-from contextlib import redirect_stdout
-import os
-
-
-
-import pyqtgraph as pg
-
-from bin.channel import ChannelSet
 
 class AddonManager(QWidget):
+    """A widget for loading and running addons.
+    
+    The :class:`AddonManager` consists of a QTreeWidget (:attr:`tree`) for selecting and 
+    viewing addons, QPushButtons for running and loading addons, and a 
+    QTextEdit (:attr:`output`) which is used to display the output from the addon."""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -45,13 +39,6 @@ class AddonManager(QWidget):
     def init_ui(self):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-
-        search_hbox = QHBoxLayout()
-        search_label = QLabel("Search:")
-        search_hbox.addWidget(search_label)
-        self.search = QLineEdit(self)
-        search_hbox.addWidget(self.search)
-        self.layout.addLayout(search_hbox)
 
         self.tree = QTreeWidget(self)
         self.tree.setHeaderLabels(["Name", "Author", "Description"])
@@ -81,7 +68,7 @@ class AddonManager(QWidget):
         self.layout.addWidget(self.output)
 
     def discover_addons(self, path):
-        """Find any addons contained in path and load them"""
+        """Find any addons contained in **path** (*str*) and load them."""
         print("Discovering addons...")
         print("\t Found:")
         for file in os.listdir(path):
@@ -93,6 +80,7 @@ class AddonManager(QWidget):
                     self.add_addon(path + file)
 
     def load_new(self):
+        """Load new addon(s) from file (opens a file explorer)."""
         # Get a list of URLs from a QFileDialog
         url_list = QFileDialog.getOpenFileNames(self, "Load new addon", "addons",
                                                "DataLogger Addons (*.py)")[0]
@@ -102,6 +90,10 @@ class AddonManager(QWidget):
             self.add_addon(url)
 
     def add_addon(self, addon_url):
+        """Add an addon to the :attr:`tree`.
+        
+        **Arguments**:
+            **addon_url** (*str*): The path to the addon ``.py`` file."""
         # Read the file
         with open(addon_url) as a:
             # Execute the file
@@ -130,6 +122,8 @@ class AddonManager(QWidget):
         self.addon_functions[metadata["name"]] = self.addon_global_vars["run"]
 
     def run_selected(self):
+        """Run the addon that is currently selected in the :attr:`tree`, routing its
+        output to the :attr:`output` TextEdit."""
         # Get the addon metadata from the tree
         name = self.tree.currentItem().data(0, Qt.DisplayRole)
         author = self.tree.currentItem().data(1, Qt.DisplayRole)
@@ -146,15 +140,16 @@ class AddonManager(QWidget):
         # Print some info about the addon
         print("###\n {} by {}\n {}\n###".format(name, author, description))
         # Execute the addon
-        self.addon_functions[name](self.parent)
-
-        # Tidy up
-        # TODO maybe need to have a more robust way of ensuring that everything
-        # closes properly eg. if application quits before these lines reached
-        self.receiver_thread.terminate()
-        sys.stdout = stdout_old
+        try:
+            self.addon_functions[name](self.parent)
+        finally:
+            # Tidy up
+            self.receiver_thread.terminate()
+            sys.stdout = stdout_old
 
     def start_receiver_thread(self):
+        """Open a new :class:`QThread` and move the :attr:`text_receiver`
+        to that thread."""
         # Create a thread for the receiver
         self.receiver_thread = QThread()
         # Move the receiver to the thread
@@ -165,32 +160,51 @@ class AddonManager(QWidget):
 
 
 class WriteStream(object):
-    """A simple object that writes to a queue - replace stdout with this"""
+    """A simple object that writes to a queue.
+    
+    A :class:`WriteStream` object is used to replace stdout so that text 
+    sent to stdout with :func:`print` or any other write function is
+    placed in the queue.
+    
+    **Attributes**:
+        queue (*Queue*): The queue which is written to."""
     def __init__(self, queue):
         self.queue = queue
 
     def write(self, text):
+        """Put text in the queue
+        Args:
+            text (*str*): Text to put in queue"""
         self.queue.put(text)
 
 
 class TextReceiver(QObject):
-    """Sits blocking until data is written to stdout_buffer, which it then
-    emits as a signal. To be run in a QThread."""
+    """A :class:`QObject` that blocks until there is something to read from a 
+    buffer (*Queue*), which it emits as a signal. 
+    
+    Run in a :class:`QThread` to send text from a :class:`WriteStream` to a 
+    :class:`TextEdit` when an addon is run."""
     sig_text_received = pyqtSignal(str)
 
-    def __init__(self, stdout_buffer):
+    def __init__(self, buffer):
         super().__init__()
-        self.stdout_buffer = stdout_buffer
+        self.buffer = buffer
 
     def run(self):
         while True:
-            # Get text from stdout (block until there's something to get)
-            stdout_text = self.stdout_buffer.get()
+            # Get text from the buffer (block until there's something to get)
+            text = self.buffer.get()
             # If we got something, send the text received signal
-            self.sig_text_received.emit(stdout_text)
+            self.sig_text_received.emit(text)
 
 
 if __name__ == '__main__':
+    sys.path.append('../')
+    
+    import pyqtgraph as pg   
+    from analysis_window_testing import AnalysisWindow
+    from bin.channel import ChannelSet
+
     app = 0
     app = QApplication(sys.argv)
 
