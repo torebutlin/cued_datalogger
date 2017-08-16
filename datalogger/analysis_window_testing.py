@@ -36,7 +36,6 @@ class CollapsingSideTabWidget(QSplitter):
         self.collapsetimer = QTimer(self)
         self.collapsetimer.timeout.connect(self.update_splitter)
 
-        self.collapsed = False
         self.prev_sz = None
 
         self.spacer = QWidget(self)
@@ -83,7 +82,7 @@ class CollapsingSideTabWidget(QSplitter):
 
     def toggle_collapse(self):
         self.spacer.show()
-        self.collapsed = not self.collapsed
+        self.parent.collapsed = not self.parent.collapsed
         self.collapsetimer.start(25)
 
     def changePage(self, index):
@@ -99,15 +98,13 @@ class CollapsingSideTabWidget(QSplitter):
         sz = self.sizes()
         self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
         sz[1] = self.tabBar.sizeHint().width()
-        if self.collapsed:
+        if self.parent.collapsed:
             if not sz[self.PAGE_IND] < 5:
                 sz[self.SPACE_IND] += sz[self.PAGE_IND] * COLLAPSE_FACTOR
                 sz[self.PAGE_IND] *= COLLAPSE_FACTOR
             else:
                 self.prev_sz = sz
                 self.tabPages.hide()
-                
-                print(self.prev_sz)
                 self.spacer.hide()
                 self.collapsetimer.stop()
         else:
@@ -119,7 +116,6 @@ class CollapsingSideTabWidget(QSplitter):
             else:
                 self.tabPages.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
                 self.spacer.hide()
-                print(self.prev_sz)
                 self.collapsetimer.stop()
         self.setSizes(sz)
 
@@ -127,13 +123,32 @@ class StackedToolbox(QStackedWidget):
     """A stack of CollapsingSideTabWidgets"""
     def __init__(self):
         super().__init__()
+        
+        self.collapsed = False
+                #self.widget(i).toggle_collapse()
         #self.layout().setStackingMode(QStackedLayout.StackAll)
 
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
+        #self.currentWidget().toggle_collapse()
+        
+        self.collapsed = not self.collapsed
+        if self.collapsed:
+            self.currentWidget().tabPages.hide()
+        else:
+            self.currentWidget().tabPages.show()
+        
+    def show_toolbox(self,num):
         for i in range(self.count()):
-            self.widget(i).toggle_collapse()
-
+            if not i == num:
+                self.widget(i).tabPages.hide()
+            
+    def switch_toolbox(self,num):
+        self.currentWidget().tabPages.hide()
+        if not self.collapsed:
+            self.widget(num).tabPages.show()
+        self.setCurrentIndex(num)
+            
     def addToolbox(self, toolbox):
         """Add a toolbox to the stack"""
         # Make sure that when this toolbox is collapsed, all the toolboxes
@@ -193,7 +208,9 @@ class AnalysisWindow(QMainWindow):
         self.show()
 
     def init_toolbox(self):
-        self.time_toolbox = CollapsingSideTabWidget('left',self)
+        self.toolbox = StackedToolbox()
+        
+        self.time_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         wd = QWidget(self)
         hb = QHBoxLayout(wd)
         fft_btn = QPushButton("Convert to FFT",self.time_toolbox)
@@ -205,23 +222,24 @@ class AnalysisWindow(QMainWindow):
         self.time_toolbox.addTab(wd, "TimeTab1")
         self.time_toolbox.addTab(QPushButton("Button 2",self.time_toolbox), "TimeTab2")
 
-        self.frequency_toolbox = CollapsingSideTabWidget('left',self)
+        self.frequency_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         self.frequency_toolbox.addTab(QPushButton("Button 1",self.frequency_toolbox), "FreqTab1")
         self.frequency_toolbox.addTab(QPushButton("Button 2",self.frequency_toolbox), "FreqTab2")
 
-        self.sonogram_toolbox = CollapsingSideTabWidget('left',self)
+        self.sonogram_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
         self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
 
-        self.modal_analysis_toolbox = CollapsingSideTabWidget('left',self)
+        self.modal_analysis_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
         self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")
 
-        self.toolbox = StackedToolbox()
+        
         self.toolbox.addToolbox(self.time_toolbox)
         self.toolbox.addToolbox(self.frequency_toolbox)
         self.toolbox.addToolbox(self.sonogram_toolbox)
         self.toolbox.addToolbox(self.modal_analysis_toolbox)
+        self.toolbox.show_toolbox(0)
 
     def init_global_toolbox(self):
         self.gtools = CollapsingSideTabWidget('right',self)
@@ -263,8 +281,8 @@ class AnalysisWindow(QMainWindow):
 
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
-        self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
-        self.display_tabwidget.currentChanged.connect(self.update)
+        #self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
+        self.display_tabwidget.currentChanged.connect(self.toolbox.switch_toolbox)
         
         self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
