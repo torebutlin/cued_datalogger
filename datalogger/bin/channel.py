@@ -1,14 +1,11 @@
-if __name__ == '__main__':
-    import sys
-    sys.path.append('../')
-
-import numpy as np
-from bin.numpy_functions import MatlabList
-
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
                              QLineEdit, QCheckBox, QScrollArea,
                              QTreeWidget, QTreeWidgetItem, QHBoxLayout)
+
+import numpy as np
+
+from bin.numpy_functions import MatlabList
 
 
 class ChannelSelectWidget(QWidget):
@@ -594,16 +591,12 @@ class DataSet():
 
     A DataSet is the basic unit for data storage - a named 1d vector with units
 
-    Attributes:
-        id_: A lower-case string containing the name of the data stored in the
-            vector - eg. 'time_series', or 'spectrum'
-        units: The SI unit in which data are measured
-        data: A numpy array of data points associated with id_
-
-    Methods:
-        set_id_: set the DataSet's id_
-        set_units: set the DataSet's units
-        set_data: set the DataSet data
+    **Attributes**:
+        **id_** (*str*): A lower-case string containing the name of the data 
+            stored in the vector - eg. 'time_series', or 'spectrum'
+        **units** (*str*): The SI unit in which data are measured
+        **data** (*np.ndarray*): A numpy array of data points associated with 
+            id_
     """
     def __init__(self, id_, units=None, data=0):
         self.set_id(id_)
@@ -625,13 +618,18 @@ class DataSet():
         self.units = units
 
 if __name__ == '__main__':
-    from bin.file_import import import_from_mat
+    import sys
+    sys.path.append('../')
+    
     from PyQt5.QtWidgets import QApplication
+
+    from bin.file_import import import_from_mat
+    
     app = 0
     app = QApplication(sys.argv)
 
     cs = ChannelSet()
-    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_grid.mat", cs)
+    #import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_grid.mat", cs)
 
     #w = ChannelSelectWidget()
     w = ChannelMetadataWidget()
