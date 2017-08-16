@@ -5,9 +5,10 @@ if __name__ == '__main__':
 import numpy as np
 from bin.numpy_functions import MatlabList
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
-                             QLineEdit, QCheckBox, QScrollArea)
+                             QLineEdit, QCheckBox, QScrollArea,
+                             QTreeWidget, QTreeWidgetItem, QHBoxLayout)
 
 
 class ChannelSelectWidget(QWidget):
@@ -159,6 +160,123 @@ class ChannelSelectWidget(QWidget):
                 selected_list.append(i)
 
         return selected_list
+
+
+class ChannelMetadataWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        # Create the master layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # # Create the tree widget
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
+                                   "Comments", "Tags", "Sample rate",
+                                   "Calibration factor",
+                                   "Transfer function type"])
+        # Connect the signals
+        self.tree.itemDoubleClicked.connect(self.edit_item)
+        # Add it to the layout
+        self.layout.addWidget(self.tree)
+
+        # # Create the buttons
+        self.button_layout = QHBoxLayout()
+        self.layout.addLayout(self.button_layout)
+
+        self.discard_button = QPushButton("Discard changes", self)
+        self.discard_button.clicked.connect(self.discard_changes)
+        self.button_layout.addWidget(self.discard_button)
+
+        self.save_button = QPushButton("Save changes", self)
+        self.save_button.clicked.connect(self.update_channelset)
+        self.button_layout.addWidget(self.save_button)
+
+    def set_channel_set(self, channel_set):
+        self.tree.clear()
+
+        self.cs = channel_set
+
+        self.channel_items = []
+
+        for channel_number, channel in enumerate(self.cs.channels):
+            # Create a tree widget item for this channel
+            channel_item = QTreeWidgetItem(self.tree)
+            #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
+            channel_item.setData(0, Qt.DisplayRole, channel_number)
+            channel_item.setData(1, Qt.DisplayRole, channel.name)
+            channel_item.setData(3, Qt.DisplayRole, channel.comments)
+            channel_item.setData(4, Qt.DisplayRole, channel.tags)
+            channel_item.setData(5, Qt.DisplayRole, channel.sample_rate)
+            channel_item.setData(6, Qt.DisplayRole, channel.calibration_factor)
+            channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
+            # Add it to the list
+            self.channel_items.append(channel_item)
+
+            # Create a child tree widget item for each of the channel's datasets
+            for dataset in channel.datasets:
+                dataset_item = QTreeWidgetItem(channel_item)
+                #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
+                dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
+                dataset_item.setData(2, Qt.DisplayRole, dataset.units)
+
+    def update_channelset(self):
+        print("Updating channelset from tree")
+        for channel_number, channel_item in enumerate(self.channel_items):
+            # Reset data that should be fixed (channel numbers)
+            channel_item.setData(0, Qt.DisplayRole, channel_number)
+
+            # Get the metadata from the tree
+            name = channel_item.data(1, Qt.DisplayRole)
+            comments = channel_item.data(3, Qt.DisplayRole)
+            tags = channel_item.data(4, Qt.DisplayRole)
+            sample_rate = channel_item.data(5, Qt.DisplayRole)
+            calibration_factor = channel_item.data(6, Qt.DisplayRole)
+            transfer_function_type = channel_item.data(7, Qt.DisplayRole)
+
+            # Set the channel metadata
+            metadata_dict = {"name": name,
+                             "comments": comments,
+                             "tags": tags,
+                             "sample_rate": sample_rate,
+                             "calibration_factor": calibration_factor,
+                             "transfer_function_type": transfer_function_type}
+            self.cs.set_channel_metadata(channel_number, metadata_dict)
+
+            # Update the datasets as well
+            for i in range(channel_item.childCount):
+                # Find the dataset item
+                dataset_item = channel_item.child(i)
+                # Extract the data from the tree
+                id_ = dataset_item.data(1, Qt.DisplayRole)
+                units = dataset_item.data(2, Qt.DisplayRole)
+                # Set the dataset units
+                self.cs.set_channel_units(channel_number, id_, units)
+
+    def edit_item(self, item, column):
+        print("Editing item, column {}".format(column))
+        # Channel numbers are non-editable
+        if column == 0:
+            print("Not editing channel numbers!")
+            pass
+        # Dataset ids are a non-editable
+        elif item.parent() is not None and column == 1:
+            print("Not editing dataset ids!")
+            pass
+        else:
+            # Set item to be editable
+            old_flags = item.flags()
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            # Edit the item
+            self.tree.editItem(item, column)
+            # Set item to not be editable
+            item.setFlags(old_flags)
+
+    def discard_changes(self):
+        self.set_channel_set(self.cs)
 
 
 class ChannelSet():
@@ -509,7 +627,8 @@ if __name__ == '__main__':
     cs = ChannelSet()
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_grid.mat", cs)
 
-    w = ChannelSelectWidget()
+    #w = ChannelSelectWidget()
+    w = ChannelMetadataWidget()
     w.set_channel_set(cs)
 
     w.show()
