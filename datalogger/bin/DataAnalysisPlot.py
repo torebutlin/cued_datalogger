@@ -60,7 +60,7 @@ class DataPlotWidget(QWidget):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
         if self.plotitem.sceneBoundingRect().contains(pos):
             mousePoint = self.vb.mapSceneToView(pos)
-            self.label.setText(("<span style='font-size: 12pt'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
+            self.label.setText(("<span style='font-size: 12pt;color: black'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
                                 % (mousePoint.x(), mousePoint.y()) ))
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())

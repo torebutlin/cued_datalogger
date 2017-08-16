@@ -18,6 +18,7 @@ from analysis.frequency_domain import FrequencyDomainWidget
 
 import pyqtgraph as pg
 import numpy as np
+from numpy.fft import rfft, rfftfreq
 
 from bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from bin.addons import AddonManager
@@ -153,9 +154,10 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.setTabsClosable(False)
 
         self.timedomain_widget = DataPlotWidget(self)
+        self.freqdomain_widget = DataPlotWidget(self)
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
-        self.addTab(FrequencyDomainWidget(self), "Frequency Domain")
+        self.addTab(self.freqdomain_widget, "Frequency Domain")
         self.addTab(SonogramWidget(self), "Sonogram")
         self.addTab(CircleFitWidget(self), "Modal Fitting")
 
@@ -193,7 +195,9 @@ class AnalysisWindow(QMainWindow):
 
     def init_toolbox(self):
         self.time_toolbox = CollapsingSideTabWidget('left')
-        self.time_toolbox.addTab(QPushButton("Button 1"), "TimeTab1")
+        fft_btn = QPushButton("Convert to FFT")
+        fft_btn.clicked.connect(self.plot_fft)
+        self.time_toolbox.addTab(fft_btn, "TimeTab1")
         self.time_toolbox.addTab(QPushButton("Button 2"), "TimeTab2")
 
         self.frequency_toolbox = CollapsingSideTabWidget('left')
@@ -260,8 +264,10 @@ class AnalysisWindow(QMainWindow):
         
         self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
-        self.plot_time_series()
+        self.freqplots = []
+        
         self.config_channelset()
+        self.plot_time_series()
 
         #self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
 
@@ -280,6 +286,7 @@ class AnalysisWindow(QMainWindow):
         t = np.arange(1000)/44100
         for i, channel in enumerate(self.cs.channels):
             self.cs.add_channel_dataset(i, 'timeseries', np.sin(t*2*np.pi*100*(i+1)))
+            self.cs.add_channel_dataset(i,'freqseries', []) 
             
     def open_liveplot(self):
         if not self.liveplot:
@@ -298,35 +305,64 @@ class AnalysisWindow(QMainWindow):
         self.channel_metadata_widget.set_channel_set(self.cs)
     
     def plot_time_series(self):
+        self.display_tabwidget.freqdomain_widget.resetPlotWidget()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         data = self.cs.get_channel_data(tuple(range(len(self.cs))),'timeseries')
         self.timeplots = []
-        for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
+        self.display_tabwidget.currentWidget().resetPlotWidget()
+        for dt,p in zip(data, self.plot_colours):
             self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
         
         self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
         self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
         
-        print('a')
         self.display_tabwidget.timedomain_widget.sp1.setValue(int(len(data[0])*0.4))
-        print('b')
-        self.display_tabwidget.timedomain_widget.sp2.setValue(int(len(data[0])*0.2))
-        print('c')
-        print(self.display_tabwidget.timedomain_widget.sp1.value(),
-              self.display_tabwidget.timedomain_widget.sp2.value())
-        #self.display_tabwidget.timedomain_widget.updateRegion()
+        self.display_tabwidget.timedomain_widget.sp2.setValue(int(len(data[0])*0.6))
         self.display_tabwidget.timedomain_widget.plotitem.setLimits(xMin = 0,
                                                                     xMax = len(data[0]))
         self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,len(data[0])),
                                                                    padding = 0.2)
+        self.display_channel_plots(self.channel_select_widget.selected_channels())
+        
+    def plot_fft(self):
+        # Switch to frequency domain tab
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'timeseries')
+
+        self.freqplots = []
+        self.display_tabwidget.currentWidget().resetPlotWidget()
+        for dt,p,i in zip(data, self.plot_colours,range(len(self.cs))):
+            # Calculate FT and associated frequencies
+            ft = np.abs(np.real(rfft(dt)))
+            #freqs = np.real(rfftfreq(dt.size, 1/4096))
+            self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
+            self.cs.set_channel_data(i,'freqseries', ft)     
+            
+        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
+        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
+        
+        self.display_tabwidget.freqdomain_widget.sp1.setValue(int(len(data[0])*0.4))
+        self.display_tabwidget.freqdomain_widget.sp2.setValue(int(len(data[0])*0.6))
+        self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
+                                                                    xMax = len(ft))
+        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,len(ft)),
+                                                                   yRange = (0,np.max(ft)),
+                                                                   padding = 0.2)
+        self.display_channel_plots(self.channel_select_widget.selected_channels())
         
     def display_channel_plots(self, selected_channel_list):
         #plotitem = self.display_tabwidget.timedomain_widget.plotitem
         self.display_tabwidget.timedomain_widget.resetPlotWidget()
-        plotitem = self.display_tabwidget.timedomain_widget.plotitem
+        self.display_tabwidget.freqdomain_widget.resetPlotWidget()
+        timeplotitem = self.display_tabwidget.timedomain_widget.plotitem
+        freqplotitem = self.display_tabwidget.freqdomain_widget.plotitem
         #plotitem.clear()
         for i, channel in enumerate(self.cs.channels):
             if i in selected_channel_list:
-                plotitem.addItem(self.timeplots[i])
+                if self.timeplots:
+                    timeplotitem.addItem(self.timeplots[i])
+                if self.freqplots:
+                    freqplotitem.addItem(self.freqplots[i])
                 
 
 

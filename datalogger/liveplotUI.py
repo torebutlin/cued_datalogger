@@ -885,6 +885,7 @@ class LiveplotApp(QMainWindow):
     def ResetMetaData(self):
         self.live_chanset = ch.ChannelSet(self.rec.channels)
         self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'timeseries')
+        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)),'freqseries')
         
         
     def ResetSplitterSizes(self):
