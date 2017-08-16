@@ -25,6 +25,7 @@ from bin.DataAnalysisPlot import DataPlotWidget
 from liveplotUI import DevConfigUI,ChanToggleUI
 import liveplotUI  as lpUI
 
+COLLAPSE_FACTOR = 0.7
 
 class CollapsingSideTabWidget(QSplitter):
     def __init__(self, widget_side='left'):
@@ -99,8 +100,8 @@ class CollapsingSideTabWidget(QSplitter):
 
         if self.collapsed:
             if not sz[self.PAGE_IND] < 5:
-                sz[self.SPACE_IND] += sz[self.PAGE_IND] * 0.5
-                sz[self.PAGE_IND] *= 0.5
+                sz[self.SPACE_IND] += sz[self.PAGE_IND] * COLLAPSE_FACTOR
+                sz[self.PAGE_IND] *= COLLAPSE_FACTOR
             else:
                 self.prev_sz = sz
                 self.tabPages.hide()
@@ -110,8 +111,8 @@ class CollapsingSideTabWidget(QSplitter):
             self.tabPages.show()
             sz = self.prev_sz
             if not sz[self.SPACE_IND] <5:
-                sz[self.SPACE_IND] -= sz[self.PAGE_IND] * 0.5
-                sz[self.PAGE_IND] *= 1.5
+                sz[self.SPACE_IND] -= sz[self.PAGE_IND] * COLLAPSE_FACTOR
+                sz[self.PAGE_IND] *= 1+COLLAPSE_FACTOR
             else:
                 self.tabPages.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
                 self.spacer.hide()
