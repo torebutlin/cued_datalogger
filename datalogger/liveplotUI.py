@@ -968,7 +968,11 @@ class LiveplotApp(QMainWindow):
         event.accept()
         if self.parent:
             self.parent.liveplot = None
-            self.parent.liveplotbtn.setText('Open Oscilloscope')
+            try:
+                self.parent.liveplotbtn.setText('Open Oscilloscope')
+            except:
+                pass
+                    
 
 
 #----------------------WIDGET CLASSES------------------------------------            
