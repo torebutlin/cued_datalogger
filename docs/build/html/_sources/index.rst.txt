@@ -1,10 +1,7 @@
-.. CUED DataLogger documentation master file, created by
-   sphinx-quickstart on Wed Aug 16 12:51:29 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. CUED DataLogger documentation master file
 
-Welcome to CUED DataLogger's documentation!
-===========================================
+CUED DataLogger Documentation
+=============================
 
 .. toctree::
   :maxdepth: 2

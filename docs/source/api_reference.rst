@@ -3,15 +3,15 @@ API Reference
 =============
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+  :maxdepth: 2
+  :caption: Contents:
    
-   infrastructure
+  infrastructure
 
-   universal_components
+  universal_components
 
-   acquisition_module
+  acquisition_module
 
-   analysis_module
+  analysis_module
 
   addons
