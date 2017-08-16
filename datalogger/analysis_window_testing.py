@@ -21,7 +21,9 @@ import numpy as np
 
 from bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from bin.addons import AddonManager
+from bin.DataAnalysisPlot import DataPlotWidget
 from liveplotUI import DevConfigUI,ChanToggleUI
+import liveplotUI  as lpUI
 
 
 class CollapsingSideTabWidget(QSplitter):
@@ -149,7 +151,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.setMovable(False)
         self.setTabsClosable(False)
 
-        self.timedomain_widget = TimeDomainWidget(self)
+        self.timedomain_widget = DataPlotWidget(self)
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(FrequencyDomainWidget(self), "Frequency Domain")
@@ -213,9 +215,11 @@ class AnalysisWindow(QMainWindow):
 
     def init_global_toolbox(self):
         self.gtools = CollapsingSideTabWidget('right')
-
+        
+        self.liveplot = None
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
+        dev_configUI.config_button.clicked.connect(self.toggle_liveplot)
         self.gtools.addTab(dev_configUI,'Oscilloscope')
 
         self.channel_select_widget = ChannelSelectWidget(self.gtools)
@@ -258,7 +262,13 @@ class AnalysisWindow(QMainWindow):
         self.timeplots = []
         for dt,p,i in zip(data, self.plot_colours, range(len(self.cs))):
             self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
-
+          
+        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
+        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100))    
+        self.display_tabwidget.timedomain_widget.sp2.setValue(len(data[0]))
+        self.display_tabwidget.timedomain_widget.updateRegion()
+        self.display_tabwidget.timedomain_widget.canvas.viewbox.autoRange()
+        
         #self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
 
         # Add the widgets
@@ -278,13 +288,22 @@ class AnalysisWindow(QMainWindow):
 
         for i, channel in enumerate(self.cs.channels):
             self.cs.add_channel_dataset(i, 't', np.sin(t*2*np.pi*100*(i+1)))
+            
+    def toggle_liveplot(self):
+        if not self.liveplot:
+            #try:
+            self.liveplot = lpUI.LiveplotApp(self)
+            self.liveplot.show()
 
     def display_channel_plots(self, selected_channel_list):
+        #plotitem = self.display_tabwidget.timedomain_widget.plotitem
+        self.display_tabwidget.timedomain_widget.resetPlotWidget()
         plotitem = self.display_tabwidget.timedomain_widget.plotitem
-        plotitem.clear()
+        #plotitem.clear()
         for i, channel in enumerate(self.cs.channels):
             if i in selected_channel_list:
                 plotitem.addItem(self.timeplots[i])
+                
 
 
 if __name__ == '__main__':

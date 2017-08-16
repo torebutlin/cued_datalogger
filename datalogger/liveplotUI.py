@@ -160,6 +160,10 @@ class LiveplotApp(QMainWindow):
         
     #----------------------PLOT WIDGETS------------------------------------        
         self.plotlines = []
+        
+
+        pg.setConfigOption('foreground', 'w')
+        pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
         self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
@@ -964,7 +968,11 @@ class LiveplotApp(QMainWindow):
         event.accept()
         if self.parent:
             self.parent.liveplot = None
-            self.parent.liveplotbtn.setText('Open Oscilloscope')
+            try:
+                self.parent.liveplotbtn.setText('Open Oscilloscope')
+            except:
+                pass
+                    
 
 
 #----------------------WIDGET CLASSES------------------------------------            
