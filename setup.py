@@ -59,7 +59,7 @@ else:
 
 
 setup(name='CUED_DataLogger',
-      version='0.0.14',
+      version='0.0.15',
       description='The CUED DataLogger for acquiring and analysing data',
       long_description=readme(),
       url='https://bitbucket.org/tab53/cued_datalogger/',
