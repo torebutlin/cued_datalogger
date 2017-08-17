@@ -211,8 +211,8 @@ class ChannelMetadataWidget(QWidget):
             channel_item.setData(1, Qt.DisplayRole, channel.name)
             channel_item.setData(3, Qt.DisplayRole, channel.comments)
             channel_item.setData(4, Qt.DisplayRole, channel.tags)
-            channel_item.setData(5, Qt.DisplayRole, channel.sample_rate)
-            channel_item.setData(6, Qt.DisplayRole, channel.calibration_factor)
+            channel_item.setData(5, Qt.DisplayRole, '%.2f' % channel.sample_rate )
+            channel_item.setData(6, Qt.DisplayRole, '%.2f' % channel.calibration_factor)
             channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
             # Add it to the list
             self.channel_items.append(channel_item)

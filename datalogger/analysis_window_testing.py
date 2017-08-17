@@ -133,7 +133,6 @@ class StackedToolbox(QStackedWidget):
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
         self.currentWidget().toggle_collapse()
-        print(self.collapsed)
         '''
         self.collapsed = not self.collapsed
         if self.collapsed:
@@ -175,6 +174,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.freqdomain_widget = DataPlotWidget(self)
         self.sonogram_widget = SonogramWidget(self)
         self.circle_widget = CircleFitWidget(self)
+        
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
@@ -206,7 +206,6 @@ class AnalysisWindow(QMainWindow):
         self.setGeometry(500,300,800,500)
         self.setWindowTitle('AnalysisWindow')
 
-        #self.prepare_tools()
         self.new_cs = ChannelSet()
         self.create_test_channelset()
         self.init_ui()
@@ -421,7 +420,7 @@ class AnalysisWindow(QMainWindow):
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
         fdata = self.cs.get_channel_data(0, "spectrum")
-        self.display_tabwidget.circle_widget.transfer_function_type = 'displacement'
+        self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
         self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         
     def display_channel_plots(self, selected_channel_list):
@@ -448,7 +447,7 @@ class AnalysisWindow(QMainWindow):
             print('Load failed. Revert to default!')
             import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
                             self.new_cs)
-        
+    
         self.import_widget.set_channel_set(self.new_cs)
         
         

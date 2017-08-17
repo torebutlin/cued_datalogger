@@ -24,7 +24,7 @@ def import_from_mat(file, channel_set):
     if "tsmax" in file.keys():
         time_series_scale_factor = file["tsmax"]
     else:
-        time_series_scale_factor = None
+        time_series_scale_factor = 1
 
     if "npts" in file.keys():
         fft_num_samples = file["npts"]
@@ -103,7 +103,7 @@ class DataImportWidget(QWidget):
         
         layout.addWidget(QLabel('New ChannelSet Preview',self))
         
-        self.tree = QTreeWidget()
+        self.tree = QTreeWidget(self)
         self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
                                    "Comments", "Tags", "Sample rate",
                                    "Calibration factor",
@@ -120,11 +120,11 @@ class DataImportWidget(QWidget):
         print("Setting channel set...")
         self.tree.clear()
 
-        self.cs = channel_set
+        #self.cs = channel_set
 
         self.channel_items = []
 
-        for channel_number, channel in enumerate(self.cs.channels):
+        for channel_number, channel in enumerate(channel_set.channels):
             # Create a tree widget item for this channel
             channel_item = QTreeWidgetItem(self.tree)
             #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
@@ -132,8 +132,8 @@ class DataImportWidget(QWidget):
             channel_item.setData(1, Qt.DisplayRole, channel.name)
             channel_item.setData(3, Qt.DisplayRole, channel.comments)
             channel_item.setData(4, Qt.DisplayRole, channel.tags)
-            channel_item.setData(5, Qt.DisplayRole, channel.sample_rate)
-            channel_item.setData(6, Qt.DisplayRole, channel.calibration_factor)
+            channel_item.setData(5, Qt.DisplayRole, '%.2f' % channel.sample_rate )
+            channel_item.setData(6, Qt.DisplayRole, '%.2f' % channel.calibration_factor)
             channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
             # Add it to the list
             self.channel_items.append(channel_item)
