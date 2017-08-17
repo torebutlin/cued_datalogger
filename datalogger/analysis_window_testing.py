@@ -200,6 +200,9 @@ class ProjectMenu(QMenu):
         self.addActions([newAct,setAct,exitAct])
 
 class AnalysisWindow(QMainWindow):
+    """
+    Data Analysis Window
+    """
     def __init__(self):
         super().__init__()
 
@@ -243,8 +246,7 @@ class AnalysisWindow(QMainWindow):
 
         self.modal_analysis_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
-        self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")
-        
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")       
         
         self.toolbox.addToolbox(self.time_toolbox)
         self.toolbox.addToolbox(self.frequency_toolbox)
@@ -252,8 +254,7 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.addToolbox(self.modal_analysis_toolbox)
         self.toolbox.show_toolbox(0)
 
-    def init_global_toolbox(self):
-        
+    def init_global_toolbox(self):        
         self.global_toolbox = StackedToolbox()
         self.gtools = CollapsingSideTabWidget('right',self.global_toolbox)
         
@@ -276,8 +277,8 @@ class AnalysisWindow(QMainWindow):
         self.import_widget = DataImportWidget(self)
         self.import_widget.import_btn.clicked.connect(self.import_files)
         
-        self.import_widget.add_data_btn.clicked.connect(lambda: self.import_replace_data('Extend'))
-        self.import_widget.rep_data_btn.clicked.connect(lambda: self.import_replace_data('Replace'))
+        self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
+        self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.gtools.addTab(self.import_widget, 'Import Files')
         
         self.global_toolbox.addToolbox(self.gtools)
@@ -300,7 +301,6 @@ class AnalysisWindow(QMainWindow):
 
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
-        #self.display_tabwidget.currentChanged.connect(self.toolbox.setCurrentIndex)
         self.display_tabwidget.currentChanged.connect(self.toolbox.switch_toolbox)
         
         self.plot_colours = ['r','g','b', 'k', 'm']
@@ -309,9 +309,9 @@ class AnalysisWindow(QMainWindow):
         
         self.config_channelset()
         self.plot_time_series()
-
-        #self.chantoggle_ui.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
-
+        #self.plot_fft()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
         # Add the widgets
         self.main_layout.addWidget(self.toolbox)
         self.main_layout.addWidget(self.display_tabwidget)
@@ -319,11 +319,10 @@ class AnalysisWindow(QMainWindow):
         # Set the stretch factors
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.display_tabwidget, 1)
-        self.main_layout.setStretchFactor(self.global_toolbox, 0)
+        self.main_layout.setStretchFactor(self.global_toolbox, 0.5)
         
     def create_test_channelset(self):
         self.cs = ChannelSet(5)
-
         t = np.arange(1000)/44100
         for i, channel in enumerate(self.cs.channels):
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
@@ -350,28 +349,30 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
 
         data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-        print(len(data))  
+        # Note: channel without a time series will give an empty array
         self.timeplots = []
         self.display_tabwidget.currentWidget().resetPlotWidget()
+        data_end = 0
         for i,dt in enumerate(data):
-            print(dt,dt.shape[0])
             if not dt.shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                t = np.arange(dt.shape[0])/sample_rate
                 self.timeplots.append(self.display_tabwidget.timedomain_widget.\
-                                      plotitem.plot(dt,pen = self.plot_colours[i%len(self.plot_colours)]))
+                                      plotitem.plot(t,dt,pen = self.plot_colours[i%len(self.plot_colours)]))
+                data_end = max(data_end,t[-1])
             else:
+                # Empty array will plot nothing and thus None in timeplots
                 self.timeplots.append(None)
         
-        print(len(self.timeplots))        
-        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
-        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
-        
-        self.display_tabwidget.timedomain_widget.sp1.setValue(int(len(data[0])*0.4))
-        self.display_tabwidget.timedomain_widget.sp2.setValue(int(len(data[0])*0.6))
+        # Set up the spinboxes and plot ranges
+        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(data_end/100) 
+        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(data_end/100) 
+        self.display_tabwidget.timedomain_widget.sp1.setValue(data_end*0.4)
+        self.display_tabwidget.timedomain_widget.sp2.setValue(data_end*0.6)
         self.display_tabwidget.timedomain_widget.plotitem.setLimits(xMin = 0,
-                                                                    xMax = len(data[0]))
-        self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,len(data[0])),
+                                                                    xMax = data_end)
+        self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,data_end),
                                                                    padding = 0.2)
-        #self.display_channel_plots(self.channel_select_widget.selected_channels())
         
     def plot_fft(self):
         # Switch to frequency domain tab
@@ -379,43 +380,47 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.currentWidget().resetPlotWidget()
         self.freqplots = []
         
-
         tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
 
         fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-            
+        
+        data_end = 0
+        max_data = 0
         for i in range(len(self.cs)):
-            if not tdata[i].shape[0] == 0:
-                print('Calculating Spectrum from timeseries')
-                # Calculate FT and associated frequencies
-                ft = np.abs(np.real(rfft(tdata[i])))
-                #freqs = np.real(rfftfreq(dt.size, 1/4096))
-                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = self.plot_colours[i%len(self.plot_colours)]))
-                self.cs.set_channel_data(i,'spectrum', ft)
-            elif not fdata[i].shape[0] == 0:
-                ft = np.abs(fdata[i])
-                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = self.plot_colours[i%len(self.plot_colours)]))
+            if not fdata[i].shape[0] == 0 or not tdata[i].shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                if not fdata[i].shape[0] == 0:
+                    f = np.arange(int(fdata[i].shape[0]))/fdata[i].shape[0] * sample_rate
+                    ft = np.abs(fdata[i])
+                elif not tdata[i].shape[0] == 0:
+                    print('Calculating Spectrum from timeseries')
+                    f = np.arange(int(tdata[i].shape[0]/2)+1)/tdata[i].shape[0] * sample_rate
+                    ft = np.abs(np.real(rfft(tdata[i])))
+                    self.cs.set_channel_data(i,'spectrum', ft)
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(f,ft,pen = self.plot_colours[i%len(self.plot_colours)]))
+                data_end = max(data_end,f[-1])
+                max_data = max(max_data,max(ft))
             else:
                 print('No specturm to plot')
                 self.freqplots.append(None)
                 return
-            
-        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(ft)/100)) 
-        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(ft)/100)) 
+          
+        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
+        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(data_end/100)
         
-        self.display_tabwidget.freqdomain_widget.sp1.setValue(int(len(ft)*0.4))
-        self.display_tabwidget.freqdomain_widget.sp2.setValue(int(len(ft)*0.6))
+        self.display_tabwidget.freqdomain_widget.sp1.setValue(data_end*0.4)
+        self.display_tabwidget.freqdomain_widget.sp2.setValue(data_end*0.6)
         self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
-                                                                    xMax = len(ft))
-        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,len(ft)),
-                                                                   yRange = (0,np.max(ft)),
+                                                                    xMax = data_end)
+        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
+                                                                   yRange = (0,max_data),
                                                                    padding = 0.2)
-        #self.display_channel_plots(self.channel_select_widget.selected_channels())
      
     def plot_sonogram(self):
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
         signal = self.cs.get_channel_data(0,'time_series')
-        self.display_tabwidget.currentWidget().plot(signal)
+        if not signal.shape[0] == 0:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+            self.display_tabwidget.currentWidget().plot(signal)
         
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
@@ -424,19 +429,24 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         
     def display_channel_plots(self, selected_channel_list):
-        #plotitem = self.display_tabwidget.timedomain_widget.plotitem
         self.display_tabwidget.timedomain_widget.resetPlotWidget()
         self.display_tabwidget.freqdomain_widget.resetPlotWidget()
         timeplotitem = self.display_tabwidget.timedomain_widget.plotitem
         freqplotitem = self.display_tabwidget.freqdomain_widget.plotitem
-        #plotitem.clear()
         for i, channel in enumerate(self.cs.channels):
             if i in selected_channel_list:
-                if self.timeplots[i]:
-                    timeplotitem.addItem(self.timeplots[i])
-                if self.freqplots[i]:
-                    freqplotitem.addItem(self.freqplots[i])
-                
+                if i< len(self.timeplots):
+                    if self.timeplots[i]:
+                        timeplotitem.addItem(self.timeplots[i])
+                else:
+                    self.timeplots.append(None)
+                    
+                if i< len(self.freqplots): 
+                    if self.freqplots[i]:
+                        freqplotitem.addItem(self.freqplots[i])
+                else:
+                    self.freqplots.append(None)
+     
     def import_files(self):
         # Get a list of URLs from a QFileDialog
         url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
@@ -451,7 +461,7 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.set_channel_set(self.new_cs)
         
         
-    def import_replace_data(self,mode):
+    def add_import_data(self,mode):
         if mode == 'Extend':
             self.cs.channels.extend(self.new_cs.channels) 
         elif mode == 'Replace':
@@ -461,6 +471,8 @@ class AnalysisWindow(QMainWindow):
         self.config_channelset()
         self.plot_time_series()
         self.plot_fft()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
         self.new_cs = ChannelSet()
         self.import_widget.set_channel_set(self.new_cs)
         
