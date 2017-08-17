@@ -85,6 +85,17 @@ class CollapsingSideTabWidget(QSplitter):
     def toggle_collapse(self):
         self.spacer.show()
         self.parent.collapsed = not self.parent.collapsed
+        sz = self.sizes()
+        self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
+        sz[1] = self.tabBar.sizeHint().width()
+        if self.parent.collapsed:
+            sz[self.SPACE_IND] = 10
+            sz[self.PAGE_IND] = 200
+        else:
+            self.tabPages.show()
+            sz[self.PAGE_IND] = 10
+            sz[self.SPACE_IND] = 200
+        self.setSizes(sz)
         self.collapsetimer.start(25)
 
     def changePage(self, index):
@@ -98,20 +109,16 @@ class CollapsingSideTabWidget(QSplitter):
 
     def update_splitter(self):
         sz = self.sizes()
-        self.tabPages.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored)
         sz[1] = self.tabBar.sizeHint().width()
         if self.parent.collapsed:
             if not sz[self.PAGE_IND] < 5:
                 sz[self.SPACE_IND] += sz[self.PAGE_IND] * COLLAPSE_FACTOR
                 sz[self.PAGE_IND] *= COLLAPSE_FACTOR
             else:
-                #self.prev_sz = sz
                 self.tabPages.hide()
                 self.spacer.hide()
                 self.collapsetimer.stop()
         else:
-            self.tabPages.show()
-            #sz = self.prev_sz
             if not sz[self.SPACE_IND] <5:
                 sz[self.SPACE_IND] -= sz[self.PAGE_IND] * COLLAPSE_FACTOR
                 sz[self.PAGE_IND] *= 1+COLLAPSE_FACTOR
@@ -133,13 +140,6 @@ class StackedToolbox(QStackedWidget):
     def toggleCollapse(self):
         """Toggle collapse of all the widgets in the stack"""
         self.currentWidget().toggle_collapse()
-        '''
-        self.collapsed = not self.collapsed
-        if self.collapsed:
-            self.currentWidget().tabPages.hide()
-        else:
-            self.currentWidget().tabPages.show()
-        '''
         
     def show_toolbox(self,num):
         for i in range(self.count()):
@@ -155,8 +155,8 @@ class StackedToolbox(QStackedWidget):
             
     def addToolbox(self, toolbox):
         """Add a toolbox to the stack"""
-        # Make sure that when this toolbox is collapsed, all the toolboxes
-        # collapse
+        toolbox.parent = self
+        toolbox.setParent(self)
         toolbox.tabBar.tabBarDoubleClicked.connect(self.toggleCollapse)
         self.addWidget(toolbox)
 
