@@ -1,7 +1,9 @@
 import scipy.io as sio
 from .channel import Channel, DataSet, ChannelSet
 import numpy as np
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
+                             QTreeWidgetItem,QHBoxLayout)
+from PyQt5.QtCore import  Qt
 
 def import_from_mat(file, channel_set):
     # Load the matlab file as a dict
@@ -97,8 +99,52 @@ class DataImportWidget(QWidget):
         layout = QVBoxLayout(self)
         
         self.import_btn = QPushButton('Import Mat Files',self)
-        
         layout.addWidget(self.import_btn)
+        
+        layout.addWidget(QLabel('New ChannelSet Preview',self))
+        
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
+                                   "Comments", "Tags", "Sample rate",
+                                   "Calibration factor",
+                                   "Transfer function type"])
+    
+        layout.addWidget(self.tree)
+        
+        add_data_btn = QPushButton('Add ChannelSet to existing ChannelSet',self)
+        rep_data_btn = QPushButton('Replace existing ChannelSet',self)
+        layout.addWidget(add_data_btn)
+        layout.addWidget(rep_data_btn)
+        
+    def set_channel_set(self, channel_set):
+        print("Setting channel set...")
+        self.tree.clear()
+
+        self.cs = channel_set
+
+        self.channel_items = []
+
+        for channel_number, channel in enumerate(self.cs.channels):
+            # Create a tree widget item for this channel
+            channel_item = QTreeWidgetItem(self.tree)
+            #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
+            channel_item.setData(0, Qt.DisplayRole, channel_number)
+            channel_item.setData(1, Qt.DisplayRole, channel.name)
+            channel_item.setData(3, Qt.DisplayRole, channel.comments)
+            channel_item.setData(4, Qt.DisplayRole, channel.tags)
+            channel_item.setData(5, Qt.DisplayRole, channel.sample_rate)
+            channel_item.setData(6, Qt.DisplayRole, channel.calibration_factor)
+            channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
+            # Add it to the list
+            self.channel_items.append(channel_item)
+
+            # Create a child tree widget item for each of the channel's datasets
+            for dataset in channel.datasets:
+                dataset_item = QTreeWidgetItem(channel_item)
+                #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
+                dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
+                dataset_item.setData(2, Qt.DisplayRole, dataset.units)
+        print("Done.")
         
 if __name__ == '__main__':
     cs = ChannelSet()
