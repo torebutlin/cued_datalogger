@@ -149,7 +149,7 @@ class ChannelSelectWidget(QWidget):
             self.viewbox_layout.addWidget(self.checkbox_list[i])
 
         # Send out a signal with the updated channels
-        self.on_channel_selection_change()
+        #self.on_channel_selection_change()
 
     def selected_channels(self):
         """Get a list of channel numbers of all currently selected channels"""
@@ -556,7 +556,9 @@ class Channel():
         for ds in self.datasets:
             if ds.id_ == id_:
                 return ds.data
-        raise ValueError("No such DataSet {}".format(id_))
+        print("No such DataSet {}".format(id_))
+        return np.array([])
+        #raise ValueError("No such DataSet {}".format(id_))
 
     def get_units(self, id_):
         # Get the units from the DataSet given by id_

@@ -207,6 +207,7 @@ class AnalysisWindow(QMainWindow):
         self.setWindowTitle('AnalysisWindow')
 
         #self.prepare_tools()
+        self.new_cs = ChannelSet()
         self.create_test_channelset()
         self.init_ui()
 
@@ -275,6 +276,9 @@ class AnalysisWindow(QMainWindow):
 
         self.import_widget = DataImportWidget(self)
         self.import_widget.import_btn.clicked.connect(self.import_files)
+        
+        self.import_widget.add_data_btn.clicked.connect(lambda: self.import_replace_data('Extend'))
+        self.import_widget.rep_data_btn.clicked.connect(lambda: self.import_replace_data('Replace'))
         self.gtools.addTab(self.import_widget, 'Import Files')
         
         self.global_toolbox.addToolbox(self.gtools)
@@ -345,17 +349,20 @@ class AnalysisWindow(QMainWindow):
     def plot_time_series(self):
         self.display_tabwidget.freqdomain_widget.resetPlotWidget()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
-        try:
-            data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-        except:
-            print('No time series data.')
-            data = [[]]
-        
+
+        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        print(len(data))  
         self.timeplots = []
         self.display_tabwidget.currentWidget().resetPlotWidget()
-        for dt,p in zip(data, self.plot_colours):
-            self.timeplots.append(self.display_tabwidget.timedomain_widget.plotitem.plot(dt,pen = p))
+        for i,dt in enumerate(data):
+            print(dt,dt.shape[0])
+            if not dt.shape[0] == 0:
+                self.timeplots.append(self.display_tabwidget.timedomain_widget.\
+                                      plotitem.plot(dt,pen = self.plot_colours[i%len(self.plot_colours)]))
+            else:
+                self.timeplots.append(None)
         
+        print(len(self.timeplots))        
         self.display_tabwidget.timedomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
         self.display_tabwidget.timedomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
         
@@ -365,7 +372,7 @@ class AnalysisWindow(QMainWindow):
                                                                     xMax = len(data[0]))
         self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,len(data[0])),
                                                                    padding = 0.2)
-        self.display_channel_plots(self.channel_select_widget.selected_channels())
+        #self.display_channel_plots(self.channel_select_widget.selected_channels())
         
     def plot_fft(self):
         # Switch to frequency domain tab
@@ -373,33 +380,26 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.currentWidget().resetPlotWidget()
         self.freqplots = []
         
-        try:
-            tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-        except:
-            print('No time series data.')
-            tdata = None
+
+        tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
             
-        try:
-            fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-        except:
-            print('No frequency series data.')
-            fdata = None
-        
-        if not tdata == None:
-            print('Calculating Spectrum from timeseries')
-            for dt,p,i in zip(tdata, self.plot_colours,range(len(self.cs))):
+        for i in range(len(self.cs)):
+            if not tdata[i].shape[0] == 0:
+                print('Calculating Spectrum from timeseries')
                 # Calculate FT and associated frequencies
-                ft = np.abs(np.real(rfft(dt)))
+                ft = np.abs(np.real(rfft(tdata[i])))
                 #freqs = np.real(rfftfreq(dt.size, 1/4096))
-                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = self.plot_colours[i%len(self.plot_colours)]))
                 self.cs.set_channel_data(i,'spectrum', ft)
-        elif not fdata == None:
-            for p,i in zip(self.plot_colours,range(len(self.cs))):
+            elif not fdata[i].shape[0] == 0:
                 ft = np.abs(fdata[i])
-                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
-        else:
-            print('No specturm to plot')
-            return
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = self.plot_colours[i%len(self.plot_colours)]))
+            else:
+                print('No specturm to plot')
+                self.freqplots.append(None)
+                return
             
         self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(ft)/100)) 
         self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(ft)/100)) 
@@ -411,7 +411,7 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,len(ft)),
                                                                    yRange = (0,np.max(ft)),
                                                                    padding = 0.2)
-        self.display_channel_plots(self.channel_select_widget.selected_channels())
+        #self.display_channel_plots(self.channel_select_widget.selected_channels())
      
     def plot_sonogram(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
@@ -421,7 +421,7 @@ class AnalysisWindow(QMainWindow):
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
         fdata = self.cs.get_channel_data(0, "spectrum")
-        self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
+        self.display_tabwidget.circle_widget.transfer_function_type = 'displacement'
         self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         
     def display_channel_plots(self, selected_channel_list):
@@ -433,31 +433,38 @@ class AnalysisWindow(QMainWindow):
         #plotitem.clear()
         for i, channel in enumerate(self.cs.channels):
             if i in selected_channel_list:
-                if self.timeplots:
+                if self.timeplots[i]:
                     timeplotitem.addItem(self.timeplots[i])
-                if self.freqplots:
+                if self.freqplots[i]:
                     freqplotitem.addItem(self.freqplots[i])
                 
     def import_files(self):
         # Get a list of URLs from a QFileDialog
         url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
-                                               "MAT Files (*.mat)")[0]
-        self.cs = ChannelSet()
-        
+                                               "MAT Files (*.mat)")[0]        
         try:
-            import_from_mat(url[0], self.cs)
+            import_from_mat(url[0], self.new_cs)
         except:
             print('Load failed. Revert to default!')
-            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", self.cs)
+            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
+                            self.new_cs)
         
+        self.import_widget.set_channel_set(self.new_cs)
+        
+        
+    def import_replace_data(self,mode):
+        if mode == 'Extend':
+            self.cs.channels.extend(self.new_cs.channels) 
+        elif mode == 'Replace':
+            self.cs = self.new_cs
+            
         
         self.config_channelset()
-        print(self.cs.get_channel_ids(0))
         self.plot_time_series()
         self.plot_fft()
+        self.new_cs = ChannelSet()
+        self.import_widget.set_channel_set(self.new_cs)
         
-    def setup_import_data(self):
-        pass
     
 if __name__ == '__main__':
     app = 0

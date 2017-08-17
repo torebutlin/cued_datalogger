@@ -111,10 +111,10 @@ class DataImportWidget(QWidget):
     
         layout.addWidget(self.tree)
         
-        add_data_btn = QPushButton('Add ChannelSet to existing ChannelSet',self)
-        rep_data_btn = QPushButton('Replace existing ChannelSet',self)
-        layout.addWidget(add_data_btn)
-        layout.addWidget(rep_data_btn)
+        self.add_data_btn = QPushButton('Add ChannelSet to existing ChannelSet',self)
+        self.rep_data_btn = QPushButton('Replace existing ChannelSet',self)
+        layout.addWidget(self.add_data_btn)
+        layout.addWidget(self.rep_data_btn)
         
     def set_channel_set(self, channel_set):
         print("Setting channel set...")

@@ -514,7 +514,10 @@ class CircleFitWidget(QWidget):
         self.fit_upper = np.where(w_fit_in_display)[0][-1]
 
     def update_plots(self, value=None):
-        lck_btn = self.row_list[self.tableWidget.currentRow()]["lockbtn"]
+        try:
+            lck_btn = self.row_list[self.tableWidget.currentRow()]["lockbtn"]
+        except:
+            lck_btn = None    
         # If the current peak is not locked
         if lck_btn and not lck_btn.isChecked():
             # Get zoomed in region
