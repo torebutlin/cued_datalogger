@@ -1,5 +1,5 @@
 from setuptools import setup
-from sys import version, platform, exit
+import sys
 import subprocess
 from os.path import isfile
 from shutil import copyfile
@@ -12,49 +12,48 @@ def readme():
 # Check if the python installation is from Anaconda - if it is, we need to
 # move the python3.dll
 print("Checking for Anaconda install...")
-if "Anaconda" in version or "Continuum" in version:
+
+if "Anaconda" in sys.version or "Continuum" in sys.version:
     print("Anaconda install found.\n")
-    if platform.startswith('win') and isfile("C:/ProgramData/Anaconda3/Library/bin/python3.dll"):
-        print("python3.dll file found, so DataLogger will work with this Anaconda.")
+    
+    if sys.version.startswith("win"):
+        print("Operating system: Windows.")
+        
+        python_dll_found = False
+        
+        for location in sys.path:
+            if isfile(location + "\Anaconda3\Library\bin\python3.dll"):
+                python_dll_found = True
+                break
+        """
+        default linux path: /home/<user>/anaconda3/ ?
+        default max path /home/<user>/anaconda3/ ?
+        default windows path: C:\ProgramData\Anaconda3\Library\bin
+        """
+        """
+        print("Checking operating system...")
+        if platform.startswith('linux'):
+            print("Operating system: Linux")
+        elif platform.startswith('darwin'):
+            print("Operating system: Mac OS")
+        elif platform.startswith('win'):
+            print("Operating system: Windows")
+            print("Unknown operating system found. Aborting.")
+            raise OSError("DataLogger not configured for this OS.")
+        """
+    if python_dll_found:
+        print("python3.dll file found, so DataLogger will work"
+              "with this Anaconda.")
         print("Continuing to setup...\n")
-    else:
-        print("Error: No python3.dll file found, so DataLogger will NOT work with this Anaconda.")
-        print("##########################################################################\n"
-              " Please copy the python3.dll file to the Anaconda Library binary folder \n"
-              " (eg. C:\ProgramData\Anaconda3\Library\bin) and rerun setup.py          \n"
-              "##########################################################################")
         exit(1)
-    """
-    default linux path: /home/<user>/anaconda3/ ?
-    default max path /home/<user>/anaconda3/ ?
-    default windows path: C:\ProgramData\Anaconda3\Library\bin
-
-
-    print("Checking operating system...")
-    if platform.startswith('linux'):
-        print("Operating system: Linux")
-        python_conda_path = subprocess.check_output(['which', 'python']).decode("utf-8")
-        print("Not implemented yet.")
-        raise OSError("DataLogger not configured for this OS.")
-    elif platform.startswith('darwin'):
-        print("Operating system: Mac OS")
-        python_conda_path = subprocess.check_output(['which', 'python']).decode("utf-8")
-        raise OSError("DataLogger not configured for this OS.")
-    elif platform.startswith('win'):
-        print("Operating system: Windows")
-        #python_conda_path = subprocess.check_output(['where', 'python']).decode("utf-8")
-        # Get the first location
-        #path_for_dll = python_conda_path.split('python')[0]
-        # Change the '\\' for '/'
-        #path_for_dll = path_for_dll.replace('\\', '\')
-        path_for_dll = 'C:\ProgramData\Anaconda3\Library\bin'
-        # Copy the dll across
-        subprocess.call(['copy', 'python3.dll', path_for_dll])
-        #subprocess.call(['runas', '/user:Administrator', "'copy python3.dll {}'".format(path_for_dll)])
     else:
-        print("Unknown operating system found. Aborting.")
-        raise OSError("DataLogger not configured for this OS.")
-    """
+        print("Error: No python3.dll file found, so DataLogger will NOT work" 
+              "with this Anaconda.")
+        print("#############################################################\n"
+              " Please copy the python3.dll file to the Anaconda Library \n"
+              " binary folder (eg. C:\ProgramData\Anaconda3\Library\bin) \n"
+              " and rerun setup.py \n"
+              "#############################################################")
 else:
     print("Anaconda not found. [OK]")
     print("Continuing to setup...\n")
