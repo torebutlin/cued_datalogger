@@ -10,7 +10,7 @@ def readme():
         return f.read()
 
 # Check if the python installation is from Anaconda - if it is, we need to
-# move the python3.dll
+# move the python3.dll into the Anaconda Library bin folder so that PyQt5.9 runs
 print("Checking for Anaconda installation...")
 
 if "Anaconda" in sys.version or "Continuum" in sys.version:
@@ -36,7 +36,7 @@ if "Anaconda" in sys.version or "Continuum" in sys.version:
 
         for location in conda_paths:
             if isfile(location + "Library/bin/python3.dll"):
-                print("python3.dll found in " + location 
+                print("python3.dll found in " + location
                       + "Library/bin/python3.dll")
                 python_dll_found = True
                 break
@@ -46,7 +46,7 @@ if "Anaconda" in sys.version or "Continuum" in sys.version:
                   "with this Anaconda installation.")
             print("Continuing to setup...\n")
         else:
-            print("Error: No python3.dll file found, so DataLogger will NOT " 
+            print("Error: No python3.dll file found, so DataLogger will NOT "
                   "work with this Anaconda installation.")
             print("#########################################################\n"
                   "Please copy the python3.dll file to the Anaconda Library \n"
@@ -73,7 +73,7 @@ setup(name='CUED_DataLogger',
                 'datalogger/analysis',
                 'datalogger/bin'],
       # TODO
-      # If you include this in the setup code, when it tries to install 
+      # If you include this in the setup code, when it tries to install
       # itself in an Anaconda environment, a lot of things break. Fix this.
       # (currently the workaround is telling the user to install some stuff)
       #install_requires=[
