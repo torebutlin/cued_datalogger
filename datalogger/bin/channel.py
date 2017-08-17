@@ -10,281 +10,6 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
                              QLineEdit, QCheckBox, QScrollArea,
                              QTreeWidget, QTreeWidgetItem, QHBoxLayout)
 
-
-class ChannelSelectWidget(QWidget):
-
-    channel_selection_changed = pyqtSignal(list)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
-
-    def init_ui(self):
-        # Create the master layout
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        # # Create the viewbox of checkboxes
-        # Create the viewbox
-        self.checkbox_viewbox = QWidget(self)
-        # Set the layout
-        self.viewbox_layout = QVBoxLayout()
-        self.checkbox_viewbox.setLayout(self.viewbox_layout)
-        # Create a scroll area so that the box can be scrollable
-        self.scrollbox = QScrollArea(self)
-        self.scrollbox.setWidget(self.checkbox_viewbox)
-        self.scrollbox.setWidgetResizable(True)
-        # Add the viewbox to the master layout
-        self.layout.addWidget(self.scrollbox)
-
-        # # Create the selection toggle buttons
-        self.selection_btns_layout = QVBoxLayout()
-        self.layout.addLayout(self.selection_btns_layout)
-
-        self.select_all_btn = QPushButton('Select All', self)
-        self.select_all_btn.clicked.connect(self.select_all)
-        self.select_all_btn.clicked.connect(self.on_channel_selection_change)
-        self.selection_btns_layout.addWidget(self.select_all_btn)
-
-        self.deselect_all_btn = QPushButton('Deselect All', self)
-        self.deselect_all_btn.clicked.connect(self.deselect_all)
-        self.deselect_all_btn.clicked.connect(self.on_channel_selection_change)
-        self.selection_btns_layout.addWidget(self.deselect_all_btn)
-
-        self.invert_select_btn = QPushButton('Invert Selection', self)
-        self.invert_select_btn.clicked.connect(self.invert_select)
-        self.invert_select_btn.clicked.connect(self.on_channel_selection_change)
-        self.selection_btns_layout.addWidget(self.invert_select_btn)
-
-        # # Create the text selection box
-        self.text_select_box = QLineEdit(self)
-        self.text_select_box.returnPressed.connect(self.select_by_text)
-        self.selection_btns_layout.addWidget(self.text_select_box)
-
-    def select_all(self):
-        self.text_select_box.clear()
-
-        for checkbox in self.checkbox_list:
-            checkbox.setChecked(True)
-
-    def deselect_all(self):
-       self.text_select_box.clear()
-
-       for checkbox in self.checkbox_list:
-            checkbox.setChecked(False)
-
-    def invert_select(self):
-        self.text_select_box.clear()
-
-        for checkbox in self.checkbox_list:
-            checkbox.toggle()
-
-    def select_by_text(self):
-        # Get the text from the box
-        string = self.text_select_box.text()
-        #print("Selecting by " + string)
-
-        selected_list = []
-
-        # Split the string by commas
-        index_list = string.split(",")
-        for index in index_list:
-            # If it's just a number, add it to the list
-            if index.isdigit():
-                selected_list.append(int(index))
-
-            # If it's a slice, add the sliced bits to the list
-            split_on_colon = index.split(":")
-            if len(split_on_colon) > 1:
-                # If it's a slice with no step
-                if len(split_on_colon) == 2:
-                    for i in range(int(split_on_colon[0]),
-                                   int(split_on_colon[1]) + 1):
-                        selected_list.append(i)
-                # If it's a slice with step
-                if len(split_on_colon) == 3:
-                    for i in range(int(split_on_colon[0]),
-                                   int(split_on_colon[1]) + 1,
-                                   int(split_on_colon[2])):
-                        selected_list.append(i)
-            else:
-                # Ignore anything else
-                continue
-
-        self.deselect_all()
-
-        self.set_selected(selected_list)
-
-    def set_selected(self, list_to_select):
-        for channel_num, channel in enumerate(self.cs.channels):
-            if channel_num in list_to_select:
-                self.checkbox_list[channel_num].setChecked(True)
-
-        self.on_channel_selection_change()
-
-    def on_channel_selection_change(self):
-        # Emit the "Selection changed" signal with a list of channels
-        # that are currently selected
-        print("Currently selected channels: {}".format(self.selected_channels()))
-        self.channel_selection_changed.emit(self.selected_channels())
-
-    def set_channel_set(self, channel_set):
-        self.cs = channel_set
-
-        self.checkbox_list = []
-
-        # Clear the old layout
-        while self.viewbox_layout.count():
-            self.viewbox_layout.takeAt(0).widget().deleteLater()
-
-        for i, channel in enumerate(self.cs.channels):
-            # Create a checkbox for this channel
-            checkbox = QCheckBox("{}: {}".format(i, channel.name),
-                                 self.checkbox_viewbox)
-            checkbox.setChecked(True)
-            checkbox.clicked.connect(self.on_channel_selection_change)
-            # Add it to the list
-            self.checkbox_list.append(checkbox)
-            # Add it to the layout
-            self.viewbox_layout.addWidget(self.checkbox_list[i])
-
-        # Send out a signal with the updated channels
-        #self.on_channel_selection_change()
-
-    def selected_channels(self):
-        """Get a list of channel numbers of all currently selected channels"""
-        selected_list = []
-
-        for i, channel in enumerate(self.cs.channels):
-            if self.checkbox_list[i].isChecked():
-                selected_list.append(i)
-
-        return selected_list
-
-
-class ChannelMetadataWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
-
-    def init_ui(self):
-        # Create the master layout
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        # # Create the tree widget
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
-                                   "Comments", "Tags", "Sample rate",
-                                   "Calibration factor",
-                                   "Transfer function type"])
-        # Connect the signals
-        self.tree.itemDoubleClicked.connect(self.edit_item)
-        # Add it to the layout
-        self.layout.addWidget(self.tree)
-
-        # # Create the buttons
-        self.button_layout = QHBoxLayout()
-        self.layout.addLayout(self.button_layout)
-
-        self.discard_button = QPushButton("Discard changes", self)
-        self.discard_button.clicked.connect(self.discard_changes)
-        self.button_layout.addWidget(self.discard_button)
-
-        self.save_button = QPushButton("Save changes", self)
-        self.save_button.clicked.connect(self.update_channelset)
-        self.button_layout.addWidget(self.save_button)
-
-    def set_channel_set(self, channel_set):
-        print("Setting channel set...")
-        self.tree.clear()
-
-        self.cs = channel_set
-
-        self.channel_items = []
-
-        for channel_number, channel in enumerate(self.cs.channels):
-            # Create a tree widget item for this channel
-            channel_item = QTreeWidgetItem(self.tree)
-            #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
-            channel_item.setData(0, Qt.DisplayRole, channel_number)
-            channel_item.setData(1, Qt.DisplayRole, channel.name)
-            channel_item.setData(3, Qt.DisplayRole, channel.comments)
-            channel_item.setData(4, Qt.DisplayRole, channel.tags)
-            channel_item.setData(5, Qt.DisplayRole, '%.2f' % channel.sample_rate )
-            channel_item.setData(6, Qt.DisplayRole, '%.2f' % channel.calibration_factor)
-            channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
-            # Add it to the list
-            self.channel_items.append(channel_item)
-
-            # Create a child tree widget item for each of the channel's datasets
-            for dataset in channel.datasets:
-                dataset_item = QTreeWidgetItem(channel_item)
-                #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
-                dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
-                dataset_item.setData(2, Qt.DisplayRole, dataset.units)
-        print("Done.")
-
-    def update_channelset(self):
-        print("Updating channelset from tree...")
-
-        for channel_number, channel_item in enumerate(self.channel_items):
-            # Reset data that should be fixed (channel numbers)
-            channel_item.setData(0, Qt.DisplayRole, channel_number)
-
-            # Get the metadata from the tree
-            name = channel_item.data(1, Qt.DisplayRole)
-            comments = channel_item.data(3, Qt.DisplayRole)
-            tags = channel_item.data(4, Qt.DisplayRole)
-            sample_rate = channel_item.data(5, Qt.DisplayRole)
-            calibration_factor = channel_item.data(6, Qt.DisplayRole)
-            transfer_function_type = channel_item.data(7, Qt.DisplayRole)
-
-            # Set the channel metadata
-            metadata_dict = {"name": name,
-                             "comments": comments,
-                             "tags": tags,
-                             "sample_rate": sample_rate,
-                             "calibration_factor": calibration_factor,
-                             "transfer_function_type": transfer_function_type}
-            self.cs.set_channel_metadata(channel_number, metadata_dict)
-
-            # Update the datasets as well
-            for i in range(channel_item.childCount()):
-                # Find the dataset item
-                dataset_item = channel_item.child(i)
-                # Extract the data from the tree
-                id_ = dataset_item.data(1, Qt.DisplayRole)
-                units = dataset_item.data(2, Qt.DisplayRole)
-                # Set the dataset units
-                self.cs.set_channel_units(channel_number, id_, units)
-
-        print("Done.")
-
-    def edit_item(self, item, column):
-        print("Editing item, column {}...".format(column))
-        # Channel numbers are non-editable
-        if column == 0:
-            print("Channel numbers are non-editable")
-            pass
-        # Dataset ids are a non-editable
-        elif item.parent() is not None and column == 1:
-            print("Dataset ids are non-editable")
-            pass
-        else:
-            # Set item to be editable
-            old_flags = item.flags()
-            item.setFlags(item.flags() | Qt.ItemIsEditable)
-            # Edit the item
-            self.tree.editItem(item, column)
-            # Set item to not be editable
-            item.setFlags(old_flags)
-        print("Done.")
-
-    def discard_changes(self):
-        self.set_channel_set(self.cs)
-
-
 class ChannelSet():
     """A group of channels, with methods for setting and getting data.
 
@@ -437,7 +162,6 @@ class ChannelSet():
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)
-
 
 class Channel():
     """Contains a group of DataSets and associated metadata.
@@ -593,7 +317,6 @@ class Channel():
             w = self.get_dataset("omega")
             w.set_data(self.get_data("frequency") * 2*np.pi)
 
-
 class DataSet():
     """A simple data storage class.
 
@@ -628,6 +351,290 @@ class DataSet():
 
     def set_units(self, units):
         self.units = units
+
+
+class ChannelSelectWidget(QWidget):
+
+    channel_selection_changed = pyqtSignal(list)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        # Create the master layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # # Create the viewbox of checkboxes
+        # Create the viewbox
+        self.checkbox_viewbox = QWidget(self)
+        # Set the layout
+        self.viewbox_layout = QVBoxLayout()
+        self.checkbox_viewbox.setLayout(self.viewbox_layout)
+        # Create a scroll area so that the box can be scrollable
+        self.scrollbox = QScrollArea(self)
+        self.scrollbox.setWidget(self.checkbox_viewbox)
+        self.scrollbox.setWidgetResizable(True)
+        # Add the viewbox to the master layout
+        self.layout.addWidget(self.scrollbox)
+
+        # # Create the selection toggle buttons
+        self.selection_btns_layout = QVBoxLayout()
+        self.layout.addLayout(self.selection_btns_layout)
+
+        self.select_all_btn = QPushButton('Select All', self)
+        self.select_all_btn.clicked.connect(self.select_all)
+        self.select_all_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.select_all_btn)
+
+        self.deselect_all_btn = QPushButton('Deselect All', self)
+        self.deselect_all_btn.clicked.connect(self.deselect_all)
+        self.deselect_all_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.deselect_all_btn)
+
+        self.invert_select_btn = QPushButton('Invert Selection', self)
+        self.invert_select_btn.clicked.connect(self.invert_select)
+        self.invert_select_btn.clicked.connect(self.on_channel_selection_change)
+        self.selection_btns_layout.addWidget(self.invert_select_btn)
+
+        # # Create the text selection box
+        self.text_select_box = QLineEdit(self)
+        self.text_select_box.returnPressed.connect(self.select_by_text)
+        self.selection_btns_layout.addWidget(self.text_select_box)
+
+    def select_all(self):
+        self.text_select_box.clear()
+
+        for checkbox in self.checkbox_list:
+            checkbox.setChecked(True)
+
+    def deselect_all(self):
+       self.text_select_box.clear()
+
+       for checkbox in self.checkbox_list:
+            checkbox.setChecked(False)
+
+    def invert_select(self):
+        self.text_select_box.clear()
+
+        for checkbox in self.checkbox_list:
+            checkbox.toggle()
+
+    def select_by_text(self):
+        # Get the text from the box
+        string = self.text_select_box.text()
+        #print("Selecting by " + string)
+
+        selected_list = []
+
+        # Split the string by commas
+        index_list = string.split(",")
+        for index in index_list:
+            # If it's just a number, add it to the list
+            if index.isdigit():
+                selected_list.append(int(index))
+
+            # If it's a slice, add the sliced bits to the list
+            split_on_colon = index.split(":")
+            if len(split_on_colon) > 1:
+                # If it's a slice with no step
+                if len(split_on_colon) == 2:
+                    for i in range(int(split_on_colon[0]),
+                                   int(split_on_colon[1]) + 1):
+                        selected_list.append(i)
+                # If it's a slice with step
+                if len(split_on_colon) == 3:
+                    for i in range(int(split_on_colon[0]),
+                                   int(split_on_colon[1]) + 1,
+                                   int(split_on_colon[2])):
+                        selected_list.append(i)
+            else:
+                # Ignore anything else
+                continue
+
+        self.deselect_all()
+
+        self.set_selected(selected_list)
+
+    def set_selected(self, list_to_select):
+        for channel_num, channel in enumerate(self.cs.channels):
+            if channel_num in list_to_select:
+                self.checkbox_list[channel_num].setChecked(True)
+
+        self.on_channel_selection_change()
+
+    def on_channel_selection_change(self):
+        # Emit the "Selection changed" signal with a list of channels
+        # that are currently selected
+        print("Currently selected channels: {}".format(self.selected_channels()))
+        self.channel_selection_changed.emit(self.selected_channels())
+        
+    def set_channel_name(self):
+        for i, channel in enumerate(self.cs.channels):
+            # Create a checkbox for this channel
+            self.checkbox_list[i].setText("{}: {}".format(i, channel.name))
+        
+    def set_channel_set(self, channel_set):
+        self.cs = channel_set
+
+        self.checkbox_list = []
+
+        # Clear the old layout
+        while self.viewbox_layout.count():
+            self.viewbox_layout.takeAt(0).widget().deleteLater()
+
+        for i, channel in enumerate(self.cs.channels):
+            # Create a checkbox for this channel
+            checkbox = QCheckBox("{}: {}".format(i, channel.name),
+                                 self.checkbox_viewbox)
+            checkbox.setChecked(True)
+            checkbox.clicked.connect(self.on_channel_selection_change)
+            # Add it to the list
+            self.checkbox_list.append(checkbox)
+            # Add it to the layout
+            self.viewbox_layout.addWidget(self.checkbox_list[i])
+            
+        
+        # Send out a signal with the updated channels
+        #self.on_channel_selection_change()
+
+    def selected_channels(self):
+        """Get a list of channel numbers of all currently selected channels"""
+        selected_list = []
+
+        for i, channel in enumerate(self.cs.channels):
+            if self.checkbox_list[i].isChecked():
+                selected_list.append(i)
+
+        return selected_list
+
+
+class ChannelMetadataWidget(QWidget):
+    metadataChange = pyqtSignal(ChannelSet)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        # Create the master layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # # Create the tree widget
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
+                                   "Comments", "Tags", "Sample rate",
+                                   "Calibration factor",
+                                   "Transfer function type"])
+        # Connect the signals
+        self.tree.itemDoubleClicked.connect(self.edit_item)
+        # Add it to the layout
+        self.layout.addWidget(self.tree)
+
+        # # Create the buttons
+        self.button_layout = QHBoxLayout()
+        self.layout.addLayout(self.button_layout)
+
+        self.discard_button = QPushButton("Discard changes", self)
+        self.discard_button.clicked.connect(self.discard_changes)
+        self.button_layout.addWidget(self.discard_button)
+
+        self.save_button = QPushButton("Save changes", self)
+        self.save_button.clicked.connect(self.update_channelset)
+        self.button_layout.addWidget(self.save_button)
+
+    def set_channel_set(self, channel_set):
+        print("Setting channel set...")
+        self.tree.clear()
+
+        self.cs = channel_set
+
+        self.channel_items = []
+
+        for channel_number, channel in enumerate(self.cs.channels):
+            # Create a tree widget item for this channel
+            channel_item = QTreeWidgetItem(self.tree)
+            #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
+            channel_item.setData(0, Qt.DisplayRole, channel_number)
+            channel_item.setData(1, Qt.DisplayRole, channel.name)
+            channel_item.setData(3, Qt.DisplayRole, channel.comments)
+            channel_item.setData(4, Qt.DisplayRole, channel.tags)
+            channel_item.setData(5, Qt.DisplayRole, '%.2f' % channel.sample_rate)
+            channel_item.setData(6, Qt.DisplayRole, '%.2f' % channel.calibration_factor)
+            channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
+            # Add it to the list
+            self.channel_items.append(channel_item)
+
+            # Create a child tree widget item for each of the channel's datasets
+            for dataset in channel.datasets:
+                dataset_item = QTreeWidgetItem(channel_item)
+                #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
+                dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
+                dataset_item.setData(2, Qt.DisplayRole, dataset.units)
+        print("Done.")
+
+    def update_channelset(self):
+        print("Updating channelset from tree...")
+
+        for channel_number, channel_item in enumerate(self.channel_items):
+            # Reset data that should be fixed (channel numbers)
+            channel_item.setData(0, Qt.DisplayRole, channel_number)
+
+            # Get the metadata from the tree
+            # Note: data acquired from tree is string, need to convert some to float/int
+            name = channel_item.data(1, Qt.DisplayRole)
+            comments = channel_item.data(3, Qt.DisplayRole)
+            tags = channel_item.data(4, Qt.DisplayRole)
+            sample_rate = float(channel_item.data(5, Qt.DisplayRole))
+            calibration_factor = float(channel_item.data(6, Qt.DisplayRole))
+            transfer_function_type = channel_item.data(7, Qt.DisplayRole)
+
+            # Set the channel metadata
+            metadata_dict = {"name": name,
+                             "comments": comments,
+                             "tags": tags,
+                             "sample_rate": sample_rate,
+                             "calibration_factor": calibration_factor,
+                             "transfer_function_type": transfer_function_type}
+            self.cs.set_channel_metadata(channel_number, metadata_dict)
+
+            # Update the datasets as well
+            for i in range(channel_item.childCount()):
+                # Find the dataset item
+                dataset_item = channel_item.child(i)
+                # Extract the data from the tree
+                id_ = dataset_item.data(1, Qt.DisplayRole)
+                units = dataset_item.data(2, Qt.DisplayRole)
+                # Set the dataset units
+                self.cs.set_channel_units(channel_number, id_, units)
+        
+        self.metadataChange.emit(self.cs)
+        print("Done.")
+
+    def edit_item(self, item, column):
+        print("Editing item, column {}...".format(column))
+        # Channel numbers are non-editable
+        if column == 0:
+            print("Channel numbers are non-editable")
+            pass
+        # Dataset ids are a non-editable
+        elif item.parent() is not None and column == 1:
+            print("Dataset ids are non-editable")
+            pass
+        else:
+            # Set item to be editable
+            old_flags = item.flags()
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            # Edit the item
+            self.tree.editItem(item, column)
+            # Set item to not be editable
+            item.setFlags(old_flags)
+        print("Done.")
+
+    def discard_changes(self):
+        self.set_channel_set(self.cs)
 
 if __name__ == '__main__':
     from bin.file_import import import_from_mat

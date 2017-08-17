@@ -174,7 +174,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.freqdomain_widget = DataPlotWidget(self)
         self.sonogram_widget = SonogramWidget(self)
         self.circle_widget = CircleFitWidget(self)
-        
+                
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
@@ -271,6 +271,9 @@ class AnalysisWindow(QMainWindow):
         self.channel_metadata_widget = ChannelMetadataWidget(self.gtools)
         self.gtools.addTab(self.channel_metadata_widget, 'Channel Metadata')
 
+        
+        self.channel_metadata_widget.metadataChange.connect(self.update_cs)
+            
         self.addon_widget = AddonManager(self)
         self.gtools.addTab(self.addon_widget, 'Addon Manager')
 
@@ -282,7 +285,11 @@ class AnalysisWindow(QMainWindow):
         self.gtools.addTab(self.import_widget, 'Import Files')
         
         self.global_toolbox.addToolbox(self.gtools)
-
+        
+    def update_cs(self,cs):
+        self.channel_select_widget.cs = self.cs = cs
+        self.channel_select_widget.set_channel_name()
+            
     def init_ui(self):
         menubar = self.menuBar()
         menubar.addMenu(ProjectMenu(self))
