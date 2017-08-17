@@ -393,6 +393,7 @@ class AnalysisWindow(QMainWindow):
         
         data_end = 0
         max_data = 0
+        print(fdata,tdata)
         for i in range(len(self.cs)):
             if not fdata[i].shape[0] == 0 or not tdata[i].shape[0] == 0:
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
@@ -403,7 +404,7 @@ class AnalysisWindow(QMainWindow):
                     print('Calculating Spectrum from timeseries')
                     f = np.arange(int(tdata[i].shape[0]/2)+1)/tdata[i].shape[0] * sample_rate
                     ft = np.abs(np.real(rfft(tdata[i])))
-                    self.cs.set_channel_data(i,'spectrum', ft)
+                    self.cs.add_channel_dataset(i,'spectrum', ft)
                 self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(f,ft,pen = self.plot_colours[i%len(self.plot_colours)]))
                 data_end = max(data_end,f[-1])
                 max_data = max(max_data,max(ft))
