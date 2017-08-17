@@ -209,7 +209,7 @@ class AnalysisWindow(QMainWindow):
         self.setGeometry(500,300,800,500)
         self.setWindowTitle('AnalysisWindow')
 
-        self.new_cs = ChannelSet()
+        #self.new_cs = ChannelSet()
         self.create_test_channelset()
         self.init_ui()
 
@@ -278,8 +278,6 @@ class AnalysisWindow(QMainWindow):
         self.gtools.addTab(self.addon_widget, 'Addon Manager')
 
         self.import_widget = DataImportWidget(self)
-        self.import_widget.import_btn.clicked.connect(self.import_files)
-        
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.gtools.addTab(self.import_widget, 'Import Files')
@@ -388,12 +386,10 @@ class AnalysisWindow(QMainWindow):
         self.freqplots = []
         
         tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-
         fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
         
         data_end = 0
         max_data = 0
-        print(fdata,tdata)
         for i in range(len(self.cs)):
             if not fdata[i].shape[0] == 0 or not tdata[i].shape[0] == 0:
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
@@ -454,35 +450,19 @@ class AnalysisWindow(QMainWindow):
                         freqplotitem.addItem(self.freqplots[i])
                 else:
                     self.freqplots.append(None)
-     
-    def import_files(self):
-        # Get a list of URLs from a QFileDialog
-        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
-                                               "MAT Files (*.mat)")[0]        
-        try:
-            import_from_mat(url[0], self.new_cs)
-        except:
-            print('Load failed. Revert to default!')
-            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
-                            self.new_cs)
-    
-        self.import_widget.set_channel_set(self.new_cs)
-        
-        
+                
     def add_import_data(self,mode):
         if mode == 'Extend':
-            self.cs.channels.extend(self.new_cs.channels) 
+            self.cs.channels.extend(self.import_widget.new_cs.channels) 
         elif mode == 'Replace':
-            self.cs = self.new_cs
-            
+            self.cs = self.import_widget.new_cs
         
         self.config_channelset()
         self.plot_time_series()
         self.plot_fft()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         
-        self.new_cs = ChannelSet()
-        self.import_widget.set_channel_set(self.new_cs)
+        self.import_widget.clear()
         
     
 if __name__ == '__main__':

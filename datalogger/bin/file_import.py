@@ -2,7 +2,7 @@ import scipy.io as sio
 from .channel import Channel, DataSet, ChannelSet
 import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
-                             QTreeWidgetItem,QHBoxLayout)
+                             QTreeWidgetItem,QHBoxLayout,QFileDialog)
 from PyQt5.QtCore import  Qt
 
 def import_from_mat(file, channel_set):
@@ -92,13 +92,14 @@ def import_from_mat(file, channel_set):
 class DataImportWidget(QWidget):
     def __init__(self,parent):
         super().__init__(parent)
-        
+        self.new_cs = ChannelSet()
         self.init_UI()
         
     def init_UI(self):
         layout = QVBoxLayout(self)
         
         self.import_btn = QPushButton('Import Mat Files',self)
+        self.import_btn.clicked.connect(self.import_files)
         layout.addWidget(self.import_btn)
         
         layout.addWidget(QLabel('New ChannelSet Preview',self))
@@ -145,6 +146,23 @@ class DataImportWidget(QWidget):
                 dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
                 dataset_item.setData(2, Qt.DisplayRole, dataset.units)
         print("Done.")
+        
+    def import_files(self):
+        # Get a list of URLs from a QFileDialog
+        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
+                                               "MAT Files (*.mat)")[0]        
+        try:
+            import_from_mat(url[0], self.new_cs)
+        except:
+            print('Load failed. Revert to default!')
+            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
+                            self.new_cs)
+    
+        self.set_channel_set(self.new_cs)
+        
+    def clear(self):
+        self.new_cs = ChannelSet()
+        self.set_channel_set(self.new_cs)
         
 if __name__ == '__main__':
     cs = ChannelSet()
