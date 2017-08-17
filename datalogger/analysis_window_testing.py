@@ -345,8 +345,12 @@ class AnalysisWindow(QMainWindow):
     def plot_time_series(self):
         self.display_tabwidget.freqdomain_widget.resetPlotWidget()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
-        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-        print(data)
+        try:
+            data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        except:
+            print('No time series data.')
+            data = [[]]
+        
         self.timeplots = []
         self.display_tabwidget.currentWidget().resetPlotWidget()
         for dt,p in zip(data, self.plot_colours):
@@ -366,25 +370,36 @@ class AnalysisWindow(QMainWindow):
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
-        
+        self.display_tabwidget.currentWidget().resetPlotWidget()
         self.freqplots = []
+        
+        try:
+            tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        except:
+            print('No time series data.')
+            tdata = None
+            
         try:
             fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-            for p,i in zip(self.plot_colours,range(len(self.cs))):
-                ft = np.abs(fdata[i])
-                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
-        except Exception as e:
-            print(e)
+        except:
+            print('No frequency series data.')
+            fdata = None
+        
+        if not tdata == None:
             print('Calculating Spectrum from timeseries')
-            data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-    
-            self.display_tabwidget.currentWidget().resetPlotWidget()
-            for dt,p,i in zip(data, self.plot_colours,range(len(self.cs))):
+            for dt,p,i in zip(tdata, self.plot_colours,range(len(self.cs))):
                 # Calculate FT and associated frequencies
                 ft = np.abs(np.real(rfft(dt)))
                 #freqs = np.real(rfftfreq(dt.size, 1/4096))
                 self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
-                self.cs.set_channel_data(i,'spectrum', ft)     
+                self.cs.set_channel_data(i,'spectrum', ft)
+        elif not fdata == None:
+            for p,i in zip(self.plot_colours,range(len(self.cs))):
+                ft = np.abs(fdata[i])
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
+        else:
+            print('No specturm to plot')
+            return
             
         self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(ft)/100)) 
         self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(ft)/100)) 
@@ -430,15 +445,20 @@ class AnalysisWindow(QMainWindow):
         self.cs = ChannelSet()
         
         try:
-            import_from_mat(url, self.cs)
+            import_from_mat(url[0], self.cs)
         except:
             print('Load failed. Revert to default!')
             import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", self.cs)
-            
+        
+        
         self.config_channelset()
         print(self.cs.get_channel_ids(0))
+        self.plot_time_series()
         self.plot_fft()
-
+        
+    def setup_import_data(self):
+        pass
+    
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
