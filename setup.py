@@ -36,30 +36,32 @@ if "Anaconda" in sys.version or "Continuum" in sys.version:
 
         for location in conda_paths:
             if isfile(location + "Library/bin/python3.dll"):
-                print("python3.dll found in " + location + "Library/bin/python3.dll")
+                print("python3.dll found in " + location 
+                      + "Library/bin/python3.dll")
                 python_dll_found = True
                 break
 
         if python_dll_found:
-            print("python3.dll file found, so DataLogger will work"
+            print("python3.dll file found, so DataLogger will work "
                   "with this Anaconda installation.")
             print("Continuing to setup...\n")
-            exit(1)
         else:
-            print("Error: No python3.dll file found, so DataLogger will NOT work"
-                  "with this Anaconda installation.")
-            print("#############################################################\n"
-                  " Please copy the python3.dll file to the Anaconda Library \n"
-                  " binary folder (eg. C:\ProgramData\Anaconda3\Library\bin) \n"
-                  " and rerun setup.py \n"
-                  "#############################################################")
+            print("Error: No python3.dll file found, so DataLogger will NOT " 
+                  "work with this Anaconda installation.")
+            print("#########################################################\n"
+                  "Please copy the python3.dll file to the Anaconda Library \n"
+                  "binary folder (eg. C:\ProgramData\Anaconda3\Library\bin) \n"
+                  "and rerun setup.py \n"
+                  "#########################################################")
+            exit(1)
+
 else:
     print("Anaconda not found. [OK]")
     print("Continuing to setup...\n")
 
 
 setup(name='CUED_DataLogger',
-      version='0.0.15',
+      version='0.0.22',
       description='The CUED DataLogger for acquiring and analysing data',
       long_description=readme(),
       url='https://bitbucket.org/tab53/cued_datalogger/',
@@ -70,14 +72,18 @@ setup(name='CUED_DataLogger',
                 'datalogger/acquisition',
                 'datalogger/analysis',
                 'datalogger/bin'],
-      install_requires=[
-              'PyQt5>=5.9',
-              'numpy>=1.11.3',
-              'scipy>=0.18.1',
-              'pyqtgraph>=0.9.10',
-              'matplotlib>=1.5.1',
-              'PyDAQmx>=1.3.2',
-              'pyaudio>=0.2.11'],
+      # TODO
+      # If you include this in the setup code, when it tries to install 
+      # itself in an Anaconda environment, a lot of things break. Fix this.
+      # (currently the workaround is telling the user to install some stuff)
+      #install_requires=[
+      #                'PyQt5>=5.9',
+      #                'numpy>=1.11.3',
+      #                'scipy>=0.18.1',
+      #                'pyqtgraph>=0.9.10',
+      #                'matplotlib>=1.5.1',
+      #                'PyDAQmx>=1.3.2',
+      #                'pyaudio>=0.2.11'],
       entry_points={
         'console_scripts': ['DataLogger_cmd = datalogger.__main__:full'],
         'gui_scripts': ['DataLogger = datalogger.__main__:full']},
