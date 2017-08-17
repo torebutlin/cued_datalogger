@@ -4,7 +4,7 @@ Functions:
 - Sets up audio stream
 """
 
-from .RecorderParent import RecorderParent
+from datalogger.acquisition.RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
 import pyaudio
 import numpy as np

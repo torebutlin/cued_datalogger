@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QPushButton,QLabel,
                              QFormLayout)
 import pyqtgraph as pg
 import functools as fct
-from .custom_plot import CustomPlotWidget
+from datalogger.bin.custom_plot import CustomPlotWidget
 
 # Widget for the tabs inside dataWindow
 class DataPlotWidget(QWidget):

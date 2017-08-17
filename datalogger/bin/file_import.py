@@ -1,5 +1,5 @@
 import scipy.io as sio
-from .channel import Channel, DataSet, ChannelSet
+from datalogger.bin.channel import Channel, DataSet, ChannelSet
 import numpy as np
 
 

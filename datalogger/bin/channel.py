@@ -3,7 +3,7 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 import numpy as np
-from bin.numpy_functions import MatlabList
+from datalogger.bin.numpy_functions import MatlabList
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,

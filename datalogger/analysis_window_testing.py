@@ -11,19 +11,19 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QLineEdit,QAction,QMenu, QCheckBox)
 from PyQt5.QtGui import QPalette,QColor
 
-from analysis.circle_fit import CircleFitWidget
-from analysis.sonogram import SonogramWidget
-from analysis.time_domain import TimeDomainWidget
-from analysis.frequency_domain import FrequencyDomainWidget
+from datalogger.analysis.circle_fit import CircleFitWidget
+from datalogger.analysis.sonogram import SonogramWidget
+from datalogger.analysis.time_domain import TimeDomainWidget
+from datalogger.analysis.frequency_domain import FrequencyDomainWidget
 
 import pyqtgraph as pg
 import numpy as np
 
-from bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
-from bin.addons import AddonManager
-from bin.DataAnalysisPlot import DataPlotWidget
-from liveplotUI import DevConfigUI,ChanToggleUI
-import liveplotUI  as lpUI
+from datalogger.bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
+from datalogger.bin.addons import AddonManager
+from datalogger.bin.DataAnalysisPlot import DataPlotWidget
+from datalogger.liveplotUI import DevConfigUI,ChanToggleUI
+import datalogger.liveplotUI  as lpUI
 
 COLLAPSE_FACTOR = 0.7
 

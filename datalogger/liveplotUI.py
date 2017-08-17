@@ -20,22 +20,22 @@ import numpy as np
 import functools as fct
 
 from collections.abc import Sequence
-from acquisition.ChanLineText import ChanLineText
-from acquisition.ChanMetaWin import ChanMetaWin
+from datalogger.acquisition.ChanLineText import ChanLineText
+from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 #from acquisition.CustomPlot import CustomPlot
-import acquisition.myRecorder as mR
+import datalogger.acquisition.myRecorder as mR
 try:
-    import acquisition.NIRecorder as NIR
+    import datalogger.acquisition.NIRecorder as NIR
     NI_drivers = True
 except NotImplementedError:
     print("Seems like you don't have National Instruments drivers")
     NI_drivers = False
-except ModuleNotFoundError:
-    print("Seems like you don't have pyDAQmx modules")
+except ImportError:
+    print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
 
-from bin import channel as ch
-from bin.custom_plot import CustomPlotWidget
+from datalogger.bin import channel as ch
+from datalogger.bin.custom_plot import CustomPlotWidget
 
 import math
 

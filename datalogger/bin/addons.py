@@ -13,11 +13,9 @@ from queue import Queue
 from contextlib import redirect_stdout
 import os
 
-
-
 import pyqtgraph as pg
 
-from bin.channel import ChannelSet
+from datalogger.bin.channel import ChannelSet
 
 class AddonManager(QWidget):
     def __init__(self, parent=None):
