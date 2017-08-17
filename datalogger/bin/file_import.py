@@ -1,7 +1,7 @@
 import scipy.io as sio
 from .channel import Channel, DataSet, ChannelSet
 import numpy as np
-
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton)
 
 def import_from_mat(file, channel_set):
     # Load the matlab file as a dict
@@ -85,4 +85,25 @@ def import_from_mat(file, channel_set):
                                             "sonogram_phase",
                                             sonogram_phase[i],
                                             'rad')
+            
+            
+class DataImportWidget(QWidget):
+    def __init__(self,parent):
+        super().__init__(parent)
+        
+        self.init_UI()
+        
+    def init_UI(self):
+        layout = QVBoxLayout(self)
+        
+        self.import_btn = QPushButton('Import Mat Files',self)
+        
+        layout.addWidget(self.import_btn)
+        
+if __name__ == '__main__':
+    cs = ChannelSet()
+    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat",
+                    cs)
+        
+    print(cs.get_channel_ids(0))
 

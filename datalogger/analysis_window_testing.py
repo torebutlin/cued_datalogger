@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHB
                              QMainWindow, QPushButton, QMouseEventTransition,
                              QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
                              QVBoxLayout,QFormLayout,QGroupBox,QRadioButton,QButtonGroup,QComboBox,
-                             QLineEdit,QAction,QMenu, QCheckBox)
+                             QLineEdit,QAction,QMenu, QCheckBox,QFileDialog)
 from PyQt5.QtGui import QPalette,QColor
 
 from analysis.circle_fit import CircleFitWidget
@@ -23,6 +23,8 @@ from numpy.fft import rfft, rfftfreq
 from bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from bin.addons import AddonManager
 from bin.DataAnalysisPlot import DataPlotWidget
+from bin.file_import import DataImportWidget, import_from_mat
+
 from liveplotUI import DevConfigUI,ChanToggleUI
 import liveplotUI  as lpUI
 
@@ -172,11 +174,12 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.timedomain_widget = DataPlotWidget(self)
         self.freqdomain_widget = DataPlotWidget(self)
         self.sonogram_widget = SonogramWidget(self)
+        self.circle_widget = CircleFitWidget(self)
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
         self.addTab(self.sonogram_widget, "Sonogram")
-        self.addTab(CircleFitWidget(self), "Modal Fitting")
+        self.addTab(self.circle_widget, "Modal Fitting")
 
 class ProjectMenu(QMenu):
     def __init__(self,parent):
@@ -215,7 +218,7 @@ class AnalysisWindow(QMainWindow):
         
         self.time_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         wd = QWidget(self)
-        hb = QHBoxLayout(wd)
+        hb = QVBoxLayout(wd)
         fft_btn = QPushButton("Convert to FFT",self.time_toolbox)
         fft_btn.clicked.connect(self.plot_fft)
         sono_btn = QPushButton("Sonogram",self.time_toolbox)
@@ -226,7 +229,12 @@ class AnalysisWindow(QMainWindow):
         self.time_toolbox.addTab(QPushButton("Button 2",self.time_toolbox), "TimeTab2")
 
         self.frequency_toolbox = CollapsingSideTabWidget('left',self.toolbox)
-        self.frequency_toolbox.addTab(QPushButton("Button 1",self.frequency_toolbox), "FreqTab1")
+        wd2 = QWidget(self)
+        hb2 = QVBoxLayout(wd2)
+        circle_btn = QPushButton("Circle_Fit",self.frequency_toolbox)
+        hb2.addWidget(circle_btn)
+        circle_btn.clicked.connect(self.circle_fitting)
+        self.frequency_toolbox.addTab(wd2, "Conversion")
         self.frequency_toolbox.addTab(QPushButton("Button 2",self.frequency_toolbox), "FreqTab2")
 
         self.sonogram_toolbox = CollapsingSideTabWidget('left',self.toolbox)
@@ -236,7 +244,7 @@ class AnalysisWindow(QMainWindow):
         self.modal_analysis_toolbox = CollapsingSideTabWidget('left',self.toolbox)
         self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
         self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")
-
+        
         
         self.toolbox.addToolbox(self.time_toolbox)
         self.toolbox.addToolbox(self.frequency_toolbox)
@@ -265,6 +273,10 @@ class AnalysisWindow(QMainWindow):
         self.addon_widget = AddonManager(self)
         self.gtools.addTab(self.addon_widget, 'Addon Manager')
 
+        self.import_widget = DataImportWidget(self)
+        self.import_widget.import_btn.clicked.connect(self.import_files)
+        self.gtools.addTab(self.import_widget, 'Import Files')
+        
         self.global_toolbox.addToolbox(self.gtools)
 
     def init_ui(self):
@@ -311,8 +323,8 @@ class AnalysisWindow(QMainWindow):
 
         t = np.arange(1000)/44100
         for i, channel in enumerate(self.cs.channels):
-            self.cs.add_channel_dataset(i, 'timeseries', np.sin(t*2*np.pi*100*(i+1)))
-            self.cs.add_channel_dataset(i,'freqseries', []) 
+            self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
+            self.cs.add_channel_dataset(i,'spectrum', []) 
             
     def open_liveplot(self):
         if not self.liveplot:
@@ -333,7 +345,8 @@ class AnalysisWindow(QMainWindow):
     def plot_time_series(self):
         self.display_tabwidget.freqdomain_widget.resetPlotWidget()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
-        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'timeseries')
+        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        print(data)
         self.timeplots = []
         self.display_tabwidget.currentWidget().resetPlotWidget()
         for dt,p in zip(data, self.plot_colours):
@@ -353,22 +366,31 @@ class AnalysisWindow(QMainWindow):
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
-        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'timeseries')
-
-        self.freqplots = []
-        self.display_tabwidget.currentWidget().resetPlotWidget()
-        for dt,p,i in zip(data, self.plot_colours,range(len(self.cs))):
-            # Calculate FT and associated frequencies
-            ft = np.abs(np.real(rfft(dt)))
-            #freqs = np.real(rfftfreq(dt.size, 1/4096))
-            self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
-            self.cs.set_channel_data(i,'freqseries', ft)     
-            
-        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(data[0])/100)) 
-        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(data[0])/100)) 
         
-        self.display_tabwidget.freqdomain_widget.sp1.setValue(int(len(data[0])*0.4))
-        self.display_tabwidget.freqdomain_widget.sp2.setValue(int(len(data[0])*0.6))
+        self.freqplots = []
+        try:
+            fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+            for p,i in zip(self.plot_colours,range(len(self.cs))):
+                ft = np.abs(fdata[i])
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
+        except Exception as e:
+            print(e)
+            print('Calculating Spectrum from timeseries')
+            data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+    
+            self.display_tabwidget.currentWidget().resetPlotWidget()
+            for dt,p,i in zip(data, self.plot_colours,range(len(self.cs))):
+                # Calculate FT and associated frequencies
+                ft = np.abs(np.real(rfft(dt)))
+                #freqs = np.real(rfftfreq(dt.size, 1/4096))
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(ft,pen = p))
+                self.cs.set_channel_data(i,'spectrum', ft)     
+            
+        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(int(len(ft)/100)) 
+        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(int(len(ft)/100)) 
+        
+        self.display_tabwidget.freqdomain_widget.sp1.setValue(int(len(ft)*0.4))
+        self.display_tabwidget.freqdomain_widget.sp2.setValue(int(len(ft)*0.6))
         self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
                                                                     xMax = len(ft))
         self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,len(ft)),
@@ -378,8 +400,14 @@ class AnalysisWindow(QMainWindow):
      
     def plot_sonogram(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
-        signal = self.cs.get_channel_data(0,'timeseries')
+        signal = self.cs.get_channel_data(0,'time_series')
         self.display_tabwidget.currentWidget().plot(signal)
+        
+    def circle_fitting(self):
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
+        fdata = self.cs.get_channel_data(0, "spectrum")
+        self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
+        self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         
     def display_channel_plots(self, selected_channel_list):
         #plotitem = self.display_tabwidget.timedomain_widget.plotitem
@@ -395,7 +423,21 @@ class AnalysisWindow(QMainWindow):
                 if self.freqplots:
                     freqplotitem.addItem(self.freqplots[i])
                 
-
+    def import_files(self):
+        # Get a list of URLs from a QFileDialog
+        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
+                                               "MAT Files (*.mat)")[0]
+        self.cs = ChannelSet()
+        
+        try:
+            import_from_mat(url, self.cs)
+        except:
+            print('Load failed. Revert to default!')
+            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", self.cs)
+            
+        self.config_channelset()
+        print(self.cs.get_channel_ids(0))
+        self.plot_fft()
 
 if __name__ == '__main__':
     app = 0

@@ -9,7 +9,8 @@ from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
-                             QVBoxLayout, QHBoxLayout, QLabel, QComboBox)
+                             QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+                             QFileDialog)
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -513,8 +514,9 @@ class CircleFitWidget(QWidget):
         self.fit_upper = np.where(w_fit_in_display)[0][-1]
 
     def update_plots(self, value=None):
+        lck_btn = self.row_list[self.tableWidget.currentRow()]["lockbtn"]
         # If the current peak is not locked
-        if not self.row_list[self.tableWidget.currentRow()]["lockbtn"].isChecked():
+        if lck_btn and not lck_btn.isChecked():
             # Get zoomed in region
             self.get_viewed_region()
 
@@ -654,6 +656,18 @@ class CircleFitWidget(QWidget):
         return wr, zr, cr, phi
 
 
+    def load_tf(self,cs):
+        # Get a list of URLs from a QFileDialog
+        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
+                                               "MAT Files (*.mat)")[0]
+        print(url)
+        
+        try:
+            import_from_mat(url, cs)
+        except:
+            print('Load failed. Revert to default!')
+            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+
 if __name__ == '__main__':
     app = 0
 
@@ -680,6 +694,8 @@ if __name__ == '__main__':
     #c.set_data(w, a)
     #"""
     cs = ChannelSet()
+    
+    #c.load_tf(cs)
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
     a = cs.get_channel_data(0, "spectrum")
     c.transfer_function_type = 'acceleration'

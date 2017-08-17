@@ -884,8 +884,8 @@ class LiveplotApp(QMainWindow):
     
     def ResetMetaData(self):
         self.live_chanset = ch.ChannelSet(self.rec.channels)
-        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'timeseries')
-        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)),'freqseries')
+        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'time_series')
+        self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)),'spectrum')
         
         
     def ResetSplitterSizes(self):
@@ -905,7 +905,7 @@ class LiveplotApp(QMainWindow):
     def save_data(self,data = None):
         print('Saving data...')
         for i in range(data.shape[1]):
-            self.live_chanset.set_channel_data(i,'timeseries',data[:,i])
+            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
         self.parent.cs = copy.copy(self.live_chanset)
         self.dataSaved.emit()        
         print('Data saved!')
