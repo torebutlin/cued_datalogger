@@ -6,7 +6,8 @@ if __name__ == '__main__':
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QTreeWidgetItem, QTextEdit, QLineEdit, QPushButton,
-                             QLabel, QHBoxLayout, QFileDialog)
+                             QLabel, QHBoxLayout, QFileDialog,QTabWidget,
+                             QFormLayout,QGridLayout,QListWidget,QSizePolicy)
 
 from io import StringIO
 from queue import Queue
@@ -26,7 +27,8 @@ class AddonManager(QWidget):
 
         self.addon_local_vars = {}
         self.addon_global_vars = {}
-
+        
+        self.addon_writer = None
         self.init_ui()
 
         # # Addon Execution Initialisation
@@ -43,7 +45,11 @@ class AddonManager(QWidget):
     def init_ui(self):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-
+        
+        writer_btn = QPushButton("Open Addon Writer")
+        writer_btn.clicked.connect(self.open_writer)
+        self.layout.addWidget(writer_btn)
+        
         search_hbox = QHBoxLayout()
         search_label = QLabel("Search:")
         search_hbox.addWidget(search_label)
@@ -175,7 +181,17 @@ class AddonManager(QWidget):
         self.receiver_thread.started.connect(self.text_receiver.run)
         self.receiver_thread.start()
 
+    def open_writer(self):
+        if not self.addon_writer:
+            self.addon_writer = AddonWriter()
+            self.addon_writer.done.connect(self.done_writer)
+        else:
+            self.addon_writer.show()
 
+    def done_writer(self):
+        self.addon_writer.done.disconnect()
+        self.addon_writer = None
+        
 class WriteStream(object):
     """A simple object that writes to a queue - replace stdout with this"""
     def __init__(self, queue):
@@ -202,17 +218,85 @@ class TextReceiver(QObject):
             self.sig_text_received.emit(stdout_text)
             
 class AddonWriter(QWidget):
+    done = pyqtSignal()
     def __init__(self):
         super().__init__()
-        pass
-
+        self.funcs = {}
+        self.init_UI()
+        self.show()
+        
+    def init_UI(self):
+        main_layout = QVBoxLayout(self)
+        
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton('Save',self)
+        btn_layout.addWidget(save_btn)
+        load_btn = QPushButton('Load',self)
+        btn_layout.addWidget(load_btn)
+        run_btn = QPushButton('Run',self)
+        btn_layout.addWidget(run_btn)
+        clear_btn = QPushButton('Clear',self)
+        btn_layout.addWidget(clear_btn)
+           
+        main_layout.addLayout(btn_layout)
+        
+        self.tabs = QTabWidget(self)
+        main_layout.addWidget(self.tabs)
+        
+        metadata_widget = QWidget(self)
+        m_widget_layout = QVBoxLayout(metadata_widget)
+        title_label = QLabel('Code Metadata')
+        m_widget_layout.addWidget(title_label)
+        metadata_layout = QFormLayout()
+        
+        self.meta_configs = []
+        for mdata in ("Name","Author","Category"):
+                cbox = QLineEdit(metadata_widget)
+                metadata_layout.addRow(QLabel(mdata,metadata_widget),cbox)
+                self.meta_configs.append(cbox)
+        m_widget_layout.addLayout(metadata_layout)        
+                
+        desc_label = QLabel('Description')
+        m_widget_layout.addWidget(desc_label)
+        
+        desc_box = QTextEdit(metadata_widget)
+        m_widget_layout.addWidget(desc_box)
+        self.meta_configs.append(desc_box)
+        
+        code_widget = QWidget(self)
+        c_widget_layout = QGridLayout(code_widget)
+        
+        func_list_label = QLabel('Function List',code_widget)
+        c_widget_layout.addWidget(func_list_label,0,0)
+        self.function_listview = QListWidget(code_widget)
+        c_widget_layout.addWidget(self.function_listview,1,0,5,1)
+        
+        self.function_listview.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        
+        func_code_label = QLabel('Functions',code_widget)
+        self.func_code_text = QTextEdit(code_widget)
+        main_code_label = QLabel('Main',code_widget)
+        self.main_code_text = QTextEdit(code_widget)
+        
+        c_widget_layout.addWidget(func_code_label,0,1)
+        c_widget_layout.addWidget(self.func_code_text,1,1,2,2)
+        
+        c_widget_layout.addWidget(main_code_label,3,1)
+        c_widget_layout.addWidget(self.main_code_text,4,1,2,2)
+        
+        self.tabs.addTab(metadata_widget,'Metadata')
+        self.tabs.addTab(code_widget,'Code')
+        
+        def closeEvent(self,event):
+            self.done.emit()
+            event.accept()
+            self.deleteLater()
 
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
 
     w = AnalysisWindow()
-
     w.addon_widget.discover_addons("../addons/")
 
     w.show()
