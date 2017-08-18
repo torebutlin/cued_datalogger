@@ -60,8 +60,8 @@ else:
     print("Continuing to setup...\n")
 
 
-setup(name='CUED_DataLogger',
-      version='0.0.30',
+setup(name='cued-datalogger',
+      version='0.0.2',
       description='The CUED DataLogger for acquiring and analysing data',
       long_description=readme(),
       url='https://bitbucket.org/tab53/cued_datalogger/',
