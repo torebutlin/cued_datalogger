@@ -129,9 +129,9 @@ class AddonManager(QWidget):
         # Add the addon to the tree
         if metadata["category"] == "Import/Export":
             parent = self.import_export
-        if metadata["category"] == "Analysis":
+        elif metadata["category"] == "Analysis":
             parent = self.analysis
-        if metadata["category"] == "Plotting":
+        elif metadata["category"] == "Plotting":
             parent = self.plotting
         else:
             parent = self.tree
@@ -148,12 +148,11 @@ class AddonManager(QWidget):
         name = self.tree.currentItem().data(0, Qt.DisplayRole)
         author = self.tree.currentItem().data(1, Qt.DisplayRole)
         description = self.tree.currentItem().data(2, Qt.DisplayRole)
-
         # # Run the addon function, but redirect the stdout
         # Redirect stdout to the writestream
         stdout_old = sys.stdout
         sys.stdout = self.writestream
-
+        
         # Start the receiver
         self.start_receiver_thread()
 
@@ -271,29 +270,34 @@ class AddonWriter(QWidget):
         self.meta_configs.append(desc_box)
         
         code_widget = QWidget(self)
-        c_widget_layout = QGridLayout(code_widget)
+        c_widget_layout = QVBoxLayout(code_widget)
+        #left_widget = QWidget(self)
+        #left_layout = QVBoxLayout(left_widget)
+        #right_widget = QWidget(self)
+        #right_layout = QVBoxLayout(right_widget)
         
-        func_list_label = QLabel('Function List',code_widget)
-        c_widget_layout.addWidget(func_list_label,0,0)
-        self.function_listview = QListWidget(code_widget)
-        c_widget_layout.addWidget(self.function_listview,1,0,5,1)
+        #func_list_label = QLabel('Function List',code_widget)
+        #left_layout.addWidget(func_list_label)
+        #self.function_listview = QListWidget(code_widget)
+        #left_layout.addWidget(self.function_listview)
         
-        self.function_listview.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        #left_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
         font_metrics = QFontMetrics(QFont())
-        func_code_label = QLabel('Functions',code_widget)
-        self.func_code_text = QTextEdit(code_widget)
         w = font_metrics.width(' ')
-        self.func_code_text.setTabStopWidth(w*4) 
-        main_code_label = QLabel('Main',code_widget)
+        
+        main_code_label = QLabel('Run Code',code_widget)
         self.main_code_text = QTextEdit(code_widget)
         self.main_code_text.setTabStopWidth(w*4) 
         
-        c_widget_layout.addWidget(func_code_label,0,1)
-        c_widget_layout.addWidget(self.func_code_text,1,1,2,2)
+        #c_widget_layout.addWidget(func_code_label,0,1)
+        #c_widget_layout.addWidget(self.func_code_text,1,1,2,2)
         
-        c_widget_layout.addWidget(main_code_label,3,1)
-        c_widget_layout.addWidget(self.main_code_text,4,1,2,2)
+        #right_layout.addWidget(main_code_label)
+        #right_layout.addWidget(self.main_code_text)
+        
+        c_widget_layout.addWidget(main_code_label)
+        c_widget_layout.addWidget(self.main_code_text)
         
         self.tabs.addTab(metadata_widget,'Metadata')
         self.tabs.addTab(code_widget,'Code')
@@ -307,12 +311,13 @@ class AddonWriter(QWidget):
       
         metadata = [self.meta_configs[0].text(),self.meta_configs[1].text(),
    self.meta_configs[2].currentText(),self.meta_configs[3].toPlainText()]
-        metadata = ["'''" + md + "'''"  for md in metadata]
+        metadata = ["\"" + md + "\""  for md in metadata]
+        metadata[3] = metadata[3].replace("\"","'''")
         try:
             if __name__ == '__main__':
-                file = open("../addons/Some_addon.py",'w')
+                file = open("../addons/Some_addon.py",'w',encoding='utf8')
             else:
-                file = open("./addons/Some_addon.py",'w')
+                file = open("./addons/Some_addon.py",'w',encoding='utf8')
         except Exception as e:
             print(e)
             return
@@ -320,12 +325,10 @@ class AddonWriter(QWidget):
         try:  
             file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
                        tuple(metadata))
-            full_code = "def run(analysis_window):\n"
-            func_code = self.func_code_text.toPlainText()
             main_code = self.main_code_text.toPlainText()
             if not main_code:
                 main_code = 'pass'
-            full_code += func_code + '\n\n'+ main_code
+            full_code = "def run(analysis_window):\n" + main_code
             full_code = full_code.replace('\n','\n\t')
             file.write(full_code)
         except:
