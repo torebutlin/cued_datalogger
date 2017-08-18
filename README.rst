@@ -8,23 +8,16 @@ for more information.
 Installation
 ------------
 
+
 Installing on Windows
 ^^^^^^^^^^^^^^^^^^^^^
+#. Download and install `Anaconda / Miniconda <https://www.continuum.io/downloads>`_.  
+  
+#. Visit the `Bitbucket repository <https://bitbucket.org/tab53/cued_datalogger/src>`_ and download the ``python3.dll`` file.   
 
-#. Download and install 
-`Anaconda / Miniconda <https://www.continuum.io/downloads>`_.
+#. Place the file in ``/path/to/your/Anaconda/Library/bin/``. This is so that PyQt5.9 works with your Anaconda install.  
 
-
-#. Visit the 
-`Bitbucket repository <https://bitbucket.org/tab53/cued_datalogger/src>`_ and 
-download the ``python3.dll`` file. 
-
-
-#. Place the file in ``/path/to/your/Anaconda/Library/bin/``. 
-This is so that PyQt5.9 works with your Anaconda install.
-
-
-#. Follow the steps for "Installing on Anaconda" below
+#. Follow the steps for "Installing on Anaconda" below.  
 
 
 Installing on Anaconda
@@ -41,10 +34,10 @@ Installing on Anaconda
 
 *Explanation*:
 
-*Packages that are installed in both ``conda`` and ``pip`` can cause problems, 
-so everything that can be is installed with ``conda``. This means that ``pip`` 
-must be told not to install any of ``cued-datalogger``'s dependencies with the 
-``--no-deps`` flag.*
+*Packages that are installed in both* ``conda`` *and* ``pip`` *can cause problems, 
+so everything that can be is installed with* ``conda``. *This means that ``pip`` 
+must be told not to install any of* ``cued-datalogger``*'s dependencies with the *
+``--no-deps`` *flag.*
 
 
 Installing on Linux
