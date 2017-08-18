@@ -7,7 +7,9 @@ from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QTreeWidgetItem, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QHBoxLayout, QFileDialog,QTabWidget,
-                             QFormLayout,QGridLayout,QListWidget,QSizePolicy)
+                             QFormLayout,QGridLayout,QListWidget,QSizePolicy,
+                             QComboBox)
+from PyQt5.QtGui import QFontMetrics,QFont
 
 from io import StringIO
 from queue import Queue
@@ -230,6 +232,7 @@ class AddonWriter(QWidget):
         
         btn_layout = QHBoxLayout()
         save_btn = QPushButton('Save',self)
+        save_btn.clicked.connect(self.create_addon)
         btn_layout.addWidget(save_btn)
         load_btn = QPushButton('Load',self)
         btn_layout.addWidget(load_btn)
@@ -251,9 +254,13 @@ class AddonWriter(QWidget):
         
         self.meta_configs = []
         for mdata in ("Name","Author","Category"):
+            if mdata == "Category":
+                cbox = QComboBox(metadata_widget)
+                cbox.addItems(["Import/Export","Analysis","Plotting"])
+            else:
                 cbox = QLineEdit(metadata_widget)
-                metadata_layout.addRow(QLabel(mdata,metadata_widget),cbox)
-                self.meta_configs.append(cbox)
+            metadata_layout.addRow(QLabel(mdata,metadata_widget),cbox)
+            self.meta_configs.append(cbox)
         m_widget_layout.addLayout(metadata_layout)        
                 
         desc_label = QLabel('Description')
@@ -273,10 +280,14 @@ class AddonWriter(QWidget):
         
         self.function_listview.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         
+        font_metrics = QFontMetrics(QFont())
         func_code_label = QLabel('Functions',code_widget)
         self.func_code_text = QTextEdit(code_widget)
+        w = font_metrics.width(' ')
+        self.func_code_text.setTabStopWidth(w*4) 
         main_code_label = QLabel('Main',code_widget)
         self.main_code_text = QTextEdit(code_widget)
+        self.main_code_text.setTabStopWidth(w*4) 
         
         c_widget_layout.addWidget(func_code_label,0,1)
         c_widget_layout.addWidget(self.func_code_text,1,1,2,2)
@@ -286,11 +297,44 @@ class AddonWriter(QWidget):
         
         self.tabs.addTab(metadata_widget,'Metadata')
         self.tabs.addTab(code_widget,'Code')
+    
+    def closeEvent(self,event):
+        self.done.emit()
+        event.accept()
+        self.deleteLater()
         
-        def closeEvent(self,event):
-            self.done.emit()
-            event.accept()
-            self.deleteLater()
+    def create_addon(self):
+      
+        metadata = [self.meta_configs[0].text(),self.meta_configs[1].text(),
+   self.meta_configs[2].currentText(),self.meta_configs[3].toPlainText()]
+        metadata = ["'''" + md + "'''"  for md in metadata]
+        try:
+            if __name__ == '__main__':
+                file = open("../addons/Some_addon.py",'w')
+            else:
+                file = open("./addons/Some_addon.py",'w')
+        except Exception as e:
+            print(e)
+            return
+        
+        try:  
+            file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
+                       tuple(metadata))
+            full_code = "def run(analysis_window):\n"
+            func_code = self.func_code_text.toPlainText()
+            main_code = self.main_code_text.toPlainText()
+            if not main_code:
+                main_code = 'pass'
+            full_code += func_code + '\n\n'+ main_code
+            full_code = full_code.replace('\n','\n\t')
+            file.write(full_code)
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+        finally:
+            file.close() 
 
 if __name__ == '__main__':
     app = 0
