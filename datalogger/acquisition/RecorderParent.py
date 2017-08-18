@@ -1,42 +1,26 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Jul 15 20:01:58 2017
-
 @author: En Yi
 
+This module contains the abstract class to implement a proper    
+Recorder Class. To do so, subclass RecorderParent when creating
+a new Recorder class.
 
-Recorder base class:
-- Sets up the buffer and skeleton for audio streaming
-- Requires a derived class
-- Store data as numpy arrays from recording and audio stream
-    which can be accessed for plotting
+Example:
+    from RecorderParent import RecorderParent
+    
+    class newRecorder(RecorderParent):
+        ...
+        ...
+        
+If you have PyQt, it will import RecEmitter for emitting Signals.
+
+Attributes:
+    QT_EMITTER : Indicates whether you can use qt Signals
 
 """
-
-
-''' Note to self:
-            Each data is int16, so it is 2 bytes per sample.
-            A 3 sec recording contains 132300 samples, but 
-            considering the chunk is only takes 1024 samples, 
-            the nearest possible samples to take is 132096,
-            so it would take up 264192 bytes(258kB)
-            
-            A 1 min recording would take about 5MB, while
-            a 30 min recording would take about 151.4MB
-            
-            Supppose that an array can only contain 2GB (memory limit),
-            then the longest possible recording is 24347 secs, which is
-            406 mins, which is 6.76 hours.
-            
-            If instead a limit of 500MB is imposed, then
-            the longest recording time is 5944 secs, which is 99 mins.
-            
-            However, data being processed later on would probably be
-            int32 data type (default numpy array), hence the memory is doubled. 
-            Taking that into consideration, the longest possible recording time 
-            is then halved.''' 
-            
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 import numpy as np
 import copy as cp
 
@@ -46,38 +30,55 @@ try:
 except Exception as e:
     print(e)
     QT_EMITTER = False
+    
+
 
 class RecorderParent(object):
+    """
+     Recorder abstract class. Sets up the buffer and skeleton for audio streaming
+    
+     Attributes:
+        channels(int): Number of channels
+        rate(int): Sampling rate
+        chunk_size(int): Number of samples to get from each channel in one chunk
+        num_chunk(int): Number of chunks to store in circular buffer
+        
+        recording(bool): Indicate whether to record
+    """
     __metaclass__ = ABCMeta
+    
 #---------------- INITIALISATION METHODS -----------------------------------    
     def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
                  num_chunk = 4):
+        """
+        Initialise a ciruclar buffer, array and trigger for recording
+         
+        Args:
+            channels(int): Number of Channels
+            rate(int): Sampling rate
+            chunk_size(int): Number of samples to get from each channel in one chunk
+            num_chunk(int): Number of chunks to store in circular buffer
+        """
         self.channels = channels
         self.rate = rate
         self.chunk_size = chunk_size
         self.num_chunk = num_chunk;
-        self.audio_stream = None
+        self.audio_stream = None #: The audio object
         
         self.allocate_buffer()
         self.show_stream_settings()
         
         self.trigger_init()
         
-        # For pyQt implementations
         if QT_EMITTER:
             self.rEmitter = RecEmitter()
         else:
             self.rEmitter = None
-        
-    def open_recorder(self):
-        self.recording = False
-        self.initialised_record = False
-        self.next_rec_chunk = 0
-        self.total_rec_chunk = 0
-        self.recorded_data = []
-        
-        # Set up the buffer         
+                 
     def allocate_buffer(self):
+        """
+        Set up the circular buffer
+        """
         self.buffer = np.zeros(shape = (self.num_chunk,
                                         self.chunk_size,
                                         self.channels))
@@ -86,13 +87,18 @@ class RecorderParent(object):
 #---------------- DESTRUCTOR METHODS -----------------------------------     
     def __del__(self):
         self.close()
-   
-    # Close the audio object, to be called if streaming is no longer needed        
+           
     def close(self):
+        """
+        Close the audio object, to be called if streaming is no longer needed 
+        """
         self.stream_close()
  
-#---------------- DESTRUCTOR METHODS -----------------------------------     
+#---------------- DEVICE SETTINGS METHODS -----------------------------------     
     def show_stream_settings(self):
+        """
+        Show the settings of the recorder
+        """
         print('Channels: %i' % self.channels)
         print('Rate: %i' % self.rate)
         print('Chunk size: %i' % self.chunk_size)
@@ -100,35 +106,88 @@ class RecorderParent(object):
         
     def set_filename(self,filename):
         self.filename = filename
-
-    def set_device_by_name(self, name):
-        pass
         
-    def available_devices(self):
+    @abstractmethod
+    def set_device_by_name(self, name):
+        """
+        Set the device to be used for audio streaming
+        """
         pass
     
+    @abstractmethod    
+    def available_devices(self):
+        """
+        Displays all available device for streaming
+        """
+        pass
+    
+    @abstractmethod
     def current_device_info(self):
+        """
+        Displays information about available the current device set
+        """
         pass
     
 #---------------- DATA METHODS -----------------------------------
-    # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
+        """
+        Convert audio data obtained into a proper array
+        
+        args:
+            data(numpy_array): Audio data 
+        """
         return data.reshape((-1,self.channels))/ 2**15
     
 #---------------- BUFFER METHODS -----------------------------------
-    # Write the data obtained into buffer and move to the next chunk   
     def write_buffer(self,data):
+        """
+        Write the data obtained into buffer and move to the next chunk
+        
+        args:
+            data(numpy_array): Audio data 
+        """
         self.buffer[self.next_chunk,:,:] = data
         self.next_chunk = (self.next_chunk + 1) % self.num_chunk
-    
-    # Return the buffer data as a 2D array by stitching the chunks together  
+     
     def get_buffer(self):
+        """
+        Convert the buffer data as a 2D array by stitching the chunks together
+        
+        Returns:
+            Buffer data (numpy_array) with dimension of
+            (chunk_size * num_chunk) x channels
+            with the newest data on the most right 
+        """
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
                            self.buffer.shape[2]))
         
 #---------------- RECORDING METHODS -----------------------------------
+    def open_recorder(self):
+        """
+        Initialise the variables for recording.
+        """
+        self.recording = False
+        self.initialised_record = False
+        self.next_rec_chunk = 0
+        self.total_rec_chunk = 0
+        self.recorded_data = []
+        
     def record_init(self,samples = None,duration = 3):
+        """
+        Remove any pretrigger and postrigger data
+        Calculate the number of chunk to record
+        It will record more samples than necessary, then slice down to the
+        amount of samples required + putting in pretrigger data
+        
+        Args:
+            samples(int): Number of samples to record
+            duration(int): The recording duration
+        
+        """
+        if not self._record_check():
+            return False
+        
         self.pretrig_data = np.array([],dtype = np.int16)
         self.part_posttrig_data = np.array([],dtype = np.int16)
         if samples:
@@ -136,7 +195,6 @@ class RecorderParent(object):
             self.total_rec_chunk = (samples // self.chunk_size)+1
             self.rec_samples = self.total_rec_chunk * self.chunk_size
         else:
-            # Calculate the number of recording chunks
             self.total_rec_chunk = (duration * self.rate // self.chunk_size)
             
         self.next_rec_chunk = 0
@@ -144,8 +202,17 @@ class RecorderParent(object):
         self.initialised_record = True
         
         print('Recording function is ready! Use record_start() to start')
-    # Function to check before recording
+        
+        return True
+    
     def _record_check(self):
+        """
+        Check if it is possible to start a recording
+        
+        Returns:
+            True if possible, False otherwise
+        
+        """
         if not self.audio_stream:
             print('No recording stream initiated!')
             return False
@@ -159,10 +226,17 @@ class RecorderParent(object):
 
     # Function to initiate a normal recording
     def record_start(self):
+        """
+        Start recording if it is possible
+        
+        Returns:
+            True if possible, False otherwise
+        
+        """
         if not self._record_check():
             return False
                        
-        # Start the recording
+        # Start the recording if recording is initialised
         if self.initialised_record: 
             self.stream_start()
             self.recording = True
@@ -172,68 +246,83 @@ class RecorderParent(object):
             print('Record not initialised! Use record_init(duration) first!')
             return False
         
-    
-     # TODO: Add a function to end a normal recording, (internal only)
     def _record_stop(self):
+        """
+        Stop a successful recording and emit a signal if possible
+        """
         # Stop the recording
         self.recording = False
         # Give a signal that recording is done
         print('Recording Done! Please flush the data with flush_record_data().')
         if self.rEmitter:
-            print('beep')
             self.rEmitter.recorddone.emit()
             
     def record_cancel(self):
+        """
+        Cancel a recording and clear any recorder data
+        """
         print('Recording Cancel! Recorded data has been discarded!')
         self.trigger = False
         self.recording = False
         self.recorded_data = []
-    
-    # Append the current chunk(which is before next_chunk) to recorded data            
+           
     def record_data(self,data):
+        """
+        Append recorded chunk to recorder_data
+        and stop doing so if neccessary amount of chunks is recorded
+        """
         #data = cp.copy(self.buffer[self.next_chunk-1])
         self.recorded_data.append(data)
         # Check to see whether recording is done
         self.next_rec_chunk += 1
         if self.next_rec_chunk == self.total_rec_chunk:
             self._record_stop()
-        
-    # Return the recorded data as 2D numpy array (similar to get_buffer)    
+          
     def flush_record_data(self):
+        """
+        Add in any partial posttrigger data
+        Slice the recorded data into the requested amount of samples
+        Add in any pretrigger data
+        
+        Returns:
+            flushed_data(numpy array): 2D numpy array (similar to get_buffer) 
+        """
         if self.recorded_data:
             data =  np.array(self.recorded_data);
             flushed_data = data.reshape((self.rec_samples,self.channels))
             if self.part_posttrig_data.shape[0]:
                 flushed_data = np.vstack((self.part_posttrig_data,flushed_data))
             
-            print(flushed_data.shape)
-            print(flushed_data[0,:])
             flushed_data = flushed_data[:self.actual_rec_samples,:]
 
             self.recorded_data = []
-            print(flushed_data.shape)
             if self.pretrig_data.shape[0]:
                 flushed_data = np.vstack((self.pretrig_data,flushed_data))
-            print(flushed_data.shape)
+                
+            print('Data flushed')
             return flushed_data               
                             
 
-#---------------- STREAMING METHODS -----------------------------------                                     
+#---------------- STREAMING METHODS ----------------------------------- 
+    @abstractmethod                                    
     def stream_init(self, playback = False):
         pass
             
-    # Start the streaming
+    @abstractmethod 
     def stream_start(self):
         pass
-    # Stop the streaming
+    @abstractmethod 
     def stream_stop(self):
         pass
         
-    # Close the stream, probably needed if any parameter of the stream is changed
+    @abstractmethod 
     def stream_close(self):
         pass
 #---------------- TRIGGER METHODS -----------------------------------
     def trigger_init(self):
+        """
+        Initialise the variable for the trigger recording
+        """
         self.trigger = False
         self.trigger_threshold = 0
         self.trigger_channel = 0
@@ -243,14 +332,19 @@ class RecorderParent(object):
         self.part_posttrig_data = np.array([])
         
     def trigger_start(self,duration = 3, threshold = 0.09, channel = 0,pretrig = 200,posttrig = 5000):
+        """
+        Start the trigger if possible
+        
+        Returns:
+            True if successful, False otherwise
+        """
         if self.recording:
             print('You are current recording. Please finish the recording before starting the trigger.')
             return False
         
         if not self.trigger:
-            if not self._record_check():
+            if not self.record_init(samples = posttrig):
                 return False
-            self.record_init(samples = posttrig)
             self.trigger = True
             self.trigger_threshold = threshold
             self.trigger_channel = channel
@@ -264,29 +358,41 @@ class RecorderParent(object):
             return False
 
     def _trigger_check_threshold(self,data):
-        norm_data = abs(data[:,self.trigger_channel])#- self.ref_level
+        """
+        Check if the trigger is set off
+        Start recording if so and emit a signal if possible
         
+        arg:
+            data(numpy_array): data to be analysed
+        """
+        trig_data = data[:,self.trigger_channel]
+        norm_data = abs(trig_data - np.mean(trig_data))#- self.ref_level
         
         maximum = np.amax(norm_data)
-        pos = np.argmax(norm_data)
         
         if maximum > self.trigger_threshold:
             print('Triggered!')
+            pos = np.argmax(norm_data)
             self.recording = True
             self.trigger = False
             try:
-                # TODO: See if it is possible to optimise this
                 self.part_posttrig_data =  cp.copy(self.buffer[self.next_chunk-1, pos:,:])
                 temp = np.vstack((self.buffer[self.next_chunk-2,:,:],self.buffer[self.next_chunk-1,:pos,:]))
                 self.pretrig_data = temp[temp.shape[0]-self.pretrig_samples:,:]
             except Exception as e:
                 print(e)
                 print('Cannot get trigger data')
-            self.rEmitter.triggered.emit()
+            if self.rEmitter:
+                self.rEmitter.triggered.emit()
             
 #----------------- DECORATOR METHODS --------------------------------------
     @property
     def num_chunk(self):
+        """
+        int: Number of chunks to store in circular buffer
+        The setter method will calculate the maximum possible number of chunks
+        based on an arbitrary number of sample limit (2^25 in here)
+        """
         return self._num_chunk
 
     @num_chunk.setter
@@ -305,6 +411,11 @@ class RecorderParent(object):
         
     @property
     def chunk_size(self):
+        """
+        int: Number of samples to get from each channel in one chunk
+        The setter method will calculate the maximum possible size
+        based on an arbitrary number of sample limit (2^25 in here)
+        """
         return self._chunk_size
 
     @chunk_size.setter
