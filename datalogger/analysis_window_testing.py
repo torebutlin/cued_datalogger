@@ -20,10 +20,10 @@ import pyqtgraph as pg
 import numpy as np
 from numpy.fft import rfft, rfftfreq
 
-from datalogger.bin.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
-from datalogger.bin.addons import AddonManager
-from datalogger.bin.DataAnalysisPlot import DataPlotWidget
-from datalogger.bin.file_import import import_from_mat, DataImportWidget
+from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
+from datalogger.api.addons import AddonManager
+from datalogger.api.DataAnalysisPlot import DataPlotWidget
+from datalogger.api.file_import import import_from_mat, DataImportWidget
 from datalogger.liveplotUI import DevConfigUI,ChanToggleUI
 import datalogger.liveplotUI  as lpUI
 

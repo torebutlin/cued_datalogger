@@ -84,7 +84,7 @@ class Workspace():
         """Set the global configuration to be the configuration of this
         workspace"""
 
-        print("Configuring workspace...", end=' ')
+        print("Configuring workspace...")
 
         # # Set other settings
         # <code>

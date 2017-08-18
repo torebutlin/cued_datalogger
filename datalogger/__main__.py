@@ -1,11 +1,11 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 
-from datalogger.bin.workspace import Workspace
+from datalogger.api.workspace import Workspace
 from datalogger.analysis_window_testing import AnalysisWindow
 
 
-def full():
+def run_datalogger_full():
     app = 0
     app = QApplication(sys.argv)
 
@@ -24,5 +24,5 @@ def full():
     sys.exit(app.exec_())
     
 if __name__ == '__main__':
-    full()
+    run_datalogger_full()
     

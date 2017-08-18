@@ -35,8 +35,8 @@ except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
 
-from datalogger.bin import channel as ch
-from datalogger.bin.custom_plot import CustomPlotWidget
+from datalogger.api import channel as ch
+from datalogger.api.custom_plot import CustomPlotWidget
 
 import math
 

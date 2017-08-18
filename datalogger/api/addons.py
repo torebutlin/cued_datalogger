@@ -15,7 +15,7 @@ import os,traceback,sys
 
 import pyqtgraph as pg
 
-from datalogger.bin.channel import ChannelSet
+from datalogger.api.channel import ChannelSet
 
 class AddonManager(QWidget):
     def __init__(self, parent=None):

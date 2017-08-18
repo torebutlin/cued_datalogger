@@ -77,7 +77,7 @@ setup(name='cued-datalogger',
       packages=['datalogger',
                 'datalogger/acquisition',
                 'datalogger/analysis',
-                'datalogger/bin'],
+                'datalogger/api'],
       # TODO
       # If you include this in the setup code, when it tries to install
       # itself in an Anaconda environment, a lot of things break. Fix this.
@@ -91,7 +91,7 @@ setup(name='cued-datalogger',
                       'PyDAQmx>=1.3.2',
                       'pyaudio>=0.2.11'],
       entry_points={
-        'console_scripts': ['DataLogger_cmd = datalogger.__main__:full'],
-        'gui_scripts': ['DataLogger = datalogger.__main__:full']},
+        'console_scripts': ['DataLogger_dbg = datalogger.__main__:run_datalogger_full'],
+        'gui_scripts': ['DataLogger = datalogger.__main__:run_datalogger_full']},
       zip_safe=True,
       include_package_data=True)
