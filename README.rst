@@ -20,6 +20,19 @@ Installing on Windows
 #. Follow the steps for "Installing on Anaconda" below.  
 
 
+Installing on OS X
+^^^^^^^^^^^^^^^^^^ 
+#. Install ``portaudio`` with ``brew`` \*::
+
+    brew install portaudio
+
+#. If you are using Anaconda, follow the steps for "Installing on Anaconda" below. Otherwise, install ``cued-datalogger`` using ``pip``::
+
+    pip install cued-datalogger
+    
+\* If you do not have brew installed, install `Homebrew <https://brew.sh/>`_ then permit it to run with ``xcode-select --install``
+
+
 Installing on Anaconda
 ^^^^^^^^^^^^^^^^^^^^^^
 #. Install dependecies::
