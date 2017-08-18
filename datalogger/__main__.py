@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from datalogger.api.workspace import Workspace
-from datalogger.analysis_window_testing import AnalysisWindow
+from datalogger.analysis_window import AnalysisWindow
 from datalogger import __version__
 
 def run_datalogger_full():

@@ -11,8 +11,8 @@ import pyqtgraph as pg
 import functools as fct
 from datalogger.api.custom_plot import CustomPlotWidget
 
-# Widget for the tabs inside dataWindow
 class DataPlotWidget(QWidget):
+    """Widget for the tabs inside Analysis Window"""
     def __init__(self,parent):
         super().__init__()
         

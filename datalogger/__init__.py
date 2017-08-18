@@ -1,7 +1,7 @@
 from datalogger import api
 from datalogger import analysis
 from datalogger import acquisition
-from datalogger import analysis_window_testing, liveplotUI
+from datalogger import analysis_window, acquisition_window
 
 from datalogger.api import workspace as workspace
 

@@ -1,14 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout
+from datalogger.api.DataAnalysisPlot import DataPlotWidget
 
-import pyqtgraph as pg
 
-class TimeDomainWidget(QWidget):
+class TimeDomainWidget(DataPlotWidget):
     def __init__(self, parent=None):
-        super().__init__()
-
-        layout = QGridLayout(self)
-
-        self.time_domain_plot = pg.PlotWidget(self)
-        self.plotitem = self.time_domain_plot.getPlotItem()
-
-        layout.addWidget(self.time_domain_plot)
+        super().__init__(parent)
