@@ -22,7 +22,7 @@ def import_from_mat(file, channel_set):
     sample_rate = file["freq"][0][0]
 
     if "tsmax" in file.keys():
-        time_series_scale_factor = file["tsmax"]
+        time_series_scale_factor = file["tsmax"][0][0]
     else:
         time_series_scale_factor = 1
 
@@ -48,7 +48,7 @@ def import_from_mat(file, channel_set):
     # Numpy works more easily if it is in the form
     # (num_channels, num_samples_per_channel) - each channel is a row
     if "indata" in file.keys():
-        time_series = file["indata"].transpose()
+        time_series = file["indata"].transpose()[0]
     if "yspec" in file.keys():
         spectrum = file["yspec"].transpose()
     if "yson" in file.keys():
