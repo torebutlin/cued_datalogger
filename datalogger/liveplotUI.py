@@ -115,31 +115,19 @@ class LiveplotApp(QMainWindow):
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QHBoxLayout(self.main_widget)
-        #self.main_splitter = QSplitter(self.main_widget,orientation = Qt.Horizontal)
-        #main_layout.addWidget(self.main_splitter)
-    #-------------------- ALL SPLITTER ------------------------------
-        #self.left_splitter = QSplitter(self.main_splitter,orientation = Qt.Vertical)
-        #self.mid_splitter = QSplitter(self.main_splitter,orientation = Qt.Vertical)
-        #self.right_splitter = QSplitter(self.main_splitter,orientation = Qt.Vertical)
+    #-------------------- ALL TOOLBOXES ------------------------------
         self.stream_toolbox = StackedToolbox()
         self.recording_toolbox = StackedToolbox()
         
-        #self.global_toolbox.addToolbox(self.gtools)
-        #self.main_splitter.addWidget(self.left_splitter)
-        #self.main_splitter.addWidget(self.mid_splitter)
-        #self.main_splitter.addWidget(self.right_splitter)
-        
     #---------------------CHANNEL TOGGLE UI----------------------------------
         self.stream_tools = CollapsingSideTabWidget('left',self.main_widget)
-        #chantoggle_UI = QWidget(self.left_splitter)
         
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
         self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         self.chantoggle_UI.chan_text.returnPressed.connect(self.chan_line_toggle)
         self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
-
-        #self.left_splitter.addWidget(self.chantoggle_UI)
+        
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
         
@@ -155,22 +143,18 @@ class LiveplotApp(QMainWindow):
             cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'DFT'))
         
         self.ResetChanConfigs()
-        
-        #self.left_splitter.addWidget(self.chanconfig_UI)
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
         
         self.devconfig_UI.typebtngroup.buttonReleased.connect(self.display_sources)
         self.devconfig_UI.config_button.clicked.connect(self.ResetRecording)
         
-        #self.left_splitter.addWidget(self.devconfig_UI)
-        
         self.stream_tools.addTab(self.chantoggle_UI,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
         self.stream_tools.addTab(self.devconfig_UI,'Device Config')
         self.stream_toolbox.addToolbox(self.stream_tools)
-        main_layout.addWidget(self.stream_toolbox)
-    #----------------------PLOT WIDGETS------------------------------------ 
+        
+    #----------------------PLOT + STATUS WIDGETS------------------------------------ 
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
     
         self.plotlines = []
@@ -191,20 +175,17 @@ class LiveplotApp(QMainWindow):
         
         self.ResetPlots()
         
-        self.mid_splitter.addWidget(self.timeplotcanvas)
-        self.mid_splitter.addWidget(self.fftplotcanvas)
-        
-    #-----------------------------STATUS WIDGET----------------------------
         self.stats_UI = StatusUI(self.mid_splitter)
         
         self.stats_UI.statusbar.messageChanged.connect(self.default_status)
         self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
         self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
         self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
-
-        self.mid_splitter.addWidget(self.stats_UI)
         
-        main_layout.addWidget(self.mid_splitter)
+        self.mid_splitter.addWidget(self.timeplotcanvas)
+        self.mid_splitter.addWidget(self.fftplotcanvas)
+        self.mid_splitter.addWidget(self.stats_UI)
+        self.mid_splitter.setCollapsible (2, False)
         
     #---------------------------RECORDING WIDGET-------------------------------
         self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
@@ -258,20 +239,16 @@ class LiveplotApp(QMainWindow):
         
         self.recording_tools.addTab(self.right_splitter,'Record Time Series')
         self.recording_toolbox.addToolbox(self.recording_tools)
-        main_layout.addWidget(self.recording_toolbox)
-    #------------------------FINALISE THE SPLITTERS-----------------------------
-        #self.main_splitter.addWidget(acqUI)
-   
-        #self.main_splitter.setStretchFactor(0, 0)
-        #self.main_splitter.setStretchFactor(1, 1)
-        #self.main_splitter.setStretchFactor(2, 0)
         
+        
+    #------------------------FINALISE THE LAYOUT-----------------------------
+        main_layout.addWidget(self.stream_toolbox)
+        main_layout.addWidget(self.mid_splitter)
+        main_layout.addWidget(self.recording_toolbox)
         main_layout.setStretchFactor(self.stream_toolbox, 0)
         main_layout.setStretchFactor(self.mid_splitter, 1)
         main_layout.setStretchFactor(self.recording_toolbox, 0)
         
-        #self.main_splitter.setCollapsible (1, False)
-        self.mid_splitter.setCollapsible (2, False)
         self.ResetSplitterSizes()
         
     #-----------------------EXPERIMENTAL STYLING---------------------------- 
