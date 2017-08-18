@@ -200,6 +200,11 @@ class TextReceiver(QObject):
             stdout_text = self.stdout_buffer.get()
             # If we got something, send the text received signal
             self.sig_text_received.emit(stdout_text)
+            
+class AddonWriter(QWidget):
+    def __init__(self):
+        super().__init__()
+        pass
 
 
 if __name__ == '__main__':
