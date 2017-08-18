@@ -36,7 +36,7 @@ Installing on Anaconda
 
 *Packages that are installed in both* ``conda`` *and* ``pip`` *can cause problems, 
 so everything that can be is installed with* ``conda``. *This means that* ``pip`` 
-*must be told not to install any of the* ``cued-datalogger`` * dependencies 
+*must be told not to install any of the* ``cued-datalogger`` *dependencies 
 with the* ``--no-deps`` *flag.*
 
 
