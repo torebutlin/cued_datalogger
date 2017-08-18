@@ -36,7 +36,7 @@ except ImportError:
     NI_drivers = False
 
 from datalogger.api import channel as ch
-from datalogger.api.custom_plot import CustomPlotWidget
+from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
 
 from datalogger.api.toolbox import Toolbox, MasterToolbox
 

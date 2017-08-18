@@ -1,6 +1,6 @@
-from datalogger.api.DataAnalysisPlot import DataPlotWidget
+from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 
-class TimeDomainWidget(DataPlotWidget):
+class TimeDomainWidget(InteractivePlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -1,6 +1,6 @@
-from datalogger.api.DataAnalysisPlot import DataPlotWidget
+from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 
-class FrequencyDomainWidget(DataPlotWidget):
+class FrequencyDomainWidget(InteractivePlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
