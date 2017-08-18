@@ -40,8 +40,8 @@ so everything that can be is installed with* ``conda``. *This means that* ``pip`
 with the* ``--no-deps`` *flag.*
 
 
-Installing on Linux
-^^^^^^^^^^^^^^^^^^^
+Installing on Linux (without Anaconda)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #. Install the ``portaudio`` development headers using your package manager.
 
     **Debian / Ubuntu**::
