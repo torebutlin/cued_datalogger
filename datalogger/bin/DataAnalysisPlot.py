@@ -6,6 +6,7 @@ Created on Tue Jul 11 13:41:44 2017
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QPushButton,QLabel,
                              QFormLayout)
+from PyQt5.QtCore import QTimer
 import pyqtgraph as pg
 import functools as fct
 from datalogger.bin.custom_plot import CustomPlotWidget
@@ -37,9 +38,9 @@ class DataPlotWidget(QWidget):
         
         ui_layout = QHBoxLayout()
         t1 = QLabel('Lower',self)
-        self.sp1 = pg.SpinBox(self)
+        self.sp1 = pg.SpinBox(self,bounds = (0,None))
         t2 = QLabel('Upper',self)
-        self.sp2 = pg.SpinBox(self)
+        self.sp2 = pg.SpinBox(self,bounds = (0,None))
         self.zoom_btn = QPushButton('Zoom',self)
         ui_layout.addWidget(t1)
         ui_layout.addWidget(self.sp1)
@@ -47,16 +48,19 @@ class DataPlotWidget(QWidget):
         ui_layout.addWidget(self.sp2)
         ui_layout.addWidget(self.zoom_btn)
         
-        self.sp1.sigValueChanging.connect(self.updateRegion)
-        self.sp2.sigValueChanging.connect(self.updateRegion)
+        
         self.zoom_btn.clicked.connect(self.zoomToRegion)
         vbox.addLayout(ui_layout)
+        
+        self.updatetimer = QTimer(self)
+        self.updatetimer.timeout.connect(self.updateRegion)
+        self.updatetimer.start(20)
         
     def mouseMoved(self,evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
         if self.plotitem.sceneBoundingRect().contains(pos):
             mousePoint = self.vb.mapSceneToView(pos)
-            self.label.setText(("<span style='font-size: 12pt'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
+            self.label.setText(("<span style='font-size: 12pt;color: black'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
                                 % (mousePoint.x(), mousePoint.y()) ))
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
@@ -77,7 +81,6 @@ class DataPlotWidget(QWidget):
     def checkRegion(self):
         pos = list(self.linregion.getRegion())
         pos.sort()
-        self.linregion.setRegion(pos)
         self.sp1.setValue(pos[0])
         self.sp2.setValue(pos[1])
         
@@ -88,4 +91,6 @@ class DataPlotWidget(QWidget):
         
     def closeEvent(self,event):
         self.proxy.disconnect()
+        if self.updatetimer.isActive():
+            self.updatetimer.stop()
         event.accept()

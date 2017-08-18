@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
 from io import StringIO
 from queue import Queue
 from contextlib import redirect_stdout
-import os
+import os,traceback,sys
 
 import pyqtgraph as pg
 
@@ -101,12 +101,20 @@ class AddonManager(QWidget):
 
     def add_addon(self, addon_url):
         # Read the file
-        with open(addon_url) as a:
-            # Execute the file
-            # WARNING: THIS IS RATHER DANGEROUS - there could be anything
-            # in there!
-            exec(a.read(), self.addon_local_vars, self.addon_global_vars)
-
+        try:
+            with open(addon_url) as a:
+                # Execute the file
+                # WARNING: THIS IS RATHER DANGEROUS - there could be anything
+                # in there!
+                exec(a.read(), self.addon_local_vars, self.addon_global_vars)
+        except:
+            print('Error detected in code!')
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            return
+        
         # Extract the metadata
         metadata = self.addon_global_vars["addon_metadata"]
 
@@ -143,14 +151,20 @@ class AddonManager(QWidget):
 
         # Print some info about the addon
         print("###\n {} by {}\n {}\n###".format(name, author, description))
-        # Execute the addon
-        self.addon_functions[name](self.parent)
-
-        # Tidy up
-        # TODO maybe need to have a more robust way of ensuring that everything
-        # closes properly eg. if application quits before these lines reached
-        self.receiver_thread.terminate()
-        sys.stdout = stdout_old
+        try:
+            # Execute the addon
+            self.addon_functions[name](self.parent)
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+        finally:
+            # Tidy up
+            # TODO maybe need to have a more robust way of ensuring that everything
+            # closes properly eg. if application quits before these lines reached
+            self.receiver_thread.terminate()
+            sys.stdout = stdout_old
 
     def start_receiver_thread(self):
         # Create a thread for the receiver
