@@ -2,7 +2,11 @@ from setuptools import setup
 import sys
 import subprocess
 from os.path import isfile
-from shutil import copyfile
+
+def version():
+    """Get version number"""
+    with open('datalogger/VERSION') as f:
+        return f.read()
 
 def readme():
     """Get text from the README.rst"""
@@ -61,7 +65,7 @@ else:
 
 
 setup(name='cued-datalogger',
-      version='0.0.2',
+      version=version(),
       description='The CUED DataLogger for acquiring and analysing data',
       long_description=readme(),
       url='https://bitbucket.org/tab53/cued_datalogger/',
