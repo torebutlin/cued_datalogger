@@ -3,7 +3,7 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 import numpy as np
-from datalogger.api.numpy_functions import MatlabList
+from datalogger.api.numpy_extensions import MatlabList
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
@@ -20,7 +20,7 @@ class ChannelSet():
     ChannelSets can be initialised as empty, and channels added later,
     or initialised with a number of empty channels, to which DataSets can be
     added later. Channels are stored in a matlab-style list structure
-    (see api.numpy_functions.MatlabList) which uses tuple indexing, eg.
+    (see api.numpy_extensions.MatlabList) which uses tuple indexing, eg.
     channelset.channels[1, 2, range(5,10)], so that multiple channels can be
     selected easily.
 

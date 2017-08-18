@@ -1,10 +1,10 @@
 import sys
 if __name__ == '__main__':
     sys.path.append('../bin')
-    from numpy_functions import to_dB
+    from numpy_extensions import to_dB
     from pyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
 else:
-    from datalogger.api.numpy_functions import to_dB
+    from datalogger.api.numpy_extensions import to_dB
     from datalogger.api.pyqt_widgets import Power2SteppedSlider, Power2SteppedSpinBox, ColorMapPlotWidget, MatplotlibCanvas
 
 from PyQt5.QtCore import Qt
