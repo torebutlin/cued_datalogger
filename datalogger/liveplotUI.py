@@ -46,7 +46,7 @@ import math
 PLAYBACK = False    # Whether to playback the stream
 MAX_SAMPLE = 1e9    # Recording Sample max size limit
 WIDTH = 900         # Window width
-HEIGHT = 500        # Window height
+HEIGHT = 600        # Window height
 CHANLVL_FACTOR = 0.1# The gap between each channel level (seems useless)
 TRACE_DECAY = 0.005 # Increment size for decaying trace
 TRACE_DURATION = 2  # Duration for a holding trace
@@ -64,7 +64,7 @@ class LiveplotApp(QMainWindow):
         self.parent = parent
         
         # Set window parameter
-        self.setGeometry(500,300,WIDTH,HEIGHT)
+        self.setGeometry(400,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
         self.center()
         
@@ -122,11 +122,22 @@ class LiveplotApp(QMainWindow):
     #---------------------CHANNEL TOGGLE UI----------------------------------
         self.stream_tools = CollapsingSideTabWidget('left',self.main_widget)
         
+        self.chan_toggles = QWidget(self.main_widget)
+        chan_toggle_layout = QVBoxLayout(self.chan_toggles)
+        
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
         self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
         self.chantoggle_UI.chan_text.returnPressed.connect(self.chan_line_toggle)
-        self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
+        #self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
+        
+        chan_toggle_layout.addWidget(self.chantoggle_UI)
+        
+    #---------------------------ADDITIONAL UIs----------------------------
+        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
+        self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
+        #self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
+        chan_toggle_layout.addWidget(self.chan_toggle_ext)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
@@ -149,7 +160,7 @@ class LiveplotApp(QMainWindow):
         self.devconfig_UI.typebtngroup.buttonReleased.connect(self.display_sources)
         self.devconfig_UI.config_button.clicked.connect(self.ResetRecording)
         
-        self.stream_tools.addTab(self.chantoggle_UI,'Channel Toggle')
+        self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
         self.stream_tools.addTab(self.devconfig_UI,'Device Config')
         self.stream_toolbox.addToolbox(self.stream_tools)
@@ -304,11 +315,6 @@ class LiveplotApp(QMainWindow):
         
         #h = 600 - chans_settings_layout.geometry().height()
         #self.main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
-        
-    #---------------------------ADDITIONAL UIs----------------------------
-        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
-        self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
-        self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
      
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
