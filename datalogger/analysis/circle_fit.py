@@ -2,8 +2,8 @@ import sys
 if __name__ == '__main__':
     sys.path.append('..')
 
-from datalogger.bin.channel import ChannelSet
-from datalogger.bin.file_import import import_from_mat
+from datalogger.api.channel import ChannelSet
+from datalogger.api.file_import import import_from_mat
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui

@@ -53,9 +53,11 @@ if "Anaconda" in sys.version or "Continuum" in sys.version:
             print("Error: No python3.dll file found, so DataLogger will NOT "
                   "work with this Anaconda installation.")
             print("#########################################################\n"
-                  "Please copy the python3.dll file to the Anaconda Library \n"
-                  "binary folder (eg. C:\ProgramData\Anaconda3\Library\bin) \n"
-                  "and rerun setup.py \n"
+                  "Please download a python3.dll file \n"
+                  "(eg. from bitbucket.org/tab53/cued_datalogger/src)\n"
+                  "and copy the python3.dll file to the Anaconda Library \n"
+                  "binary folder (eg. C:\ProgramData\Anaconda3\Library\bin). \n"
+                  "Then attempt to install cued-datalogger again. \n"
                   "#########################################################")
             exit(1)
 
@@ -72,9 +74,10 @@ setup(name='cued-datalogger',
       author='Theo Brown, En Yi Tee',
       author_email='tab53@cam.ac.uk, eyt21@cam.ac.uk',
       license='BSD 3-Clause License',
-      packages=['datalogger'],
-                #'datalogger/acquisition',
-                #'datalogger/analysis'],
+      packages=['datalogger',
+                'datalogger/acquisition',
+                'datalogger/analysis',
+                'datalogger/api'],
       # TODO
       # If you include this in the setup code, when it tries to install
       # itself in an Anaconda environment, a lot of things break. Fix this.
@@ -88,7 +91,7 @@ setup(name='cued-datalogger',
                       'PyDAQmx>=1.3.2',
                       'pyaudio>=0.2.11'],
       entry_points={
-        'console_scripts': ['DataLogger_cmd = datalogger.__main__:full'],
-        'gui_scripts': ['DataLogger = datalogger.__main__:full']},
+        'console_scripts': ['DataLogger_dbg = datalogger.__main__:run_datalogger_full'],
+        'gui_scripts': ['DataLogger = datalogger.__main__:run_datalogger_full']},
       zip_safe=True,
       include_package_data=True)

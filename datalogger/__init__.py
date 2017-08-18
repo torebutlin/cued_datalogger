@@ -1,6 +1,5 @@
-from . import bin
-from . import analysis_window_testing
-from . import liveplotUI
+from . import api
+from .api import workspace as workspace
 from . import analysis
 from . import acquisition
 
