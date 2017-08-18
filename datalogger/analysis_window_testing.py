@@ -27,6 +27,7 @@ from datalogger.api.file_import import import_from_mat, DataImportWidget
 
 from toolbox_UI import CollapsingSideTabWidget,StackedToolbox
 import datalogger.liveplotUI  as lpUI
+from datalogger.liveplotUI  import DevConfigUI
 
 class AnalysisDisplayTabWidget(QTabWidget):
     def __init__(self, *arg, **kwarg):
