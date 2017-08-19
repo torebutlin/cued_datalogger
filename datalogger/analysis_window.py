@@ -1,216 +1,339 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 11 11:44:12 2017
-
-@author: eyt21
-"""
-import sys,traceback
-
-
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,QLabel,
-    QPushButton, QApplication, QMessageBox, QDesktopWidget,QTabWidget,QTabBar,
-    QFormLayout)
-#from PyQt5.QtGui import QIcon,QFont
-from PyQt5.QtCore import QCoreApplication,QTimer
-
 import numpy as np
-from numpy.fft import rfft, rfftfreq
+from numpy.fft import rfft
 
-import pyqtgraph as pg
-import pyqtgraph.exporters
+from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, 
+                             QHBoxLayout, QMainWindow, QPushButton, 
+                             QVBoxLayout, QAction, QMenu)
 
-import liveplotUI as lpUI
-from acquisition.wintabwidgets import data_tab_widget
-from analysis.sonogram import SonogramWidget
-from analysis.cwt import CWTWidget
+import sys
 
-from bin.channel import DataSet, Channel, ChannelSet
+from datalogger.analysis.circle_fit import CircleFitWidget
+from datalogger.analysis.frequency_domain import FrequencyDomainWidget
+from datalogger.analysis.sonogram import SonogramWidget
+from datalogger.analysis.time_domain import TimeDomainWidget
 
-# For the exporter to work, need to change iteritem to item in pyqtgraph
+from datalogger.api.addons import AddonManager
+from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
+from datalogger.api.file_import import DataImportWidget
+from datalogger.api.toolbox import Toolbox, MasterToolbox
+
+import datalogger.acquisition_window as lpUI
+from datalogger.acquisition_window import DevConfigUI
+
+
+class AnalysisDisplayTabWidget(QTabWidget):
+    """The central widget for display in the analysis window"""
+    def __init__(self, *arg, **kwarg):
+        super().__init__(*arg, **kwarg)
+
+        self.init_ui()
+
+    def init_ui(self):
+        self.setMovable(False)
+        self.setTabsClosable(False)
+
+        self.timedomain_widget = TimeDomainWidget(self)
+        self.freqdomain_widget = FrequencyDomainWidget(self)
+        self.sonogram_widget = SonogramWidget(self)
+        self.circle_widget = CircleFitWidget(self)
+                
+        # Create the tabs
+        self.addTab(self.timedomain_widget, "Time Domain")
+        self.addTab(self.freqdomain_widget, "Frequency Domain")
+        self.addTab(self.sonogram_widget, "Sonogram")
+        self.addTab(self.circle_widget, "Modal Fitting")
+
+
+class ProjectMenu(QMenu):
+    def __init__(self,parent):
+        super().__init__('Project',parent)
+        self.parent = parent
+        self.initMenu()
+
+    def initMenu(self):
+        newAct = QAction('&New', self)
+        newAct.setShortcut('Ctrl+N')
+
+        setAct = QAction('&Settings', self)
+
+        exitAct = QAction('&Exit', self)
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+
+        self.addActions([newAct,setAct,exitAct])
+
+
 class AnalysisWindow(QMainWindow):
+    """
+    Data Analysis Window
+    """
     def __init__(self):
         super().__init__()
 
-        # Set window parameter
-        self.setGeometry(200,500,700,700)
-        self.setWindowTitle('DataWindow')
+        self.setGeometry(500,300,800,500)
+        self.setWindowTitle('AnalysisWindow')
 
-        # Construct UI
-        self.initUI()
+        #self.new_cs = ChannelSet()
+        self.create_test_channelset()
+        self.init_ui()
 
-        # Initialise the channels
-        self.init_channels()
-        self.display_metadata()
-        # Center and show window
-        self.center()
         self.setFocus()
         self.show()
-     #------------- App construction methods--------------------------------
-    def initUI(self):
-        # Set up the main widget to contain all Widgets
-        self.main_widget = QWidget()
-        # Set up the main layout
-        vbox = QVBoxLayout(self.main_widget)
 
-        # Set up the button to open the LivePlotting Window
+    def init_toolbox(self):
+        self.toolbox = MasterToolbox()
+        
+        self.time_toolbox = Toolbox('left', self.toolbox)
+        wd = QWidget(self)
+        hb = QVBoxLayout(wd)
+        fft_btn = QPushButton("Convert to FFT",self.time_toolbox)
+        fft_btn.clicked.connect(self.plot_fft)
+        sono_btn = QPushButton("Sonogram",self.time_toolbox)
+        sono_btn.clicked.connect(self.plot_sonogram)
+        hb.addWidget(fft_btn)
+        hb.addWidget(sono_btn)
+        self.time_toolbox.addTab(wd, "TimeTab1")
+        self.time_toolbox.addTab(QPushButton("Button 2",self.time_toolbox), "TimeTab2")
+
+        self.frequency_toolbox = Toolbox('left',self.toolbox)
+        wd2 = QWidget(self)
+        hb2 = QVBoxLayout(wd2)
+        circle_btn = QPushButton("Circle_Fit",self.frequency_toolbox)
+        hb2.addWidget(circle_btn)
+        circle_btn.clicked.connect(self.circle_fitting)
+        self.frequency_toolbox.addTab(wd2, "Conversion")
+        self.frequency_toolbox.addTab(QPushButton("Button 2",self.frequency_toolbox), "FreqTab2")
+
+        self.sonogram_toolbox = Toolbox('left',self.toolbox)
+        self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
+        self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
+
+        self.modal_analysis_toolbox = Toolbox('left',self.toolbox)
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
+        self.modal_analysis_toolbox.addTab(QPushButton("Button 2",self.modal_analysis_toolbox), "ModalTab2")       
+        
+        self.toolbox.add_toolbox(self.time_toolbox)
+        self.toolbox.add_toolbox(self.frequency_toolbox)
+        self.toolbox.add_toolbox(self.sonogram_toolbox)
+        self.toolbox.add_toolbox(self.modal_analysis_toolbox)
+        self.toolbox.set_toolbox(0)
+
+    def init_global_toolbox(self):        
+        self.global_toolbox = MasterToolbox()
+        self.gtools = Toolbox('right',self.global_toolbox)
+        
         self.liveplot = None
-        self.liveplotbtn = QPushButton('Open Oscilloscope',self.main_widget)
-        self.liveplotbtn.resize(self.liveplotbtn.sizeHint())
-        self.liveplotbtn.pressed.connect(self.toggle_liveplot)
-        vbox.addWidget(self.liveplotbtn)
+        dev_configUI = DevConfigUI()
+        dev_configUI.config_button.setText('Open Oscilloscope')
+        dev_configUI.config_button.clicked.connect(self.open_liveplot)
+        self.gtools.addTab(dev_configUI,'Oscilloscope')
 
-        # Set up the button to plot the FFT
-        self.fft_btn = QPushButton("Calculate FFT", self.main_widget)
-        self.fft_btn.pressed.connect(self.plot_fft)
-        vbox.addWidget(self.fft_btn)
+        self.channel_select_widget = ChannelSelectWidget(self.gtools)
+        self.channel_select_widget.channel_selection_changed.connect(self.display_channel_plots)
+        self.gtools.addTab(self.channel_select_widget, 'Channel Selection')
 
-        # Set up the button to plot the sonogram
-        self.sonogram_btn = QPushButton("Calculate sonogram", self.main_widget)
-        self.sonogram_btn.pressed.connect(self.plot_sonogram)
-        vbox.addWidget(self.sonogram_btn)
+        self.channel_metadata_widget = ChannelMetadataWidget(self.gtools)
+        self.gtools.addTab(self.channel_metadata_widget, 'Channel Metadata')
 
-        # Set up the button to plot the CWT
-        self.cwt_btn = QPushButton("Calculate CWT", self.main_widget)
-        self.cwt_btn.pressed.connect(self.plot_cwt)
-        vbox.addWidget(self.cwt_btn)
+        
+        self.channel_metadata_widget.metadataChange.connect(self.update_cs)
+            
+        self.addon_widget = AddonManager(self)
+        self.gtools.addTab(self.addon_widget, 'Addon Manager')
 
-        #Set up the tabs container for recorded data
-        self.data_tabs = QTabWidget(self)
-        self.data_tabs.setMovable(True)
-        self.data_tabs.setTabsClosable (False)
-        #self.data_tabs.setTabPosition(0)
-        vbox.addWidget(self.data_tabs)
+        self.import_widget = DataImportWidget(self)
+        self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
+        self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
+        self.gtools.addTab(self.import_widget, 'Import Files')
+        
+        self.global_toolbox.add_toolbox(self.gtools)
+        
+    def update_cs(self,cs):
+        self.channel_select_widget.cs = self.cs = cs
+        self.channel_select_widget.set_channel_name()
+            
+    def init_ui(self):
+        menubar = self.menuBar()
+        menubar.addMenu(ProjectMenu(self))
 
-        # Add tab containing a plot widget
-        try:
-            self.data_tabs.addTab(data_tab_widget(self), "Time Series")
-        except:
-            t,v,tb = sys.exc_info()
-            print(t)
-            print(v)
-            print(traceback.format_tb(tb))
-        self.data_tabs.addTab(data_tab_widget(self), "Frequency domain")
-
-        self.meta_display = QWidget()
-        meta_disp_layout = QFormLayout(self.meta_display)
-
-        meta_dname = ('Channel','Name','Calibration Factor','Units','Tags','Comments')
-        self.meta_labels = []
-
-        for m in meta_dname:
-            dbox = QLabel(self)
-            meta_disp_layout.addRow(QLabel(m,self),dbox)
-            self.meta_labels.append(dbox)
-
-        vbox.addWidget(self.meta_display)
-
-        #Set the main widget as central widget
-        self.main_widget.setFocus()
+        # # Create the main widget
+        self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
+        self.main_layout = QHBoxLayout()
+        self.main_widget.setLayout(self.main_layout)
 
-    # Center the window
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+       # Create the toolbox
+        self.init_toolbox()
 
-    def init_channels(self):
-        """Initialise the channels"""
-        # Create the channel set
-        self.cs = ChannelSet(1)
-        # Add one input channel
-        self.cs.add_channel_dataset(0,'y')
-        self.cs.add_channel_dataset(0,'s')
+        # Create the global toolbox
+        self.init_global_toolbox()
 
-    def display_metadata(self):
-        for i in range(len(self.cs)):
-            self.meta_labels[0].setText(str(i))
-            meta_dtype = ('name','calibration_factor','units','tags','comments')
-            for n,md in enumerate(meta_dtype,1):
-                self.meta_labels[n].setText(str(self.cs.get_channel_metadata(i,md)))
-
-    #------------- UI callback methods--------------------------------
-    def toggle_liveplot(self):
+        # Create the analysis tools tab widget
+        self.display_tabwidget = AnalysisDisplayTabWidget(self)
+        self.display_tabwidget.currentChanged.connect(self.toolbox.set_toolbox)
+        
+        self.plot_colours = ['r','g','b', 'k', 'm']
+        self.timeplots = []
+        self.freqplots = []
+        
+        self.config_channelset()
+        self.plot_time_series()
+        #self.plot_fft()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
+        # Add the widgets
+        self.main_layout.addWidget(self.toolbox)
+        self.main_layout.addWidget(self.display_tabwidget)
+        self.main_layout.addWidget(self.global_toolbox)
+        # Set the stretch factors
+        self.main_layout.setStretchFactor(self.toolbox, 0)
+        self.main_layout.setStretchFactor(self.display_tabwidget, 1)
+        self.main_layout.setStretchFactor(self.global_toolbox, 0.5)
+        
+    def create_test_channelset(self):
+        self.cs = ChannelSet(5)
+        t = np.arange(1000)/44100
+        for i, channel in enumerate(self.cs.channels):
+            self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
+            self.cs.add_channel_dataset(i,'spectrum', []) 
+            
+    def open_liveplot(self):
         if not self.liveplot:
-            #try:
             self.liveplot = lpUI.LiveplotApp(self)
-            self.liveplot.show()
-            self.liveplotbtn.setText('Close Oscilloscope')
-
-		# Plot when data received
+            self.liveplot.done.connect(self.done_liveplot)
             self.liveplot.dataSaved.connect(self.plot_time_series)
-            self.liveplot.dataSaved.connect(self.display_metadata)
-        else:
-            self.liveplot.close()
-            self.liveplot = None
-            self.liveplotbtn.setText('Open Oscilloscope')
+            self.liveplot.dataSaved.connect(self.config_channelset)
+            self.liveplot.show()
 
+    def done_liveplot(self):
+        self.liveplot.done.disconnect()
+        self.liveplot = None
+     
+    def config_channelset(self):
+        self.channel_select_widget.set_channel_set(self.cs)
+        self.channel_metadata_widget.set_channel_set(self.cs)
+    
     def plot_time_series(self):
-        # Switch to time series tab
-        self.data_tabs.setCurrentIndex(0)
-        y = self.cs.get_channel_data(0,'y')
-        # TODO: Pass metadata
-        t = np.arange(len(y),dtype = np.float32)/44100
-        d5y = np.gradient(y,2)
-        # Plot data
-        self.data_tabs.currentWidget().resetPlotWidget()
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=y, pen='b')
-        self.data_tabs.currentWidget().canvasplot.plot(x=t, y=d5y+np.mean(y), pen='y')
-        self.data_tabs.currentWidget().canvasplot.setLimits(xMin = 0,xMax = t[-1])
-        self.data_tabs.currentWidget().linregion.setBounds((0,t[-1]))
-        self.data_tabs.currentWidget().linregion.setRegion((t[-1]*0.49,t[-1]*0.51))
+        self.display_tabwidget.freqdomain_widget.resetPlotWidget()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
 
-
-    def plot_sonogram(self):
-        signal = self.cs.get_channel_data(0,'y')
-        self.data_tabs.addTab(SonogramWidget(self), "Sonogram")
-        # Switch to sonogram tab
-        self.data_tabs.setCurrentIndex(2)
-        self.data_tabs.currentWidget().plot(signal)
-
-
-    def plot_cwt(self):
-        signal = self.cs.get_channel_data(0,'y')
-        t = np.arange(len(signal),dtype = np.float32)/44100
-        self.data_tabs.addTab(CWTWidget(signal, t, parent=self), "CWT")
-        # Switch to sonogram tab
-        self.data_tabs.setCurrentIndex(3)
-
+        data = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        # Note: channel without a time series will give an empty array
+        self.timeplots = []
+        self.display_tabwidget.currentWidget().resetPlotWidget()
+        data_end = 0
+        for i,dt in enumerate(data):
+            if not dt.shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                t = np.arange(dt.shape[0])/sample_rate
+                self.timeplots.append(self.display_tabwidget.timedomain_widget.\
+                                      plotitem.plot(t,dt,pen = self.plot_colours[i%len(self.plot_colours)]))
+                data_end = max(data_end,t[-1])
+            else:
+                # Empty array will plot nothing and thus None in timeplots
+                self.timeplots.append(None)
+        
+        # Set up the spinboxes and plot ranges
+        self.display_tabwidget.timedomain_widget.sp1.setSingleStep(data_end/100) 
+        self.display_tabwidget.timedomain_widget.sp2.setSingleStep(data_end/100) 
+        self.display_tabwidget.timedomain_widget.sp1.setValue(data_end*0.4)
+        self.display_tabwidget.timedomain_widget.sp2.setValue(data_end*0.6)
+        self.display_tabwidget.timedomain_widget.plotitem.setLimits(xMin = 0,
+                                                                    xMax = data_end)
+        self.display_tabwidget.timedomain_widget.plotitem.setRange(xRange = (0,data_end),
+                                                                   padding = 0.2)
+        
     def plot_fft(self):
         # Switch to frequency domain tab
-        self.data_tabs.setCurrentIndex(1)
-        y = self.cs.get_channel_data(0,'y')
-
-        # Calculate FT and associated frequencies
-        ft = np.abs(np.real(rfft(y)))
-        freqs = np.real(rfftfreq(y.size, 1/4096))
-
-        # Store in datasets
-        #self.cs.chans[0].set_data('f', freqs)
-        self.cs.set_channel_data(0,'s', ft)
-
-        # Plot data
-        self.data_tabs.currentWidget().resetPlotWidget()
-        self.data_tabs.currentWidget().canvasplot.plot(x=freqs, y=ft, pen='g')
-
-    #----------------Overrding methods------------------------------------
-    # The method to call when the mainWindow is being close
-    def closeEvent(self,event):
-        self.activateWindow()
-        reply = QMessageBox.question(self,'Message',
-        'Are you sure you want to quit?', QMessageBox.Yes|
-        QMessageBox.No, QMessageBox.No)
-
-        if reply == QMessageBox.Yes:
-            if self.liveplot:
-                self.liveplot.close()
-            event.accept()
-        else:
-            event.ignore()
-
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+        self.display_tabwidget.currentWidget().resetPlotWidget()
+        self.freqplots = []
+        
+        tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        
+        data_end = 0
+        max_data = 0
+        for i in range(len(self.cs)):
+            if not fdata[i].shape[0] == 0 or not tdata[i].shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                if not fdata[i].shape[0] == 0:
+                    f = np.arange(int(fdata[i].shape[0]))/fdata[i].shape[0] * sample_rate
+                    ft = np.abs(fdata[i])
+                elif not tdata[i].shape[0] == 0:
+                    print('Calculating Spectrum from timeseries')
+                    f = np.arange(int(tdata[i].shape[0]/2)+1)/tdata[i].shape[0] * sample_rate
+                    ft = np.abs(np.real(rfft(tdata[i])))
+                    self.cs.add_channel_dataset(i,'spectrum', ft)
+                self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(f,ft,pen = self.plot_colours[i%len(self.plot_colours)]))
+                data_end = max(data_end,f[-1])
+                max_data = max(max_data,max(ft))
+            else:
+                print('No specturm to plot')
+                self.freqplots.append(None)
+                return
+          
+        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
+        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(data_end/100)
+        
+        self.display_tabwidget.freqdomain_widget.sp1.setValue(data_end*0.4)
+        self.display_tabwidget.freqdomain_widget.sp2.setValue(data_end*0.6)
+        self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
+                                                                    xMax = data_end)
+        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
+                                                                   yRange = (0,max_data),
+                                                                   padding = 0.2)
+     
+    def plot_sonogram(self):
+        signal = self.cs.get_channel_data(0,'time_series')
+        if not signal.shape[0] == 0:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+            self.display_tabwidget.currentWidget().plot(signal)
+        
+    def circle_fitting(self):
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
+        fdata = self.cs.get_channel_data(0, "spectrum")
+        self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
+        self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
+        
+    def display_channel_plots(self, selected_channel_list):
+        self.display_tabwidget.timedomain_widget.resetPlotWidget()
+        self.display_tabwidget.freqdomain_widget.resetPlotWidget()
+        timeplotitem = self.display_tabwidget.timedomain_widget.plotitem
+        freqplotitem = self.display_tabwidget.freqdomain_widget.plotitem
+        for i, channel in enumerate(self.cs.channels):
+            if i in selected_channel_list:
+                if i< len(self.timeplots):
+                    if self.timeplots[i]:
+                        timeplotitem.addItem(self.timeplots[i])
+                else:
+                    self.timeplots.append(None)
+                    
+                if i< len(self.freqplots): 
+                    if self.freqplots[i]:
+                        freqplotitem.addItem(self.freqplots[i])
+                else:
+                    self.freqplots.append(None)
+                
+    def add_import_data(self,mode):
+        if mode == 'Extend':
+            self.cs.channels.extend(self.import_widget.new_cs.channels) 
+        elif mode == 'Replace':
+            self.cs = self.import_widget.new_cs
+        
+        self.config_channelset()
+        self.plot_time_series()
+        self.plot_fft()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
+        self.import_widget.clear()
+        
+    
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
+
     w = AnalysisWindow()
+    w.show()
+
     sys.exit(app.exec_())
