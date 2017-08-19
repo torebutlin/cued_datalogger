@@ -43,7 +43,16 @@ class AddonManager(QWidget):
         # Create the object that writes to the textedit
         self.text_receiver = TextReceiver(self.stdout_buffer)
         self.text_receiver.sig_text_received.connect(self.output.append)
-
+        
+        ### Should just create a Thread once???
+        # Create a thread for the receiver
+        self.receiver_thread = QThread()
+        # Run the receiver
+        self.receiver_thread.started.connect(self.text_receiver.run)
+        # Move the receiver to the thread
+        self.text_receiver.moveToThread(self.receiver_thread)
+       
+        
     def init_ui(self):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
@@ -85,6 +94,8 @@ class AddonManager(QWidget):
         self.output = QTextEdit(self)
         self.output.setReadOnly(True)
         self.layout.addWidget(self.output)
+        
+        
 
     def discover_addons(self, path):
         """Find any addons contained in path and load them"""
@@ -158,28 +169,22 @@ class AddonManager(QWidget):
 
         # Print some info about the addon
         print("###\n {} by {}\n {}\n###".format(name, author, description))
+        # Execute the addon
         try:
-            # Execute the addon
             self.addon_functions[name](self.parent)
         except:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-        finally:
-            # Tidy up
-            # TODO maybe need to have a more robust way of ensuring that everything
-            # closes properly eg. if application quits before these lines reached
-            self.receiver_thread.terminate()
-            sys.stdout = stdout_old
+            print('Error in Code!')
+        # Tidy up
+        # TODO maybe need to have a more robust way of ensuring that everything
+        # closes properly eg. if application quits before these lines reached
+        self.receiver_thread.quit()
+        sys.stdout = stdout_old
 
     def start_receiver_thread(self):
-        # Create a thread for the receiver
-        self.receiver_thread = QThread()
-        # Move the receiver to the thread
-        self.text_receiver.moveToThread(self.receiver_thread)
-        # Run the receiver
-        self.receiver_thread.started.connect(self.text_receiver.run)
         self.receiver_thread.start()
 
     def open_writer(self):
@@ -214,9 +219,12 @@ class TextReceiver(QObject):
     def run(self):
         while True:
             # Get text from stdout (block until there's something to get)
-            stdout_text = self.stdout_buffer.get()
             # If we got something, send the text received signal
+            # Blocking actually crashes the program :(
+            stdout_text = self.stdout_buffer.get(block = False)
             self.sig_text_received.emit(stdout_text)
+            
+                #break
             
 class AddonWriter(QWidget):
     done = pyqtSignal()
@@ -271,17 +279,6 @@ class AddonWriter(QWidget):
         
         code_widget = QWidget(self)
         c_widget_layout = QVBoxLayout(code_widget)
-        #left_widget = QWidget(self)
-        #left_layout = QVBoxLayout(left_widget)
-        #right_widget = QWidget(self)
-        #right_layout = QVBoxLayout(right_widget)
-        
-        #func_list_label = QLabel('Function List',code_widget)
-        #left_layout.addWidget(func_list_label)
-        #self.function_listview = QListWidget(code_widget)
-        #left_layout.addWidget(self.function_listview)
-        
-        #left_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
         font_metrics = QFontMetrics(QFont())
         w = font_metrics.width(' ')
@@ -289,12 +286,6 @@ class AddonWriter(QWidget):
         main_code_label = QLabel('Run Code',code_widget)
         self.main_code_text = QTextEdit(code_widget)
         self.main_code_text.setTabStopWidth(w*4) 
-        
-        #c_widget_layout.addWidget(func_code_label,0,1)
-        #c_widget_layout.addWidget(self.func_code_text,1,1,2,2)
-        
-        #right_layout.addWidget(main_code_label)
-        #right_layout.addWidget(self.main_code_text)
         
         c_widget_layout.addWidget(main_code_label)
         c_widget_layout.addWidget(self.main_code_text)
@@ -309,35 +300,23 @@ class AddonWriter(QWidget):
         
     def create_addon(self):
       
-        metadata = [self.meta_configs[0].text(),self.meta_configs[1].text(),
-   self.meta_configs[2].currentText(),self.meta_configs[3].toPlainText()]
+        metadata = [self.meta_configs[0].text(),
+                    self.meta_configs[1].text(),
+                    self.meta_configs[2].currentText(),
+                    self.meta_configs[3].toPlainText()]
+        metadata[3] = metadata[3].replace("\n"," ")
         metadata = ["\"" + md + "\""  for md in metadata]
-        metadata[3] = metadata[3].replace("\"","'''")
-        try:
-            if __name__ == '__main__':
-                file = open("../addons/Some_addon.py",'w',encoding='utf8')
-            else:
-                file = open("./addons/Some_addon.py",'w',encoding='utf8')
-        except Exception as e:
-            print(e)
-            return
         
-        try:  
+        with open("./addons/Some_addon.py",'w',encoding='ASCII') as file:  
             file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
                        tuple(metadata))
             main_code = self.main_code_text.toPlainText()
             if not main_code:
                 main_code = 'pass'
-            full_code = "def run(analysis_window):\n" + main_code
+            full_code = "def run(parent_window):\n" + main_code
             full_code = full_code.replace('\n','\n\t')
             file.write(full_code)
-        except:
-            t,v,tb = sys.exc_info()
-            print(t)
-            print(v)
-            print(traceback.format_tb(tb))
-        finally:
-            file.close() 
+           # file.close() 
 
 if __name__ == '__main__':
     app = 0

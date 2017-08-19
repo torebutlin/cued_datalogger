@@ -2,7 +2,7 @@
 - Essentially identical to the pyaudio version
 """
 
-from datalogger.bin.RecorderParent import RecorderParent
+from datalogger.acquisition.RecorderParent import RecorderParent
 
 import sys,traceback
 # TODO: Add codes to install pyaudio if pyaudio is not installed???
