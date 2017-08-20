@@ -231,7 +231,8 @@ class AddonWriter(QWidget):
     done = pyqtSignal()
     def __init__(self):
         super().__init__()
-        self.funcs = {}
+        self.setGeometry(500,300,600,500)
+        self.setWindowTitle('AddonWriter')
         self.init_UI()
         self.show()
         
@@ -333,13 +334,35 @@ class AddonWriter(QWidget):
         if url_list:
             f = QFileInfo(url_list)
             self.meta_configs[0].setText(f.fileName().strip('.py'))
-            with open(url_list) as file: 
+            with open(url_list) as file:
                 data = file.readlines()
             func_re = re.compile(r'def run(\S*):')
-            func_search = [True if re.search(func_re,s) else False for s in data ].index(True)
+            func_search = [True if func_re.search(s) else False for s in data ].index(True)
             self.main_code_text.clear()
             for line in data[func_search+1:]:
                 self.main_code_text.append(line.replace('\t','',1).replace(' ','',4))
+            
+            try:
+                addon_local_vars = {}
+                addon_global_vars = {}
+                with open(url_list) as file:
+                    exec(file.read(), addon_local_vars, addon_global_vars)
+                metadata = addon_global_vars["addon_metadata"]
+            except:
+                print('Error detected in code!')
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
+                return
+        
+            
+            # Extract the metadata
+            self.meta_configs[1].setText(metadata["name"])
+            self.meta_configs[2].setText(metadata["author"])
+            self.meta_configs[3].setCurrentText(metadata["category"])
+            self.meta_configs[4].setText(metadata["description"])
+
         else:
             print('No data')
         
