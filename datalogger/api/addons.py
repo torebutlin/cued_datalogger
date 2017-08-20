@@ -3,7 +3,7 @@ if __name__ == '__main__':
     sys.path.append('../')
     from analysis_window_testing import AnalysisWindow
 
-from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal,QFileInfo
 from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QTreeWidgetItem, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QHBoxLayout, QFileDialog,QTabWidget,
@@ -17,6 +17,7 @@ from contextlib import redirect_stdout
 import os,traceback,sys
 
 import pyqtgraph as pg
+import re
 
 from datalogger.api.channel import ChannelSet
 
@@ -242,10 +243,13 @@ class AddonWriter(QWidget):
         save_btn.clicked.connect(self.create_addon)
         btn_layout.addWidget(save_btn)
         load_btn = QPushButton('Load',self)
+        load_btn.clicked.connect(self.read_addon)
         btn_layout.addWidget(load_btn)
         run_btn = QPushButton('Run',self)
+        run_btn.setDisabled(True)
         btn_layout.addWidget(run_btn)
         clear_btn = QPushButton('Clear',self)
+        clear_btn.setDisabled(True)
         btn_layout.addWidget(clear_btn)
            
         main_layout.addLayout(btn_layout)
@@ -260,7 +264,7 @@ class AddonWriter(QWidget):
         metadata_layout = QFormLayout()
         
         self.meta_configs = []
-        for mdata in ("Name","Author","Category"):
+        for mdata in ("File Name","Name","Author","Category"):
             if mdata == "Category":
                 cbox = QComboBox(metadata_widget)
                 cbox.addItems(["Import/Export","Analysis","Plotting"])
@@ -299,15 +303,19 @@ class AddonWriter(QWidget):
         self.deleteLater()
         
     def create_addon(self):
-      
-        metadata = [self.meta_configs[0].text(),
-                    self.meta_configs[1].text(),
-                    self.meta_configs[2].currentText(),
-                    self.meta_configs[3].toPlainText()]
+        file_name = self.meta_configs[0].text().replace(' ','')
+        if not file_name:
+            print('Please give a file name')
+            return
+        metadata = [self.meta_configs[1].text(),
+                    self.meta_configs[2].text(),
+                    self.meta_configs[3].currentText(),
+                    self.meta_configs[4].toPlainText()]
         metadata[3] = metadata[3].replace("\n"," ")
         metadata = ["\"" + md + "\""  for md in metadata]
         
-        with open("./addons/Some_addon.py",'w',encoding='ASCII') as file:  
+        with open("./addons/%s.py" % file_name,'w',encoding='ASCII') as file: 
+            file.write('#datalogger_addon\n')
             file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
                        tuple(metadata))
             main_code = self.main_code_text.toPlainText()
@@ -316,7 +324,25 @@ class AddonWriter(QWidget):
             full_code = "def run(parent_window):\n" + main_code
             full_code = full_code.replace('\n','\n\t')
             file.write(full_code)
-           # file.close() 
+            
+    def read_addon(self):
+        url_list = QFileDialog.getOpenFileNames(self, "Load addon", "addons",
+                                               "DataLogger Addons (*.py)")[0][0]
+        
+        #print(url_list)
+        if url_list:
+            f = QFileInfo(url_list)
+            self.meta_configs[0].setText(f.fileName().strip('.py'))
+            with open(url_list) as file: 
+                data = file.readlines()
+            func_re = re.compile(r'def run(\S*):')
+            func_search = [True if re.search(func_re,s) else False for s in data ].index(True)
+            self.main_code_text.clear()
+            for line in data[func_search+1:]:
+                self.main_code_text.append(line.replace('\t','',1).replace(' ','',4))
+        else:
+            print('No data')
+        
 
 if __name__ == '__main__':
     app = 0
