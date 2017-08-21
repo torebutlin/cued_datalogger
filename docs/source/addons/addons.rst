@@ -55,8 +55,7 @@ And probably a lot of other things as well.
 
 Addon Manager
 -------------
-.. autoclass:: bin.addons.AddonManager
-  :members: add_addon, discover_addons, load_new, run_selected
 
+Addons are normally run through the :class:`Addon Manager <datalogger.api.addons.AddonManager>`.
 
 

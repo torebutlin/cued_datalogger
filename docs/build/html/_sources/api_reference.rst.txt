@@ -16,4 +16,6 @@ API Reference
 
   addons/addons
 
+  widgets/widgets
+
 

@@ -10,8 +10,11 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
                              QLineEdit, QCheckBox, QScrollArea,
                              QTreeWidget, QTreeWidgetItem, QHBoxLayout)
 
-class ChannelSet():
-    """A group of channels, with methods for setting and getting data.
+class ChannelSet(object):
+    """
+     **Bases:** :class:`object`
+
+    A group of channels, with methods for setting and getting data.
 
     In theory, a user will only need to interact with the ChannelSet to
     interact with the channels and data. Each ChannelSet will normally be
@@ -20,36 +23,19 @@ class ChannelSet():
     ChannelSets can be initialised as empty, and channels added later,
     or initialised with a number of empty channels, to which DataSets can be
     added later. Channels are stored in a matlab-style list structure
-    (see api.numpy_extensions.MatlabList) which uses tuple indexing, eg.
+    (see :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>`) which uses tuple indexing, eg.
     channelset.channels[1, 2, range(5,10)], so that multiple channels can be
     selected easily.
 
-    Attributes:
-        channels: A MatlabList of the channels in this set.
-
-    Methods:
-        add_channels(num_channels=1): Add new empty channels to the end of the
-            channel list
-        add_channel_dataset(channel_index, id_):  Add an empty dataset with id_
-            to the channel(s) specified by channel_index
-        set_channel_data(channel_index, id_, data): Set the data in dataset
-            with id_ in the channel(s) specified by channel_index
-        set_channel_units(channel_index, id_, units): Set the units of dataset
-            with id_ in the channel(s) specified by channel_index
-        set_channel_metadata(self, channel_index, metadata_dict): Set the
-            metadata given in metadata_dict of the channel(s) specified
-            by channel_index.
-        get_channel_ids(channel_index): Get the ids of all datasets in the
-            channel(s) specified by channel_index
-        get_channel_data(channel_index, id_): Get the data from dataset
-            with id_ in the channel(s) specified by channel_index
-        get_channel_units(channel_index, id_): Get the units from dataset
-            with id_ in the channel(s) specified by channel_index
-        get_channel_metadata(channel_index, metadata_id=None): Get the metadata
-            with the name metadata_id from the channel(s) specified by
-            channel_index
-            """
+    ========================  ==========================================
+    **Attributes:**
+    
+    channels (*MatlabList*)    A MatlabList of the channels in this set.
+    ========================  ==========================================
+    """
     def __init__(self, initial_num_channels=0):
+        """Create the ChannelSet with a number of blank channels as given by
+        *initial_num_channels*."""
         # Initialise the channel list
         self.channels = MatlabList()
 
@@ -57,9 +43,11 @@ class ChannelSet():
         self.add_channels(initial_num_channels)
 
     def __len__(self):
+        """Return the number of Channels in this ChannelSet."""
         return len(self.channels)
 
     def get_info(self):
+        """Print the information about all of the Channels in this ChannelSet."""
         print("ChannelSet: \n Channels: \n")
 
         for i, channel in enumerate(self.channels):
@@ -68,11 +56,14 @@ class ChannelSet():
             channel.get_info()
 
     def add_channels(self, num_channels=1):
+        """Add new empty Channels to the end of the channel list."""
         for i in range(num_channels):
             self.channels.append(Channel())
 
     def add_channel_dataset(self, channel_index, id_, data=None, units=None):
-        """Add an empty dataset to the specified channel(s)"""
+        """Add a DataSet with *id\_* to the Channel specified by
+        *channel_index*. DataSet can be initialised as empty (default) or with 
+        *data* and/or *units*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -87,7 +78,8 @@ class ChannelSet():
             self.set_channel_units(channel_index, id_, units)
 
     def set_channel_data(self, channel_index, id_, data):
-        """Set the data in a dataset in the specified channel(s)"""
+        """Set the data of DataSet with *id\_* to *data* in the Channel 
+        specified by *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -97,7 +89,8 @@ class ChannelSet():
             self.channels[channel_index].set_data(id_, data)
 
     def set_channel_units(self, channel_index, id_, units):
-        """Set the units of a dataset in the specified channel(s)"""
+        """Set the units of DataSet with *id\_* to *units* in the Channel 
+        specified by *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -107,7 +100,8 @@ class ChannelSet():
             self.channels[channel_index].set_units(id_, units)
 
     def set_channel_metadata(self, channel_index, metadata_dict):
-        """Set specified metadata of specified channel(s)"""
+        """Set metadata of the Channel specified by *channel_index* using
+        the keys and values given in *metadata_dict*"""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -120,7 +114,8 @@ class ChannelSet():
             self.channels[channel_index].set_metadata(metadata_dict)
 
     def get_channel_ids(self, channel_index):
-        """Get the ids of all datasets in channel(s)"""
+        """Return the ids of all the datasets in the Channel specified by 
+        *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -136,7 +131,8 @@ class ChannelSet():
             return self.channels[channel_index].get_ids()
 
     def get_channel_data(self, channel_index, id_):
-        """Get specified data from specified channel(s)"""
+        """Return the data from the DataSet given by *id\_* in the Channel specified by 
+        *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -147,7 +143,8 @@ class ChannelSet():
             return self.channels[channel_index].get_data(id_)
 
     def get_channel_units(self, channel_index, id_):
-        """Get specified units from specified channel(s)"""
+        """Return the units from the DataSet given by *id\_* in the Channel specified by 
+        *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
@@ -158,7 +155,8 @@ class ChannelSet():
             return self.channels[channel_index].get_units(id_)
 
     def get_channel_metadata(self, channel_index, metadata_id=None):
-        """Get specified metadata from specified channel(s)"""
+        """Return the metadata (either a specific item given by *metadata_id*
+        or the full dict of metadata) of the Channel specified by *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
@@ -172,42 +170,39 @@ class ChannelSet():
             return self.channels[channel_index].get_metadata(metadata_id)
 
 
-class Channel():
-    """Contains a group of DataSets and associated metadata.
+class Channel(object):
+    """
+    **Bases:** :class:`object`
+
+    Contains a group of DataSets and associated metadata.
 
     Channels are the basic structure used throughout the Datalogger. Channels
-    may contain many DataSets, but each must have a unique id_ (ie. cannot have
+    may contain many DataSets, but each must have a unique id\_ (ie. cannot have
     two 'time' DataSets). Typically a Channel will be initialised with just
     'time_series' data, and other DataSets will be added as analysis is
     performed - eg. a Fourier Transform produces a 'spectrum' DataSet.
     Channels also contain metadata about the data.
 
-    Attributes:
-        name: A human-readable string identifying this channel (eg. 'Input 0',
-            or 'Left Accelerometer')
-        datasets: A python list of this Channel's DataSets
-        comments: A string for any additional comments
-        tags: A list of tags (eg. ['accelerometer', 'input']) for quick
-            selection and sorting
-        sample_rate: The rate (in Hz) that the data was sampled at
-        calibration_factor: #TODO#
-        transfer_function_type: either 'displacement', 'velocity', or
-            'acceleration' - indicates what type of transfer function is stored
+    ==============================  ========================================================
+    **Attributes:**
 
-    Methods:
-        is_dataset(id_): Return a boolean of whether the dataset given by id_
-            exists already
-        add_dataset(id_, units, data): Create a new dataset in this channel
-            with id_, units, data, unless a dataset given by id_ exists
-        set_data(id_, data): Set the data in dataset id_
-        set_units(id_, units): Set the units of dataset id_
-        set_metadata(metadata_dict): Sets the channel metadata as given by
-            metadata_dict
-        get_ids: Get a list of the datasets that this channel has
-        get_data(id_): Get the data in dataset id_
-        get_units(id_): Get the units of dataset id_
-        get_metadata(): Returns a dict of metadata of this channel
+    name (*str*)                      A human-readable string identifying this channel 
+                                      (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
 
+    datasets (*list*)                 A python list of this Channel's DataSets.
+
+    comments (*str*)                  A string for any additional comments.
+
+    tags (*list*)                     A list of tags (eg. ['accelerometer', 'input']) for
+                                      quick selection and sorting.
+
+    sample_rate (*float*)             The rate (in Hz) that the data was sampled at.
+
+    calibration_factor (*float*)      #TODO#
+
+    transfer_function_type (*str*)    Either 'displacement', 'velocity', or 'acceleration'- 
+                                      indicates what type of transfer function is stored.
+    ==============================  ========================================================
     """
     def __init__(self, name='', datasets=[],
                  comments='',
@@ -215,6 +210,8 @@ class Channel():
                  sample_rate=1000,
                  calibration_factor=1,
                  transfer_function_type="displacement"):
+        """Create a new Channel. 
+        Can be initialised as empty, or with given metadata and/or with given DataSets.""" 
 
         # Set the channel metadata
         self.name = name
@@ -237,6 +234,7 @@ class Channel():
         self.update_autogenerated_datasets()
 
     def get_info(self):
+        """Print this Channel's attributes, including DataSet ids and metadata."""
         print("""Name: {}
         DataSets: {}
 
@@ -256,10 +254,12 @@ class Channel():
                     self.comments))
 
     def is_dataset(self, id_):
-        # Return a boolean of whether that dataset exists already
+        """Return a boolean of whether the dataset given by *id\_* exists already."""
         return any([ds.id_ == id_ for ds in self.datasets])
 
     def add_dataset(self, id_, units=None, data=0):
+        """Create a new dataset in this channel with *id\_*, *units*, *data*, unless a 
+        dataset given by *id\_* exists."""
         # Add as a new DataSet, unless it already exists
         if not self.is_dataset(id_):
             self.datasets.append(DataSet(id_, units, data))
@@ -270,6 +270,7 @@ class Channel():
             #raise ValueError("DataSet '{}' already exists".format(id_))
 
     def set_data(self, id_, data):
+        """Set the data in dataset *id\_* to *data*."""
         # Set the data for a pre-existing DataSet
         for ds in self.datasets:
             if ds.id_ == id_:
@@ -279,6 +280,7 @@ class Channel():
         raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_units(self, id_, units):
+        """Set the units of dataset *id\_* to *units*."""
         # Set the units for a pre-existing DataSet
         for ds in self.datasets:
             if ds.id_ == id_:
@@ -287,6 +289,7 @@ class Channel():
         raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_metadata(self, metadata_dict):
+        """Set the channel metadata to the metadata given in *metadata_dict*."""
         for metadata_name, metadata_value in metadata_dict.items():
             # If a permitted item of metadata is given, set metadata
             if hasattr(self, metadata_name):
@@ -295,17 +298,19 @@ class Channel():
                 raise ValueError("No such metadata '{}'".format(metadata_name))
 
     def get_dataset(self, id_):
+        """Return the DataSet in this channel with *id\_*."""
         for ds in self.datasets:
             if ds.id_ == id_:
                 return ds
         raise ValueError("No such DataSet {}".format(id_))
 
     def get_ids(self):
+        """Return a list of the DataSet ids that this channel has."""
         # Get a list of the datasets that this channel has
         return [ds.id_ for ds in self.datasets]
 
     def get_data(self, id_):
-        # Get the data from the DataSet given by id_
+        """Return the data from the DataSet given by *id\_*."""
         for ds in self.datasets:
             if ds.id_ == id_:
                 return ds.data
@@ -315,13 +320,15 @@ class Channel():
         #raise ValueError("No such DataSet {}".format(id_))
 
     def get_units(self, id_):
-        # Get the units from the DataSet given by id_
+        """Return the units from the DataSet given by *id\_*."""
         for ds in self.datasets:
             if ds.id_ == id_:
                 return ds.units
         raise ValueError("No such DataSet {}".format(id_))
 
     def get_metadata(self, metadata_id=None):
+        """Return the value of this channel's metadata associated with *metadata_id*.
+        If none given, returns all of this channel's metadata in a dictionary."""
         metadata_dict = {"name": self.name,
                          "comments": self.comments,
                          "tags": self.tags,
@@ -336,6 +343,7 @@ class Channel():
                         return value
 
     def update_autogenerated_datasets(self):
+        """Regenerate the values in the automatically generated DataSets."""
         if self.is_dataset("time_series"):
             t = self.get_dataset("time")
             t.set_data(np.linspace(0, self.get_data("time_series").size / self.sample_rate, self.get_data("time_series").size))
@@ -346,28 +354,48 @@ class Channel():
             w.set_data(self.get_data("frequency") * 2*np.pi)
 
 
-class DataSet():
-    """A simple data storage class.
-
-    A DataSet is the basic unit for data storage - a named 1d vector with units
-
-    Attributes:
-        id_: A lower-case string containing the name of the data stored in the
-            vector - eg. 'time_series', or 'spectrum'
-        units: The SI unit in which data are measured
-        data: A numpy array of data points associated with id_
-
-    Methods:
-        set_id_: set the DataSet's id_
-        set_units: set the DataSet's units
-        set_data: set the DataSet data
+class DataSet(object):
     """
-    def __init__(self, id_, units=None, data=0):
+    **Bases:** :class:`object`
+
+    A DataSet is the basic unit for data storage - a named 1d vector with units.
+
+    ================== =====================================================================================   
+    **Attributes:**
+    id\_ (*str*)        A lower-case string containing the name of the data stored in the vector. 
+                        Permitted values are:
+
+                        * ``"time_series"`` - The raw input time series data
+                        * ``"time"``\*	- Calculated from the sample rate and number of samples   
+                        * ``"frequency"``\* - Calculated from the sample rate and number of samples (Hz)
+                        * ``"omega"``\* - Angular frequency (rad), calculated from the sample rate and 
+                          number of samples                
+                        * ``"spectrum"`` - The complex spectrum given by the Fourier Transform                   
+                        * ``"sonogram"`` - The complex sonogram array, with
+                          shape (number of FFTs, frequencies)                
+                        * ``"sonogram_frequency"``\* - The frequency bins (Hz) used in plotting the
+                          sonogram. Not implemented yet, but will be calculated from the sonogram
+                          parameters.                
+                        * ``"sonogram_omega"``\* - The frequency bins (rad) used in plotting the
+                          sonogram. Not implemented yet, but will be calculated from the sonogram
+                          parameters.
+
+                        (\* indicates that this DataSet is auto-generated by the Channel)
+
+     units (*str*)      The SI unit in which the data is measured
+
+     data (*ndarray*)   A numpy array of data points associated with id\_
+    ================== =====================================================================================   
+    """
+    def __init__(self, id_, units=None, data=np.array(0)):
+        """Create a new DataSet with unique *id_*. Can either be initialised as empty,
+        or with units and/or data."""
         self.set_id(id_)
         self.set_units(units)
         self.set_data(data)
 
     def set_id(self, id_):
+        """Set the DataSet's id\_ to *id_*."""
         # Check that the user has input a permitted id_ type
         if isinstance(id_, str):
             self.id_ = id_
@@ -375,10 +403,12 @@ class DataSet():
             raise TypeError("'id_' must be a string type.")
 
     def set_data(self, data):
+        """Set the DataSet's data array to *data*."""
         # Set the dataset data
         self.data = np.asarray(data)
 
     def set_units(self, units):
+        """Set the DataSet's units to *units*."""
         self.units = units
 
 

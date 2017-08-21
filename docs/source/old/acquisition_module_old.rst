@@ -24,7 +24,7 @@ The **Recorder** class will only output _**raw data**_. Any kind of data process
 Any new **Recorder** or equivalent class can be implemented by deriving from the **RecorderParent**, and re-implement the required functions.
 
 Window Layout
-------------
+-------------
 
 The acquisition window consists entirely of one main **QSplitter**, 
 in which more **QSplitters**(namely left, middle, and right) are nested within in.
