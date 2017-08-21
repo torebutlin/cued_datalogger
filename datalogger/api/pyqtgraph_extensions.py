@@ -25,7 +25,7 @@ class InteractivePlotWidget(QWidget):
         vbox = QVBoxLayout(self)
         
         # Set up data time plot
-        self.canvas = CustomPlotWidget(self, background = 'default')
+        self.canvas = pg.PlotWidget(self, background = 'default')
         vbox.addWidget(self.canvas)
         self.plotitem = self.canvas.getPlotItem()
         self.plotitem.disableAutoRange()
