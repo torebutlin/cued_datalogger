@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.fft import rfft
+from numpy.fft import rfft,fft
 
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
                              QHBoxLayout, QMainWindow, QPushButton, 
@@ -207,6 +207,9 @@ class AnalysisWindow(QMainWindow):
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
             self.cs.add_channel_dataset(i,'spectrum', []) 
             
+        self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
+        self.cs.add_channel_dataset(i,'spectrum', []) 
+         
     def open_liveplot(self):
         if not self.liveplot:
             self.liveplot = lpUI.LiveplotApp(self)
@@ -292,38 +295,42 @@ class AnalysisWindow(QMainWindow):
         
         self.display_tabwidget.freqdomain_widget.sp1.setValue(data_end*0.4)
         self.display_tabwidget.freqdomain_widget.sp2.setValue(data_end*0.6)
-        self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
-                                                                    xMax = data_end)
-        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
-                                                                   yRange = (0,max_data),
-                                                                   padding = 0.2)
+        #self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
+        #                                                            xMax = data_end)
+        #self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
+        #                                                           yRange = (0,max_data),
+        #                                                           padding = 0.2)
     
     def set_fft_data(self):
         fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-        
-        if not self.dataview_dropdown.currentText() == 'Nyquist':
-            print('Showing %s' % self.dataview_dropdown.currentText())
-        else:
-            return
+        print('Showing %s' % self.dataview_dropdown.currentText())
             
         for i in range(len(self.cs)):
             if not fdata[i].shape[0] == 0:
-                if self.dataview_dropdown.currentText() == 'Linear Magnitude':
-                    data_plot = np.abs(fdata[i])
-                elif self.dataview_dropdown.currentText() == 'Log Magnitude':
-                    data_plot = 20 * np.log(np.abs(fdata[i]))
-                elif self.dataview_dropdown.currentText() == 'Phase':
-                    data_plot = np.angle(fdata[i],deg = True)
-                elif self.dataview_dropdown.currentText() == 'Real Part':
-                    data_plot = np.real(fdata[i])
-                elif self.dataview_dropdown.currentText() == 'Imaginary Part':
-                    data_plot = np.imag(fdata[i])
-                elif self.dataview_dropdown.currentText() == 'Nyquist':
-                    pass
+                if not self.dataview_dropdown.currentText() == 'Nyquist':
+                    
+                    if self.dataview_dropdown.currentText() == 'Linear Magnitude':
+                        data_plot = np.abs(fdata[i])
+                    elif self.dataview_dropdown.currentText() == 'Log Magnitude':
+                        data_plot = 20 * np.log(np.abs(fdata[i]))
+                    elif self.dataview_dropdown.currentText() == 'Phase':
+                        data_plot = np.angle(fdata[i],deg = True)
+                    elif self.dataview_dropdown.currentText() == 'Real Part':
+                        data_plot = np.real(fdata[i])
+                    elif self.dataview_dropdown.currentText() == 'Imaginary Part':
+                        data_plot = np.imag(fdata[i])
+                        
+                    self.freqplots[i].setData(y = data_plot)
+                    
                 else:
-                    pass
-                
-                self.freqplots[i].setData(y = data_plot)
+                    #tdata = self.cs.get_channel_data(i,'time_series')
+                    #f not tdata.shape[0] == 0:
+                    #    print('Calculating Spectrum from timeseries')
+                    #    fd = fft(tdata)
+                    
+                    fd = np.concatenate([fdata[i],np.conjugate(fdata[i][::-1])])
+                    self.freqplots[i].setData(x = np.real(fd),
+                                  y = np.imag(fd))
             else:
                 print('No specturm to plot')
     
