@@ -41,7 +41,7 @@ import numpy as np
 import copy as cp
 
 try:
-    from .RecEmitter import RecEmitter
+    from datalogger.acquisition.RecEmitter import RecEmitter
     QT_EMITTER = True
 except Exception as e:
     print(e)
