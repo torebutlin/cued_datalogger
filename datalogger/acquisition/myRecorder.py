@@ -6,6 +6,7 @@ Functions:
 
 from datalogger.acquisition.RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
+import sys,traceback
 import pyaudio
 import numpy as np
 import pprint as pp
@@ -142,8 +143,11 @@ class Recorder(RecorderParent):
                 print('Write Available: %i' % self.audio_stream.get_write_available())
                 return True
             
-            except Exception as e:
-                print(e)
+            except:
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
                 self.audio_stream = None
                 return False
             

@@ -740,8 +740,11 @@ class LiveplotApp(QMainWindow):
             self.rec.chunk_size = settings[3]
             self.rec.num_chunk = settings[4]
             self.devconfig_UI.configboxes[0].setCurrentIndex(dev_name.index(self.rec.device_name))
-        except Exception as e:
-            print(e)
+        except:
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
             print('Cannot set up new recorder')
             
         

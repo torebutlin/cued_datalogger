@@ -162,8 +162,11 @@ class Recorder(RecorderParent):
                 
                 self.stream_start()
                 return True
-            except Exception as e:
-                print(e)
+            except:
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
                 self.audio_stream = None
                 
                 return False

@@ -340,7 +340,7 @@ class AddonWriter(QWidget):
             func_search = [True if func_re.search(s) else False for s in data ].index(True)
             self.main_code_text.clear()
             for line in data[func_search+1:]:
-                self.main_code_text.append(line.replace('\t','',1).replace(' ','',4))
+                self.main_code_text.append(line)
             
             try:
                 addon_local_vars = {}
