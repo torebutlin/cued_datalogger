@@ -97,10 +97,9 @@ class Recorder(RecorderParent):
     
     # Set the selected device by index, Private Function
     def _set_device_by_index(self,index):
-        if index:
-            self.device_index = index;
-            self.device_name = self.p.get_device_info_by_index(index)['name']
-            print("Selected device: %s" % self.device_name)
+        self.device_index = index;
+        self.device_name = self.p.get_device_info_by_index(index)['name']
+        print("Selected device: %s" % self.device_name)
         
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
