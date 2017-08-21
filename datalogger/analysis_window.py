@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.fft import rfft
 
-from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, 
+from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
                              QHBoxLayout, QMainWindow, QPushButton, 
                              QVBoxLayout, QAction, QMenu)
 
@@ -33,6 +33,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.setTabsClosable(False)
 
         self.timedomain_widget = TimeDomainWidget(self)
+        
         self.freqdomain_widget = FrequencyDomainWidget(self)
         self.sonogram_widget = SonogramWidget(self)
         self.circle_widget = CircleFitWidget(self)
@@ -98,11 +99,20 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox = Toolbox('left',self.toolbox)
         wd2 = QWidget(self)
         hb2 = QVBoxLayout(wd2)
+        self.dataview_dropdown = QComboBox(wd2)
+        self.dataview_dropdown.addItems(['Linear Magnitude','Log Magnitude','Phase',
+                                    'Real Part','Imaginary Part','Nyquist'])
+        self.dataview_dropdown.setCurrentIndex(0)
+        self.dataview_dropdown.currentIndexChanged.connect(self.set_fft_data)
+        hb2.addWidget(self.dataview_dropdown)
+        self.frequency_toolbox.addTab(wd2, "View")
+        wd3 = QWidget(self)
+        hb3 = QVBoxLayout(wd3)
         circle_btn = QPushButton("Circle_Fit",self.frequency_toolbox)
-        hb2.addWidget(circle_btn)
+        hb3.addWidget(circle_btn)
         circle_btn.clicked.connect(self.circle_fitting)
-        self.frequency_toolbox.addTab(wd2, "Conversion")
-        self.frequency_toolbox.addTab(QPushButton("Button 2",self.frequency_toolbox), "FreqTab2")
+        self.frequency_toolbox.addTab(wd3, "Conversion")
+        
 
         self.sonogram_toolbox = Toolbox('left',self.toolbox)
         self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
@@ -263,8 +273,10 @@ class AnalysisWindow(QMainWindow):
                 elif not tdata[i].shape[0] == 0:
                     print('Calculating Spectrum from timeseries')
                     f = np.arange(int(tdata[i].shape[0]/2)+1)/tdata[i].shape[0] * sample_rate
-                    ft = np.abs(np.real(rfft(tdata[i])))
+                    ft = rfft(tdata[i])
                     self.cs.add_channel_dataset(i,'spectrum', ft)
+                    ft = np.abs(ft)
+                    #self.cs.add_channel_dataset(i,'spectrum', ft)
                 self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(f,ft,pen = self.plot_colours[i%len(self.plot_colours)]))
                 data_end = max(data_end,f[-1])
                 max_data = max(max_data,max(ft))
@@ -272,7 +284,9 @@ class AnalysisWindow(QMainWindow):
                 print('No specturm to plot')
                 self.freqplots.append(None)
                 return
-          
+        
+        self.set_fft_data()
+        
         self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
         self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(data_end/100)
         
@@ -283,7 +297,36 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
                                                                    yRange = (0,max_data),
                                                                    padding = 0.2)
-     
+    
+    def set_fft_data(self):
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        
+        if not self.dataview_dropdown.currentText() == 'Nyquist':
+            print('Showing %s' % self.dataview_dropdown.currentText())
+        else:
+            return
+            
+        for i in range(len(self.cs)):
+            if not fdata[i].shape[0] == 0:
+                if self.dataview_dropdown.currentText() == 'Linear Magnitude':
+                    data_plot = np.abs(fdata[i])
+                elif self.dataview_dropdown.currentText() == 'Log Magnitude':
+                    data_plot = 20 * np.log(np.abs(fdata[i]))
+                elif self.dataview_dropdown.currentText() == 'Phase':
+                    data_plot = np.angle(fdata[i],deg = True)
+                elif self.dataview_dropdown.currentText() == 'Real Part':
+                    data_plot = np.real(fdata[i])
+                elif self.dataview_dropdown.currentText() == 'Imaginary Part':
+                    data_plot = np.imag(fdata[i])
+                elif self.dataview_dropdown.currentText() == 'Nyquist':
+                    pass
+                else:
+                    pass
+                
+                self.freqplots[i].setData(y = data_plot)
+            else:
+                print('No specturm to plot')
+    
     def plot_sonogram(self):
         signal = self.cs.get_channel_data(0,'time_series')
         if not signal.shape[0] == 0:
