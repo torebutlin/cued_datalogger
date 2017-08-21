@@ -9,7 +9,7 @@ import sys
 
 from datalogger.analysis.circle_fit import CircleFitWidget
 from datalogger.analysis.frequency_domain import FrequencyDomainWidget
-from datalogger.analysis.sonogram import SonogramWidget
+from datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
 from datalogger.analysis.time_domain import TimeDomainWidget
 
 from datalogger.api.addons import AddonManager
@@ -35,7 +35,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.timedomain_widget = TimeDomainWidget(self)
         
         self.freqdomain_widget = FrequencyDomainWidget(self)
-        self.sonogram_widget = SonogramWidget(self)
+        self.sonogram_widget = SonogramDisplayWidget(self)
         self.circle_widget = CircleFitWidget(self)
                 
         # Create the tabs
@@ -114,9 +114,9 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox.addTab(wd3, "Conversion")
         
 
-        self.sonogram_toolbox = Toolbox('left',self.toolbox)
-        self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
-        self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
+        self.sonogram_toolbox = SonogramToolbox(self.toolbox)
+        #self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
+        #self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
 
         self.modal_analysis_toolbox = Toolbox('left',self.toolbox)
         self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
@@ -328,10 +328,9 @@ class AnalysisWindow(QMainWindow):
                 print('No specturm to plot')
     
     def plot_sonogram(self):
-        signal = self.cs.get_channel_data(0,'time_series')
-        if not signal.shape[0] == 0:
-            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
-            self.display_tabwidget.currentWidget().plot(signal)
+        #if not signal.shape[0] == 0:
+        #    self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+        self.display_tabwidget.sonogram_widget.set_data(self.cs.get_channel_data(0, 'time_series'))
         
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)

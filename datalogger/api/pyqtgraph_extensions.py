@@ -8,6 +8,8 @@ import weakref
 import sys
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph import ImageItem
+from datalogger.api.pyqt_widgets import SimpleColormap
 from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGridLayout,
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
@@ -456,6 +458,59 @@ class CustomUITemplate(object):
         self.visibleOnlyCheck.setText(_translate("Form", "Visible Data Only"))
         self.autoPanCheck.setToolTip(_translate("Form", "<html><head/><body><p>When checked, the axis will automatically pan to center on the current data, but the scale along this axis will not change.</p></body></html>"))
         self.autoPanCheck.setText(_translate("Form", "Auto Pan Only"))
+
+
+class ColorMapPlotWidget(InteractivePlotWidget):
+    """An InteractivePlotWidget optimised for plotting color(heat) maps"""
+    def __init__(self, parent=None, cmap="jet"):
+        self.cmap = SimpleColormap(cmap)
+        self.num_contours = 5
+        self.contour_spacing_dB = 5
+        self.parent = parent
+        super().__init__(parent=self.parent)
+        
+    def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
+        """Plot *x*, *y* and *z* on a colourmap, with colour intervals defined
+        by *num_contours* at *contour_spacing_dB* intervals"""
+        
+        #self.canvas.removeItem(self.z_img)
+        
+        self.x = x
+        self.y = y
+        self.z = z
+        
+        self.num_contours = num_contours
+        self.contour_spacing_dB = contour_spacing_dB
+        self.update_lowest_contour()
+        
+        # Set up axes:
+        x_axis = self.canvas.getAxis('bottom')
+        y_axis = self.canvas.getAxis('left')
+
+        self.x_scale_fact = self.get_scale_fact(x)
+        self.y_scale_fact = self.get_scale_fact(y)
+        
+        x_axis.setScale(self.x_scale_fact)
+        y_axis.setScale(self.y_scale_fact)
+        
+        #self.autoRange()
+        
+        self.z_img = ImageItem(z.transpose())
+        self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        self.z_img.setLevels([self.lowest_contour, self.highest_contour])
+        
+        self.canvas.addItem(self.z_img)
+        
+        self.canvas.autoRange()
+        self.canvas.viewbox.autoRange()
+
+    def get_scale_fact(self, var):
+        return var.max() / var.size
+    
+    def update_lowest_contour(self):
+        """Find the lowest contour to plot"""
+        self.lowest_contour = self.z.max() - (self.num_contours * self.contour_spacing_dB)
+        self.highest_contour = self.z.max()
 
 
 if __name__ == '__main__':
