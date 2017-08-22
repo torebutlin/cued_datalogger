@@ -158,7 +158,7 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-autodoc_mock_imports = ["pyaudio"]
+autodoc_mock_imports = ["datalogger"]
 
 
 
