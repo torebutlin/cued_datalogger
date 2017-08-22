@@ -83,7 +83,7 @@ setup(name='cued-datalogger',
       # itself in an Anaconda environment, a lot of things break. Fix this.
       # (currently the workaround is telling the user to install some stuff)
       install_requires=[
-                      'PyQt5>=5.9',
+                      #'PyQt5>=5.9',
                       'numpy>=1.11.3',
                       'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
