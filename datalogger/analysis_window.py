@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.fft import rfft,fft
 
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
                              QHBoxLayout, QMainWindow, QPushButton, 

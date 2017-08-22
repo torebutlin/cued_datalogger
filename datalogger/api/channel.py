@@ -26,14 +26,17 @@ class ChannelSet(object):
     ChannelSets can be initialised as empty, and channels added later,
     or initialised with a number of empty channels, to which DataSets can be
     added later. Channels are stored in a matlab-style list structure
-    (see :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>`) which uses tuple indexing, eg.
-    channelset.channels[1, 2, range(5,10)], so that multiple channels can be
-    selected easily.
+    (see :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>`) 
+    which uses tuple indexing, eg. ``channelset.channels[1, 2, range(5,10)]``, 
+    so that multiple channels can be selected easily. 
+    
 
     Attributes:
-        channels (MatlabList): A :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>` of the channels in this set.
-        
-        colormap (pyqtgraph.ColorMap): A :class:`ColorMap` used for colouring the channels in this set
+        channels (MatlabList): A 
+            :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>`
+            of the channels in this set.
+        colormap (pyqtgraph.ColorMap): A :class:`ColorMap` used for colouring
+            the channels in this set
     """
     def __init__(self, initial_num_channels=0):
         """Create the ChannelSet with a number of blank channels as given by
@@ -49,7 +52,8 @@ class ChannelSet(object):
         return len(self.channels)
 
     def get_info(self):
-        """Print the information about all of the Channels in this ChannelSet."""
+        """Print the information about all of the Channels in this 
+        ChannelSet."""
         print("ChannelSet: \n Channels: \n")
         self.colormap = SimpleColormap("brg")
 
@@ -132,8 +136,9 @@ class ChannelSet(object):
             self.set_channel_colour(i)
         
     def set_channel_colour(self, channel_index):
-        """Set the RGBA tuple specifying the colour of the Channel at **channel_index**
-        to a value determined by its index and the ChannelSet Colourmap"""
+        """Set the RGBA tuple specifying the colour of the Channel at 
+        *channel_index* to a value determined by its index and the ChannelSet
+        Colourmap"""
         self.channels[channel_index].colour = self.colormap.map(channel_index)
     
     def get_channel_ids(self, channel_index):
@@ -145,42 +150,45 @@ class ChannelSet(object):
             #output = []
             # Iterate through the given channels
             #for channel in self.channels[channel_index]:
-                # Get metadata from this channel        self.colormap = SimpleColormap("brg")
-
+                # Get metadata from this channel
             #    output.append(channel.get_ids())
             #return output
-            return [channel.get_ids() for channel in self.channels[channel_index]]
+            return [channel.get_ids() for channel in
+                    self.channels[channel_index]]
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_ids()
 
     def get_channel_data(self, channel_index, id_):
-        """Return the data from the DataSet given by *id\_* in the Channel specified by 
-        *channel_index*."""
+        """Return the data from the DataSet given by *id\_* in the Channel 
+        specified by *channel_index*."""        
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
             #for channel in self.channels[channel_index]:
             #    return channel.get_data(id_)
-            return [channel.get_data(id_) for channel in self.channels[channel_index]]
+            return [channel.get_data(id_) 
+                    for channel in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_data(id_)
 
     def get_channel_units(self, channel_index, id_):
-        """Return the units from the DataSet given by *id\_* in the Channel specified by 
-        *channel_index*."""
+        """Return the units from the DataSet given by *id\_* in the Channel 
+        specified by *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
             #for channel in self.channels[channel_index]:
             #    return channel.get_units(id_)
-            return [channel.get_units(id_) for channel in self.channels[channel_index]]
+            return [channel.get_units(id_)
+                    for channel in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_units(id_)
 
     def get_channel_metadata(self, channel_index, metadata_id=None):
         """Return the metadata (either a specific item given by *metadata_id*
-        or the full dict of metadata) of the Channel specified by *channel_index*."""
+        or the full dict of metadata) of the Channel specified by 
+        *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
@@ -188,13 +196,15 @@ class ChannelSet(object):
             #for channel in self.channels[channel_index]:
                 # Get metadata from this channel
                 #return channel.get_metadata(metadata_id)
-            return [channel.get_metadata(metadata_id) for channel in self.channels[channel_index]]
+            return [channel.get_metadata(metadata_id)
+                    for channel in self.channels[channel_index]]
         else:
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)
 
     def get_channel_colour(self, channel_index):
-        """Get the RGBA tuple specifying the colour of the Channel at **channel_index**"""
+        """Get the RGBA tuple specifying the colour of the Channel at 
+        **channel_index**"""
         return self.channels[channel_index].colour
 
 class Channel(object):
@@ -204,28 +214,26 @@ class Channel(object):
     Contains a group of DataSets and associated metadata.
 
     Channels are the basic structure used throughout the Datalogger. Channels
-    may contain many DataSets, but each must have a unique id\_ (ie. cannot have
-    two 'time' DataSets). Typically a Channel will be initialised with just
-    'time_series' data, and other DataSets will be added as analysis is
+    may contain many DataSets, but each must have a unique id\_ (ie. cannot 
+    have two 'time' DataSets). Typically a Channel will be initialised with 
+    just 'time_series' data, and other DataSets will be added as analysis is
     performed - eg. a Fourier Transform produces a 'spectrum' DataSet.
     Channels also contain metadata about the data.
 
     Attributes:
-        name (str): A human-readable string identifying this channel (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
-
+        name (str): A human-readable string identifying this channel
+            (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
         datasets (list): A list of this Channel's DataSets.
-
         comments (str): A string for any additional comments.
-
-        tags (list): A list of tags (eg. ['accelerometer', 'input']) for quick selection and sorting.
-
+        tags (list): A list of tags (eg. ['accelerometer', 'input']) for quick 
+            selection and sorting.
         sample_rate (float): The rate (in Hz) that the data was sampled at.
-
         calibration_factor (float): #TODO#
-
-        transfer_function_type (str): Either 'None', 'displacement', 'velocity', or 'acceleration'- indicates what type of transfer function is stored.
-                                      
-        colour (tuple): An RGBA tuple for this channel's colour - usually set by its parent ChannelSet
+        transfer_function_type (str): Either 'None', 'displacement', 
+            'velocity', or 'acceleration'- indicates what type of transfer 
+            function is stored.
+        colour (tuple): An RGBA tuple for this channel's colour - usually set
+            by its parent ChannelSet
     """
     def __init__(self, name='', datasets=[],
                  comments='',
@@ -235,7 +243,8 @@ class Channel(object):
                  transfer_function_type="displacement",
                  colour=None):
         """Create a new Channel. 
-        Can be initialised as empty, or with given metadata and/or with given DataSets.""" 
+        Can be initialised as empty, or with given metadata and/or with given
+        DataSets.""" 
 
         # Set the channel metadata
         self.name = name
@@ -259,7 +268,8 @@ class Channel(object):
         self.update_autogenerated_datasets()
 
     def get_info(self):
-        """Print this Channel's attributes, including DataSet ids and metadata."""
+        """Print this Channel's attributes, including DataSet ids 
+        and metadata."""
         print("""Name: {}
         DataSets: {}
 
@@ -279,12 +289,13 @@ class Channel(object):
                     self.comments))
 
     def is_dataset(self, id_):
-        """Return a boolean of whether the dataset given by *id\_* exists already."""
+        """Return a boolean of whether the dataset given by *id\_* 
+        exists already."""
         return any([ds.id_ == id_ for ds in self.datasets])
 
     def add_dataset(self, id_, units=None, data=0):
-        """Create a new dataset in this channel with *id\_*, *units*, *data*, unless a 
-        dataset given by *id\_* exists."""
+        """Create a new dataset in this channel with *id\_*, *units*, *data*, 
+        unless a dataset given by *id\_* exists."""
         # Add as a new DataSet, unless it already exists
         if not self.is_dataset(id_):
             self.datasets.append(DataSet(id_, units, data))
@@ -314,7 +325,8 @@ class Channel(object):
         raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_metadata(self, metadata_dict):
-        """Set the channel metadata to the metadata given in *metadata_dict*."""
+        """Set the channel metadata to the metadata given in 
+        *metadata_dict*."""
         for metadata_name, metadata_value in metadata_dict.items():
             # If a permitted item of metadata is given, set metadata
             if hasattr(self, metadata_name):
@@ -352,8 +364,9 @@ class Channel(object):
         raise ValueError("No such DataSet {}".format(id_))
 
     def get_metadata(self, metadata_id=None):
-        """Return the value of this channel's metadata associated with *metadata_id*.
-        If none given, returns all of this channel's metadata in a dictionary."""
+        """Return the value of this channel's metadata associated with 
+        *metadata_id*. If none given, returns all of this channel's 
+        metadata in a dictionary."""
         metadata_dict = {"name": self.name,
                          "comments": self.comments,
                          "tags": self.tags,
@@ -386,34 +399,35 @@ class DataSet(object):
     A DataSet is the basic unit for data storage - a named 1d vector with units.
 
     Attributes:
-        id\_ (str): A lower-case string containing the name of the data stored in the vector. 
-                    
-                    Permitted values are:
-                        
+        id\_ (str): A lower-case string containing the name of the data stored
+            in the vector. Permitted values are:
+        
                         * ``"time_series"`` - The raw input time series data
-                        * ``"time"``\*	- Calculated from the sample rate and number of samples   
-                        * ``"frequency"``\* - Calculated from the sample rate and number of samples (Hz)
-                        * ``"omega"``\* - Angular frequency (rad), calculated from the sample rate and 
-                          number of samples                
-                        * ``"spectrum"`` - The complex spectrum given by the Fourier Transform                   
+                        * ``"time"``\*	- Calculated from the sample rate and 
+                            number of samples   
+                        * ``"frequency"``\* - Calculated from the sample rate 
+                            and number of samples (Hz)
+                        * ``"omega"``\* - Angular frequency (rad), calculated
+                            from the sample rate and number of samples                
+                        * ``"spectrum"`` - The complex spectrum given by the
+                            Fourier Transform                   
                         * ``"sonogram"`` - The complex sonogram array, with
-                          shape (number of FFTs, frequencies)                
-                        * ``"sonogram_frequency"``\* - The frequency bins (Hz) used in plotting the
-                          sonogram. Not implemented yet, but will be calculated from the sonogram
-                          parameters.                
-                        * ``"sonogram_omega"``\* - The frequency bins (rad) used in plotting the
-                          sonogram. Not implemented yet, but will be calculated from the sonogram
-                          parameters.
+                            shape (number of FFTs, frequencies)                
+                        * ``"sonogram_frequency"``\* - The frequency bins (Hz)
+                            used in plotting the sonogram. Calculated from the
+                            sonogram parameters.                
+                        * ``"sonogram_omega"``\* - The frequency bins (rad) 
+                            used in plotting the sonogram. Calculated from the
+                            sonogram parameters.
 
-                    (\* indicates that this DataSet is auto-generated by the Channel)
-                    
-        units (str): The SI unit in which the data is measured
-     
-        data (ndarray): A numpy array of data points associated with id\_
+                    (\* indicates that this DataSet is auto-generated 
+                     by the Channel)         
+        units (str): The SI unit in which the data is measured.
+        data (ndarray): A numpy array of data points associated with id\_.
     """
     def __init__(self, id_, units=None, data=np.array(0)):
-        """Create a new DataSet with unique *id_*. Can either be initialised as empty,
-        or with units and/or data."""
+        """Create a new DataSet with unique *id_*. Can either be initialised as
+        empty, or with units and/or data."""
         self.set_id(id_)
         self.set_units(units)
         self.set_data(data)
