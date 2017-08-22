@@ -88,6 +88,7 @@ class Toolbox(QSplitter):
             self.tabPages.hide()
             
     def expand(self):
+        """Expand the widget so that the pages are visible."""
         self.collapse_animation.setStartValue(self.max_width)
 
         self.tabPages.show()
@@ -96,6 +97,7 @@ class Toolbox(QSplitter):
         self.collapsed = False
     
     def collapse(self):
+        """Collapse the widget so that only the tab bar is visible"""
         self.collapse_animation.setStartValue(self.max_width)
 
         self.collapse_animation.setDirection(QPropertyAnimation.Forward)
@@ -103,17 +105,19 @@ class Toolbox(QSplitter):
         self.collapsed = True
     
     def fast_collapse(self):
+        """Collapse the widget without the animation"""
         self.tabPages.setMaximumWidth(0)
         self.tabPages.hide()
         self.collapsed = True
         
     def fast_expand(self):
+        """Expand the widget without the animation"""
         self.tabPages.setMaximumWidth(self.max_width)
         self.tabPages.show()
         self.collapsed = False
 
     def changePage(self, index):
-        """Change page to **index**"""        
+        """Set the current page to **index**"""        
         self.tabBar.setCurrentIndex(index)
         self.tabPages.setCurrentIndex(index)
         

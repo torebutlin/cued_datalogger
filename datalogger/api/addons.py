@@ -21,6 +21,7 @@ import re
 
 from datalogger.api.channel import ChannelSet
 
+
 class AddonManager(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

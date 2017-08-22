@@ -1,0 +1,285 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Analysis Module &mdash; CUED DataLogger 0 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="CUED DataLogger 0 documentation" href="index.html"/>
+        <link rel="up" title="API Reference" href="api_reference.html"/>
+        <link rel="next" title="Addons" href="addons.html"/>
+        <link rel="prev" title="Acquisition Module" href="acquisition_module.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CUED DataLogger
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="api_reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="infrastructure.html">Infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="universal_components.html">Universal Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_module.html">Acquisition Module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Analysis Module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-structure">Module structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#window-layout">Window layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#menus">Menus</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#project-menu">Project menu</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#data-menu">Data menu</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#collapsible-tabs">Collapsible Tabs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools">Tools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="addons.html">Addons</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">CUED DataLogger</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="api_reference.html">API Reference</a> &raquo;</li>
+      
+    <li>Analysis Module</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/analysis_module.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="analysis-module">
+<h1>Analysis Module<a class="headerlink" href="#analysis-module" title="Permalink to this headline">¶</a></h1>
+<p>The <cite>analysis</cite> module contains all of the tools used for processing data and modal analysis.</p>
+<div class="section" id="module-structure">
+<h2>Module structure<a class="headerlink" href="#module-structure" title="Permalink to this headline">¶</a></h2>
+<p>Each tool in the <cite>analysis</cite> module is designed so that it could be run independently of the master analysis window, as is its own PyQt widget. This makes it easy to add new tools and slot them into the master window as new tabs.</p>
+</div>
+<div class="section" id="window-layout">
+<h2>Window layout<a class="headerlink" href="#window-layout" title="Permalink to this headline">¶</a></h2>
+<p>Not implemented yet.</p>
+<p>The master analysis window has:</p>
+<ul class="simple">
+<li>A menubar (see 4.3)</li>
+<li>A widget containing the tools used for analysis on the left ('Toolbox')</li>
+<li>A TabWidget to display the results of the different tools in the middle for different type of analysis</li>
+<li>A set of always-accessible widgets for performing tasks common to all (or most) tools - eg. channel selection, on the right ('Global Toolbox')</li>
+</ul>
+<p>Both the left and right widgets are custom tabwidget, written to be collapsible tabs. The idea of this is to hide away the tools to allow maximum view of the results in the middle, while having the tabs visible to the user, allowing them to open up the tools.</p>
+<p>Read on 4.4 for the implementation</p>
+</div>
+<div class="section" id="menus">
+<h2>Menus<a class="headerlink" href="#menus" title="Permalink to this headline">¶</a></h2>
+<p>A simple menu is implemented by subclassing <strong>QMenu</strong> and adding <strong>QActions</strong> or another <strong>QMenu</strong> to the <strong>QMenu</strong>. Then, the subclassed <strong>QMenu</strong> can be added to the Main Window's _menubar_.
+In the menubar, there are the following menus:</p>
+<ul class="simple">
+<li>Project - _ProjectMenu_ class</li>
+<li>Data - _DataMenu_ Class</li>
+<li>View - _ViewMenu_ Class</li>
+</ul>
+<div class="section" id="project-menu">
+<h3>Project menu<a class="headerlink" href="#project-menu" title="Permalink to this headline">¶</a></h3>
+<p>Not implemented yet.</p>
+<p>This menu contains project-wide options, such as setting project preferences and saving the whole project.</p>
+</div>
+<div class="section" id="data-menu">
+<h3>Data menu<a class="headerlink" href="#data-menu" title="Permalink to this headline">¶</a></h3>
+<p>Not implemented yet.</p>
+<p>This menu contains options for importing and exporting data.</p>
+</div>
+</div>
+<div class="section" id="collapsible-tabs">
+<h2>Collapsible Tabs<a class="headerlink" href="#collapsible-tabs" title="Permalink to this headline">¶</a></h2>
+<p>The collapsible left and right widgets mentioned in 4.2 is a custom class <strong>CollapsingSideTabWidget</strong> that subclasses <strong>QSplitter</strong>.</p>
+<p>The widget is then mainly made up of two widgets: <strong>QStackedWidget</strong> and <strong>QTabBar</strong>. <strong>QStackedWidget</strong> is to contain all the analysis tools but showing one tool at a time, while <strong>QTabBar</strong> shows all the tools available and switch the respective tool when clicked on.</p>
+<p>Animation is implemented to take advantage of the <strong>QSplitter</strong> resizing capabilities, which involves a third empty widget.</p>
+</div>
+<div class="section" id="tools">
+<h2>Tools<a class="headerlink" href="#tools" title="Permalink to this headline">¶</a></h2>
+<p>Currently, the idea is each type of analysis has its own set of tools, _e.g. time series analysis and frequency series analysis has distinct set of <a class="reference internal" href="#tools">tools</a>. Thus, when switching tabs for different analysis in the middle widget, the left tool widget will switch to the relevant tools.</p>
+<p>An _abstract_ class <strong>BaseTools</strong> is written to streamline the process of addi ng and display tools in the collapsible tabs. This merely contains the tools and the label to the respective analysis.</p>
+<p>To properly utilise this class, it must be derived and redefine the <cite>initTools</cite> method. Under here, a tool can be written as a <strong>QWidget</strong>, and then added using the method <cite>add_tool</cite>, supplying a name for that tool.</p>
+<p>A variable  named _parent_ is provided to allow any signal and slots to be made to the main window.</p>
+<p>Four <strong>Tools</strong> are created:
+* __TimeTools__: Tools for time series analysis
+* __FreqTools__: Tools for frequency series analysis
+* __ModalTools__: Tools for modal analysis
+* __GlobalTools__: Tools that is common for all analysis, this is added to the right widget mentioned before</p>
+<p>A new <strong>Tools</strong> class can be derived if the tool does not belong to any of the above categories, but that new class must be added to the <cite>prepare_tools</cite> method in the Main Window, and check that it opens for the correct analysis.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="addons.html" class="btn btn-neutral float-right" title="Addons" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="acquisition_module.html" class="btn btn-neutral" title="Acquisition Module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Theo Brown, En Yi Tee.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
