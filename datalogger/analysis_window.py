@@ -19,7 +19,7 @@ from datalogger.api.file_import import DataImportWidget
 from datalogger.api.toolbox import Toolbox, MasterToolbox
 
 import datalogger.acquisition_window as lpUI
-from datalogger.acquisition_window import DevConfigUI
+from datalogger.acquisition.RecordingUIs import DevConfigUI
 
 
 class AnalysisDisplayTabWidget(QTabWidget):
