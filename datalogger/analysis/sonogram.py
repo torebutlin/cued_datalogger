@@ -5,7 +5,7 @@ from datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
 from datalogger.api.pyqtgraph_extensions import ColorMapPlotWidget
 from datalogger.api.toolbox import Toolbox
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushButton, QLabel, QSpinBox, QHBoxLayout, QGridLayout
 
 import numpy as np
@@ -16,14 +16,14 @@ import scipy.signal
 class MatplotlibSonogramContourWidget(MatplotlibCanvas):
     """A MatplotlibCanvas widget displaying the Sonogram contour plot"""
 
-    def __init__(self, parent=None):
-        self.parent = parent
-        self.sonogram_master = self.parent.sonogram_plot
+    def __init__(self, sonogram_toolbox, sonogram_master_plot):
+        self.sonogram_toolbox = sonogram_toolbox
+        self.sonogram_master_plot = sonogram_master_plot
 
-        self.parent.num_contours_slider.valueChanged.connect(self.update_plot)
-        self.parent.num_contours_spinbox.valueChanged.connect(self.update_plot)
-        self.parent.contour_spacing_slider.valueChanged.connect(self.update_plot)
-        self.parent.contour_spacing_spinbox.valueChanged.connect(self.update_plot)
+        self.sonogram_toolbox.num_contours_slider.valueChanged.connect(self.update_plot)
+        self.sonogram_toolbox.num_contours_spinbox.valueChanged.connect(self.update_plot)
+        self.sonogram_toolbox.contour_spacing_slider.valueChanged.connect(self.update_plot)
+        self.sonogram_toolbox.contour_spacing_spinbox.valueChanged.connect(self.update_plot)
 
         MatplotlibCanvas.__init__(self, "Sonogram: Contour Plot")
 
@@ -31,41 +31,60 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
 
     def update_plot(self):
         """Redraw the sonogram on the canvas"""
-        self.F_bins, self.T_bins = np.meshgrid(self.sonogram_master.freqs, self.sonogram_master.times)
-
-        self.axes.clear()
-
-        self.update_contour_sequence()
-
-        self.axes.contour(self.F_bins, self.T_bins, self.sonogram_master.FT_dB, self.contour_sequence)
-
-        self.axes.set_xlabel('Freq (Hz)')
-        self.axes.set_ylabel('Time (s)')
-
-        self.axes.set_xlim(self.sonogram_master.freqs.min(), self.sonogram_master.freqs.max())
-        self.axes.set_ylim(self.sonogram_master.times.min(), self.sonogram_master.times.max())
-
-        self.draw()
+        if self.channel is not None:
+            self.F_bins, self.T_bins = np.meshgrid(self.channel.get_data("sonogram_frequency"),
+                                                   self.channel.get_data("sonogram_time"))
+    
+            self.axes.clear()
+    
+            self.update_contour_sequence()
+    
+            self.axes.contour(self.F_bins, self.T_bins, 
+                              to_dB(np.abs(self.channel.get_data("sonogram"))), 
+                              self.contour_sequence)
+    
+            self.axes.set_xlabel('Freq (Hz)')
+            self.axes.set_ylabel('Time (s)')
+    
+            self.axes.set_xlim(self.channel.get_data("sonogram_frequency").min(),
+                               self.channel.get_data("sonogram_frequency").max())
+            self.axes.set_ylim(self.channel.get_data("sonogram_time").min(),
+                               self.channel.get_data("sonogram_time").max())
+    
+            self.draw()
 
     def update_contour_sequence(self):
         """Update the array which says where to plot contours, how many etc"""
-        # Create a vector with the right spacing from min to max value
-        self.contour_sequence = np.arange(self.sonogram_master.FT_dB.min(), self.sonogram_master.FT_dB.max(),
-                                          self.sonogram_master.contour_spacing_dB)
-        # Take the appropriate number of contours
-        self.contour_sequence = self.contour_sequence[-self.sonogram_master.num_contours:]
+        if self.channel is not None:
+            # Create a vector with the right spacing from min to max value
+            self.contour_sequence = np.arange(to_dB(np.abs(self.channel.get_data("sonogram"))).min(),
+                                              to_dB(np.abs(self.channel.get_data("sonogram"))).max(),
+                                              self.sonogram_master_plot.contour_spacing_dB)
+            # Take the appropriate number of contours
+            self.contour_sequence = self.contour_sequence[-self.sonogram_master_plot.num_contours:]
+    
+    def set_selected_channels(self, selected_channels):
+        """Update which channel is being plotted"""
+        # If no channel list is given
+        if not selected_channels:
+            self.channel = None
+        else:
+            self.channel = selected_channels[0]
+            self.update_plot()
 
 
 class SonogramDisplayWidget(ColorMapPlotWidget):
     """The display widget for the Sonogram in the Analysis Window"""
 
-    def __init__(self, parent=None, sample_freq=4096, window_width=256,
-                 window_overlap_fraction=8, contour_spacing_dB=5,
+    def __init__(self, parent=None,
+                 window_width=256,
+                 window_overlap_fraction=8,
+                 contour_spacing_dB=5,
                  num_contours=5):
+        
         super().__init__(parent)
         self.parent = parent
 
-        self.sample_freq = sample_freq
         self.window_width = window_width
         self.window_overlap_fraction = window_overlap_fraction
         self.contour_spacing_dB = contour_spacing_dB
@@ -77,58 +96,72 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         self.show()
 
     def update_window_width(self, value):
+        """Slot for updating the plot when the window width is changed"""
         self.window_width = value
         self.update_plot()
     
     def update_window_overlap_fraction(self, value):
+        """Slot for updating the plot when the window overlap fraction is changed"""
         self.window_overlap_fraction = value
         self.update_plot()
         
     def update_contour_spacing(self, value):
+        """Slot for updating the plot when the contour spacing is changed"""
         self.contour_spacing_dB = value
         self.update_plot()
         
     def update_num_contours(self, value):
+        """Slot for updating the plot when the number of contours is changed"""
         self.num_contours = value
         self.update_plot()
     
-
     def calculate_sonogram(self):
-        """Calculate the sonogram"""
+        """Calculate the sonogram, and store the values in the channel (including autogenerated datasets)"""
 
-        self.freqs, self.times, self.FT = scipy.signal.spectrogram(self.sig, self.sample_freq,
-                                            window=scipy.signal.get_window('hann', self.window_width),
-                                            nperseg=self.window_width,
-                                            noverlap=self.window_width // self.window_overlap_fraction,
-                                            return_onesided=False)
-
+        (self.freqs,
+         self.times,
+         self.FT) = scipy.signal.spectrogram(self.channel.get_data("time_series"),
+                                           self.channel.get_metadata("sample_rate"),
+                                           window=scipy.signal.get_window('hann', self.window_width),
+                                           nperseg=self.window_width,
+                                           noverlap=self.window_width // self.window_overlap_fraction,
+                                           return_onesided=False)
+        
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
         # Scipy calculates all the conjugate spectra/frequencies as well -
         # we only want the positive ones
         self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
-        self.FT = np.abs(self.FT[:, :self.FT.shape[1] // 2 + 1])
+        self.FT = self.FT[:, :self.FT.shape[1] // 2 + 1]
 
-        # Convert to dB
-        self.FT_dB = to_dB(self.FT)
+        self.channel.add_dataset("sonogram_frequency", data=self.freqs, units="Hz")
+        self.channel.add_dataset("sonogram_omega", data=self.freqs*2*np.pi, units="rad")
+        self.channel.add_dataset("sonogram_time", data=self.times, units="s")
+        self.channel.add_dataset("sonogram", data=self.FT, units=None)
 
 
-    def update_plot(self, data=None):
-        """Recalculate, clear and replot"""
-
-        if data is not None:
-            self.sig = data
-        #if self.sig is None:
-            #raise ValueError("Cannot calculate sonogram: no input data")
-
-        self.calculate_sonogram()
-        self.canvas.clear()
-        self.plot_colormap(self.freqs, self.times, self.FT_dB,
-                           num_contours=self.num_contours,
-                           contour_spacing_dB=self.contour_spacing_dB)
-
-    def set_data(self, time_series):
-        self.update_plot(time_series)
+    def update_plot(self):
+        """Recalculate the sonogram, clear the canvas and replot"""
+        if self.channel is not None:
+            if self.channel.is_dataset("time_series"):
+                self.calculate_sonogram()
+                self.clear()
+                self.plot_colormap(self.channel.get_data("sonogram_frequency"),
+                                   self.channel.get_data("sonogram_time"),
+                                   to_dB(np.abs(self.channel.get_data("sonogram"))),
+                                   num_contours=self.num_contours,
+                                   contour_spacing_dB=self.contour_spacing_dB)
+        else:
+            self.clear()
+   
+    def set_selected_channels(self, selected_channels):
+        """Update which channel is being plotted"""
+        # If no channel list is given
+        if not selected_channels:
+            self.channel = None
+        else:
+            self.channel = selected_channels[0]
+            self.update_plot()
         
 
 class SonogramToolbox(Toolbox):
@@ -139,7 +172,6 @@ class SonogramToolbox(Toolbox):
         super().__init__(parent=parent)
         self.parent = parent
 
-        self.sample_freq = 4096
         self.window_width = 256
         self.window_overlap_fraction = 8
         self.num_contours = 5
@@ -251,6 +283,7 @@ class SonogramToolbox(Toolbox):
         
         self.export_tab.setLayout(export_layout)        
 
+        # Add tabs
         self.addTab(self.plot_controls_tab, "Plot Controls")
         self.addTab(self.sonogram_controls_tab, "Sonogram Controls")
         self.addTab(self.export_tab, "Export")
