@@ -168,8 +168,7 @@ class ChannelSet(object):
 
     def get_channel_units(self, channel_index, id_):
         """Return the units from the DataSet given by *id\_* in the Channel specified by 
-        *channel_index*."""    ================================  ============================================
-
+        *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
         if isinstance(channel_index, tuple):
