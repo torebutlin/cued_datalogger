@@ -339,8 +339,9 @@ class AddonWriter(QWidget):
             func_re = re.compile(r'def run(\S*):')
             func_search = [True if func_re.search(s) else False for s in data ].index(True)
             self.main_code_text.clear()
+            indentRE = re.compile(r'(\s){4}|\t')
             for line in data[func_search+1:]:
-                self.main_code_text.append(line)
+                self.main_code_text.append(indentRE.sub('',line.strip('\n'),1))
             
             try:
                 addon_local_vars = {}

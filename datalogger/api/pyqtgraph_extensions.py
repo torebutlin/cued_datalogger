@@ -40,7 +40,7 @@ class InteractivePlotWidget(QWidget):
         self.label.setParentItem(self.vb)
         #self.vb.addItem(self.label)
         
-        self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+        #self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
         
         ui_layout = QHBoxLayout()
         t1 = QLabel('Lower',self)
@@ -95,7 +95,7 @@ class InteractivePlotWidget(QWidget):
         self.plotitem.setXRange(pos[0],pos[1],padding = 0.1)
         
     def closeEvent(self,event):
-        self.proxy.disconnect()
+        #self.proxy.disconnect()
         if self.updatetimer.isActive():
             self.updatetimer.stop()
         event.accept()
