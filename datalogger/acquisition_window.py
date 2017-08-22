@@ -206,10 +206,9 @@ class LiveplotApp(QMainWindow):
         self.recording_tools = Toolbox('right',self.main_widget)
         
         self.RecUI = RecUI(self.main_widget)
+        self.RecUI.set_recorder(self.rec)
         
         # Connect the sample and time input check
-        self.RecUI.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
-        self.RecUI.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
         self.RecUI.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.RecUI.rec_boxes[2],-1,self.rec.chunk_size,int))
         self.RecUI.rec_boxes[2].textEdited.connect(self.toggle_trigger)
         self.RecUI.rec_boxes[4].textEdited.connect(self.change_threshold)
@@ -217,8 +216,6 @@ class LiveplotApp(QMainWindow):
         self.RecUI.startRecording.connect(self.start_recording)
         self.RecUI.cancelRecording.connect(self.cancel_recording)
        
-        self.ResetRecConfigs()
-        self.autoset_record_config('Time')
         self.right_splitter.addWidget(self.RecUI)
         
     #-----------------------CHANNEL LEVELS WIDGET------------------------------
@@ -607,7 +604,7 @@ class LiveplotApp(QMainWindow):
 #---------------------------RECORDING WIDGET-------------------------------    
     # Start the data recording        
     def start_recording(self):
-        rec_configs = self.read_record_config()
+        rec_configs = self.RecUI.get_record_config()
         print(type(self.rec))
         if rec_configs[2]>=0:
             # Set up the trigger
@@ -697,47 +694,8 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
         
-    # Read the recording setting inputs
-    def read_record_config(self, *arg):
-        try:
-            rec_configs = []
-            data_type = [int,float,int,int,float]
-            for cbox,dt in zip(self.RecUI.rec_boxes,data_type):
-                if type(cbox) == QComboBox:
-                    #configs.append(cbox.currentText())
-                    rec_configs.append(cbox.currentIndex())
-                else:
-                    config_input = cbox.text().strip(' ')
-                    rec_configs.append(dt(float(config_input)))
-            print(rec_configs)
-            return(rec_configs)
-        
-        except Exception as e:
-            print(e)
-            return False
     
-    # Auto set the time and samples based on recording limitations    
-    def autoset_record_config(self, setting):
-        sample_validator = self.RecUI.rec_boxes[0].validator()
-        time_validator = self.RecUI.rec_boxes[1].validator()
-        
-        if setting == "Time":
-            valid = time_validator.validate(self.RecUI.rec_boxes[1].text(),0)[0]
-            if not valid == QValidator.Acceptable:
-                self.RecUI.rec_boxes[1].setText(str(time_validator.bottom()))
-                
-            samples = int(float(self.RecUI.rec_boxes[1].text())*self.rec.rate)
-            valid = sample_validator.validate(str(samples),0)[0]
-            if not valid == QValidator.Acceptable:
-                samples = sample_validator.top()
-        elif setting == 'Samples':
-            samples = int(self.RecUI.rec_boxes[0].text())        
-        
-        #samples = samples//self.rec.chunk_size  *self.rec.chunk_size
-        duration = samples/self.rec.rate
-        self.RecUI.rec_boxes[0].setText(str(samples))
-        self.RecUI.rec_boxes[1].setText(str(duration))
-
+    
 #-------------------------CHANNEL LEVELS WIDGET--------------------------------       
     def change_threshold(self,arg):
         if type(arg) == str:
@@ -821,7 +779,7 @@ class LiveplotApp(QMainWindow):
         
         try:
             # Reset recording configuration Validators and inputs checks
-            self.ResetRecConfigs()
+            self.RecUI.set_recorder(self.rec)
             self.autoset_record_config('Samples')
         except:
             t,v,tb = sys.exc_info()
@@ -918,16 +876,7 @@ class LiveplotApp(QMainWindow):
                     self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
             
-        self.update_chan_names()
-                    
-    def ResetRecConfigs(self):
-        self.RecUI.rec_boxes[3].clear()
-        self.RecUI.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
-    
-        validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                     QIntValidator(-1,self.rec.chunk_size)]
-        for cbox,vd in zip(self.RecUI.rec_boxes[1:-2],validators):
-            cbox.setValidator(vd)    
+        self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))

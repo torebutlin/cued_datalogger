@@ -262,6 +262,7 @@ class RecUI(BaseWidget):
     startRecording = pyqtSignal()
     cancelRecording = pyqtSignal()
     def initUI(self):
+        
         rec_settings_layout = QVBoxLayout(self)
         global_settings_layout = QFormLayout()
         spec_settings_layout = QStackedLayout()
@@ -297,7 +298,10 @@ class RecUI(BaseWidget):
                     cbox.setValidator(vd)
                 
             global_settings_layout.addRow(QLabel(c,self),cbox)
-            self.rec_boxes.append(cbox)     
+            self.rec_boxes.append(cbox) 
+            
+        self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
+        self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
         
         self.normal_rec = QWidget(self)
         normal_rec_layout = QVBoxLayout(self.normal_rec)
@@ -345,9 +349,63 @@ class RecUI(BaseWidget):
         self.cancelbtn.clicked.connect(self.emit_cancelRecording)
         rec_btn_layout.addWidget(self.cancelbtn)
         rec_settings_layout.addLayout(rec_btn_layout)
+
+        
+    def set_recorder(self,recorder):
+        self.rec = recorder
+        self.reset_configs()
+        self.autoset_record_config('Time')
         
     def get_recording_mode(self):
         return self.switch_rec_box.currentText()
+    
+    # Read the recording setting inputs
+    def get_record_config(self, *arg):
+        try:
+            rec_configs = []
+            data_type = [int,float,int,int,float]
+            for cbox,dt in zip(self.rec_boxes,data_type):
+                if type(cbox) == QComboBox:
+                    #configs.append(cbox.currentText())
+                    rec_configs.append(cbox.currentIndex())
+                else:
+                    config_input = cbox.text().strip(' ')
+                    rec_configs.append(dt(float(config_input)))
+            print(rec_configs)
+            return(rec_configs)
+        except Exception as e:
+            print(e)
+            return False
+    
+    def autoset_record_config(self, setting):
+        sample_validator = self.rec_boxes[0].validator()
+        time_validator = self.rec_boxes[1].validator()
+        
+        if setting == "Time":
+            valid = time_validator.validate(self.rec_boxes[1].text(),0)[0]
+            if not valid == QValidator.Acceptable:
+                self.rec_boxes[1].setText(str(time_validator.bottom()))
+                
+            samples = int(float(self.rec_boxes[1].text())*self.rec.rate)
+            valid = sample_validator.validate(str(samples),0)[0]
+            if not valid == QValidator.Acceptable:
+                samples = sample_validator.top()
+        elif setting == 'Samples':
+            samples = int(self.rec_boxes[0].text())        
+        
+        #samples = samples//self.rec.chunk_size  *self.rec.chunk_size
+        duration = samples/self.rec.rate
+        self.rec_boxes[0].setText(str(samples))
+        self.rec_boxes[1].setText(str(duration))
+        
+    def reset_configs(self):
+        self.rec_boxes[3].clear()
+        self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
+    
+        validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
+                     QIntValidator(-1,self.rec.chunk_size)]
+        for cbox,vd in zip(self.rec_boxes[1:-2],validators):
+            cbox.setValidator(vd)
     
     def emit_startRecording(self):
         self.startRecording.emit()

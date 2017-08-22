@@ -222,7 +222,7 @@ class AnalysisWindow(QMainWindow):
     def receive_data(self):
         self.config_channelset()
         self.plot_time_series()
-        self.plot_tf()
+        self.plot_fft()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         
     def done_liveplot(self):
