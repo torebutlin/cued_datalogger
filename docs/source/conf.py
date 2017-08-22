@@ -158,7 +158,18 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-autodoc_mock_imports = ["datalogger"]
+#autodoc_mock_imports = ["datalogger", "pyaudio"]
+
+import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return MagicMock()
+
+MOCK_MODULES = ['pyaudio']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
 
