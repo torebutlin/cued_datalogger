@@ -83,13 +83,13 @@ setup(name='cued-datalogger',
       # itself in an Anaconda environment, a lot of things break. Fix this.
       # (currently the workaround is telling the user to install some stuff)
       install_requires=[
-                      #'PyQt5>=5.9',
+                      'PyQt5>=5.9',
                       'numpy>=1.11.3',
                       'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
                       'matplotlib>=1.5.1',
                       'PyDAQmx>=1.3.2'],
-                      #'pyaudio>=0.2.11'],
+                      'pyaudio>=0.2.11'],
       entry_points={
         'console_scripts': ['DataLogger_dbg = datalogger.__main__:run_datalogger_full'],
         'gui_scripts': ['DataLogger = datalogger.__main__:run_datalogger_full']},
