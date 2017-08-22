@@ -4,55 +4,105 @@ import numpy as np
 # ------------------------------------------------------
 # Basic PyQt Widgets
 # ------------------------------------------------------
-from PyQt5.QtWidgets import QSlider, QSpinBox
+from PyQt5.QtWidgets import QSlider, QSpinBox, QVBoxLayout, QHBoxLayout, QWidget
 
-class Power2SteppedSlider(QSlider):
-    """A QSlider that increments in powers of 2 when moved"""
+class BaseNControl(QWidget):
     
-    # Create custom signal, overriding pre-existing valueChanged signal
     valueChanged = pyqtSignal(int)
-      
-    def __init__(self, orientation, parent=None):
+    
+    def __init__(self, orientation, parent=None, 
+                 show_spinbox=True, 
+                 show_slider=True,
+                 base=2):
+        
+        super().__init__(parent)
+        
+        self.orientation = orientation
+        self.base = base
+        
+        self.spinbox = BaseNSpinBox(self)
+        self.slider = QSlider(self.orientation, self)
+        
+        # Update whenever enter is pressed in the spinbox
+        self.spinbox.editingFinished.connect(self.on_spinbox_edit_finished)
+        # Update when the buttons are pressed
+        self.spinbox.sig_step_down.connect(self.decrease_value)
+        self.spinbox.sig_step_up.connect(self.increase_value)
+        # Update whenever the slider is moved
+        self.slider.valueChanged.connect(self.set_n)
+        #self.slider.actionTriggered.connect(self.on_slider_value_changed)
+        
+        if self.orientation == Qt.Vertical:
+            layout = QVBoxLayout()
+        elif self.orientation == Qt.Horizontal:
+            layout = QHBoxLayout()
+        else:
+            raise ValueError("Unrecognised orientation (accepted values: "
+                "Qt.Horizontal, Qt.Vertical)")
+        
+        if show_spinbox:
+            layout.addWidget(self.spinbox)
+        if show_slider:
+            layout.addWidget(self.slider)
+        
+        self.setLayout(layout)
+    
+    def set_power_range(self, min_power_n, max_power_n):       
+        self.slider.setRange(min_power_n, max_power_n)
+        self.spinbox.setRange(self.base**min_power_n, self.base**max_power_n)
+        
+        self.set_n(min_power_n)
+    
+    def set_value_range(self, min_value, max_value):
+        self.spinbox.setRange(min_value, max_value)
+        min_n = int(np.floor(np.log(min_value)/np.log(self.base)))
+        max_n = int(np.ceil(np.log(max_value)/np.log(self.base)))
+        self.slider.setRange(min_n, max_n)
+        
+        self.set_n(min_n)
 
-        QSlider.__init__(self, orientation)
+    def set_n(self, n, set_both=False):
+        """If *n* is in range, set it as the current n-value"""
+        if n >= self.slider.minimum() and n <= self.slider.maximum(): 
+            self.n = n
+            if set_both:
+                self.spinbox.setValue(self.base**self.n)
+                self.slider.setValue(self.n)
+            elif self.sender() == self.slider:
+                self.spinbox.setValue(self.base**self.n)
+            elif self.sender() == self.spinbox:
+                self.slider.setValue(self.n)     
+            self.valueChanged.emit(self.base**self.n)
+
+
+    def set_value(self, value):
+        n = int(np.round(np.log(value)/np.log(self.base)))
+        self.set_n(n, True)
         
-        # Update value whenever slider is moved
-        self.sliderMoved.connect(self.round_to_power_2)
-            
-    def round_to_power_2(self, value):
-        # Round value to nearest power of 2
-        n = np.round(np.log(value)/np.log(2))
-        self.setValue(2**n)
-        self.valueChanged.emit(2**n)
+    def increase_value(self):
+        self.set_n(self.n + 1, True)
         
-        
-class Power2SteppedSpinBox(QSpinBox):
-    """A QSpinBox that increments in powers of 2 when the value is updated""" 
+    def decrease_value(self):
+        self.set_n(self.n - 1, True)
     
-    # Create custom signal, overriding pre-existing valueChanged signal
-    valueChanged = pyqtSignal(int)
-     
+    def on_spinbox_edit_finished(self):
+        self.set_value(self.spinbox.value())
+        
+
+class BaseNSpinBox(QSpinBox):
+    
+    sig_step_up = pyqtSignal()
+    sig_step_down = pyqtSignal()
+    
     def __init__(self, parent=None):
-
-        QSpinBox.__init__(self)
-        
-        # Update data when focus is lost or enter pressed
-        self.editingFinished.connect(self.round_to_power_2)
-        
-        # Lose focus if clicked elsewhere
-        self.setFocusPolicy(Qt.ClickFocus)
-        parent.setFocusPolicy(Qt.ClickFocus)
-               
-    def round_to_power_2(self):
-        # Round value to nearest power of 2
-        n = np.round(np.log(self.value())/np.log(2))
-        self.setValue(2**n)
-        self.valueChanged.emit(2**n)
+        super().__init__(parent)
     
-    def mouseReleaseEvent(self, event):
-        # Lose focus if mouse released
-        self.clearFocus()
-
+    def stepBy(self, number_of_steps):
+        if number_of_steps > 0:
+            self.sig_step_up.emit()
+        elif number_of_steps < 0:
+            self.sig_step_down.emit()
+        
 # ------------------------------------------------------
 # PyQtGraph Widgets
 # ------------------------------------------------------

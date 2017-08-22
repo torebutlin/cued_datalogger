@@ -8,6 +8,8 @@ import weakref
 import sys
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph import ImageItem
+from datalogger.api.pyqt_widgets import SimpleColormap
 from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGridLayout,
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
@@ -23,7 +25,7 @@ class InteractivePlotWidget(QWidget):
         vbox = QVBoxLayout(self)
         
         # Set up data time plot
-        self.canvas = CustomPlotWidget(self, background = 'default')
+        self.canvas = pg.PlotWidget(self, background = 'default')
         vbox.addWidget(self.canvas)
         self.plotitem = self.canvas.getPlotItem()
         self.plotitem.disableAutoRange()
@@ -32,13 +34,13 @@ class InteractivePlotWidget(QWidget):
         self.hline = pg.InfiniteLine(angle=0)
         self.linregion = pg.LinearRegionItem(bounds = [0,None])
         self.linregion.sigRegionChanged.connect(self.checkRegion)
-        self.resetPlotWidget()
+        self.clear()
         
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.vb)
         #self.vb.addItem(self.label)
         
-        self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+        #self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
         
         ui_layout = QHBoxLayout()
         t1 = QLabel('Lower',self)
@@ -69,7 +71,7 @@ class InteractivePlotWidget(QWidget):
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
             
-    def resetPlotWidget(self):
+    def clear(self):
         self.plotitem.clear()
         self.plotitem.addItem(self.vline)
         self.plotitem.addItem(self.hline)
@@ -93,10 +95,30 @@ class InteractivePlotWidget(QWidget):
         self.plotitem.setXRange(pos[0],pos[1],padding = 0.1)
         
     def closeEvent(self,event):
-        self.proxy.disconnect()
+        #self.proxy.disconnect()
         if self.updatetimer.isActive():
             self.updatetimer.stop()
         event.accept()
+    
+    def plot(self, x=None, y=None, *args, **kwargs):
+        self.update_limits(x, y)
+        self.canvas.plot(x, y, *args, **kwargs)
+    
+    def update_limits(self, x, y):
+        if x is not None and y is not None:
+            # Update the increment of the spinboxes
+            self.sp1.setSingleStep(x.max()/100)
+            self.sp2.setSingleStep(x.max()/100)
+        
+            # Set the linear region to be in view
+            #self.sp1.setValue(x.max()*0.4)
+            #self.sp2.setValue(x.max()*0.6)
+            
+            # Set the limits of the plotitem
+            self.plotitem.setLimits(xMin=0, xMax=x.max())
+            self.plotitem.setRange(xRange=(x.min(), x.max()),
+                                   yRange=(y.min(), y.max()),
+                                   padding=0.2)
 
 
 class CustomPlotWidget(pg.PlotWidget):
@@ -456,6 +478,59 @@ class CustomUITemplate(object):
         self.visibleOnlyCheck.setText(_translate("Form", "Visible Data Only"))
         self.autoPanCheck.setToolTip(_translate("Form", "<html><head/><body><p>When checked, the axis will automatically pan to center on the current data, but the scale along this axis will not change.</p></body></html>"))
         self.autoPanCheck.setText(_translate("Form", "Auto Pan Only"))
+
+
+class ColorMapPlotWidget(InteractivePlotWidget):
+    """An InteractivePlotWidget optimised for plotting color(heat) maps"""
+    def __init__(self, parent=None, cmap="jet"):
+        self.cmap = SimpleColormap(cmap)
+        self.num_contours = 5
+        self.contour_spacing_dB = 5
+        self.parent = parent
+        super().__init__(parent=self.parent)
+        
+    def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
+        """Plot *x*, *y* and *z* on a colourmap, with colour intervals defined
+        by *num_contours* at *contour_spacing_dB* intervals"""
+        
+        #self.canvas.removeItem(self.z_img)
+        
+        self.x = x
+        self.y = y
+        self.z = z
+        
+        self.num_contours = num_contours
+        self.contour_spacing_dB = contour_spacing_dB
+        self.update_lowest_contour()
+        
+        # Set up axes:
+        x_axis = self.canvas.getAxis('bottom')
+        y_axis = self.canvas.getAxis('left')
+
+        self.x_scale_fact = self.get_scale_fact(x)
+        self.y_scale_fact = self.get_scale_fact(y)
+        
+        x_axis.setScale(self.x_scale_fact)
+        y_axis.setScale(self.y_scale_fact)
+        
+        #self.autoRange()
+        
+        self.z_img = ImageItem(z.transpose())
+        self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        self.z_img.setLevels([self.lowest_contour, self.highest_contour])
+        
+        self.canvas.addItem(self.z_img)
+        
+        self.canvas.autoRange()
+        #self.canvas.viewbox.autoRange()
+
+    def get_scale_fact(self, var):
+        return var.max() / var.size
+    
+    def update_lowest_contour(self):
+        """Find the lowest contour to plot"""
+        self.lowest_contour = self.z.max() - (self.num_contours * self.contour_spacing_dB)
+        self.highest_contour = self.z.max()
 
 
 if __name__ == '__main__':

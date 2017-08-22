@@ -3,7 +3,10 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 import numpy as np
+import pyqtgraph as pg
+
 from datalogger.api.numpy_extensions import MatlabList
+from datalogger.api.pyqt_widgets import SimpleColormap
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
@@ -49,6 +52,7 @@ class ChannelSet(object):
     def get_info(self):
         """Print the information about all of the Channels in this ChannelSet."""
         print("ChannelSet: \n Channels: \n")
+        self.colormap = SimpleColormap("brg")
 
         for i, channel in enumerate(self.channels):
             print("--------------------\n"
@@ -59,6 +63,8 @@ class ChannelSet(object):
         """Add new empty Channels to the end of the channel list."""
         for i in range(num_channels):
             self.channels.append(Channel())
+        
+        self.update_channel_colours()
 
     def add_channel_dataset(self, channel_index, id_, data=None, units=None):
         """Add a DataSet with *id\_* to the Channel specified by
@@ -112,7 +118,26 @@ class ChannelSet(object):
         else:
             # Get metadata from this channel
             self.channels[channel_index].set_metadata(metadata_dict)
-
+     
+    def update_channel_colours(self):
+        """Update all the channel colours to use the full colour range. This function
+        maps the range of channel indexes to the range 0-255 so that the full colour
+        range is used."""
+        # Set the PyQtGraph colormap to encompass the full range
+        blue = [0, 0, 255, 255]
+        red = [255, 0, 0, 255]
+        green = [0, 255, 0, 255]
+        colour_stops = [0, (len(self) - 1)//2, len(self) - 1]
+        self.colormap = pg.ColorMap(colour_stops, [blue, green, red])
+        
+        for i in range(len(self)):
+            self.set_channel_colour(i)
+        
+    def set_channel_colour(self, channel_index):
+        """Set the RGBA tuple specifying the colour of the Channel at **channel_index**
+        to a value determined by its index and the ChannelSet Colourmap"""
+        self.channels[channel_index].colour = self.colormap.map(channel_index)
+    
     def get_channel_ids(self, channel_index):
         """Return the ids of all the datasets in the Channel specified by 
         *channel_index*."""
@@ -122,7 +147,8 @@ class ChannelSet(object):
             #output = []
             # Iterate through the given channels
             #for channel in self.channels[channel_index]:
-                # Get metadata from this channel
+                # Get metadata from this channel        self.colormap = SimpleColormap("brg")
+
             #    output.append(channel.get_ids())
             #return output
             return [channel.get_ids() for channel in self.channels[channel_index]]
@@ -169,6 +195,9 @@ class ChannelSet(object):
             # Get metadata from this channel
             return self.channels[channel_index].get_metadata(metadata_id)
 
+    def get_channel_colour(self, channel_index):
+        """Get the RGBA tuple specifying the colour of the Channel at **channel_index**"""
+        return self.channels[channel_index].colour
 
 class Channel(object):
     """
@@ -183,6 +212,7 @@ class Channel(object):
     performed - eg. a Fourier Transform produces a 'spectrum' DataSet.
     Channels also contain metadata about the data.
 
+        colour: an RGBA tuple for this channel's colour
     ==============================  ========================================================
     **Attributes:**
 
@@ -209,7 +239,8 @@ class Channel(object):
                  tags=[],
                  sample_rate=1000,
                  calibration_factor=1,
-                 transfer_function_type="displacement"):
+                 transfer_function_type="displacement",
+                 colour=None):
         """Create a new Channel. 
         Can be initialised as empty, or with given metadata and/or with given DataSets.""" 
 
@@ -221,6 +252,7 @@ class Channel(object):
         self.calibration_factor = calibration_factor
         self.transfer_function_type = transfer_function_type
         self.datasets = []
+        self.colour = colour
 
         # Create the auto-generated datasets
         self.add_dataset("time", 's')
@@ -418,6 +450,7 @@ class ChannelSelectWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+                
         self.init_ui()
 
     def init_ui(self):
@@ -485,7 +518,7 @@ class ChannelSelectWidget(QWidget):
         string = self.text_select_box.text()
         #print("Selecting by " + string)
 
-        selected_list = []
+        selected_list = [] 
 
         # Split the string by commas
         index_list = string.split(",")
@@ -526,7 +559,7 @@ class ChannelSelectWidget(QWidget):
     def on_channel_selection_change(self):
         # Emit the "Selection changed" signal with a list of channels
         # that are currently selected
-        print("Currently selected channels: {}".format(self.selected_channels()))
+        print("Currently selected channels: {}".format(self.selected_channels_index()))
         self.channel_selection_changed.emit(self.selected_channels())
         
     def set_channel_name(self):
@@ -558,13 +591,22 @@ class ChannelSelectWidget(QWidget):
         # Send out a signal with the updated channels
         #self.on_channel_selection_change()
 
-    def selected_channels(self):
+    def selected_channels_index(self):
         """Get a list of channel numbers of all currently selected channels"""
         selected_list = []
 
         for i, channel in enumerate(self.cs.channels):
             if self.checkbox_list[i].isChecked():
                 selected_list.append(i)
+
+        return selected_list
+    
+    def selected_channels(self):
+        selected_list = []
+
+        for i, channel in enumerate(self.cs.channels):
+            if self.checkbox_list[i].isChecked():
+                selected_list.append(channel)
 
         return selected_list
 

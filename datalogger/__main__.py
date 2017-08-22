@@ -19,7 +19,7 @@ def run_datalogger_full():
     # Load the workspace
     #CurrentWorkspace.load("//cued-fs/users/general/tab53/ts-home/Documents/urop/Logger 2017/cued_datalogger/tests/test_workspace.wsp")
 
-    #w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
+    w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
 
     # Run the program
     w.show()
