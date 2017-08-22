@@ -9,7 +9,7 @@ import sys
 
 from datalogger.analysis.circle_fit import CircleFitWidget
 from datalogger.analysis.frequency_domain import FrequencyDomainWidget
-from datalogger.analysis.sonogram import SonogramWidget
+#from datalogger.analysis.sonogram import SonogramWidget
 from datalogger.analysis.time_domain import TimeDomainWidget
 from datalogger.analysis.transfer_function import TransferFunctionWidget,compute_transfer_function
 
@@ -36,14 +36,14 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.timedomain_widget = TimeDomainWidget(self)
         
         self.freqdomain_widget = FrequencyDomainWidget(self)
-        self.sonogram_widget = SonogramWidget(self)
+        #self.sonogram_widget = SonogramWidget(self)
         self.transfer_widget = TransferFunctionWidget(self)
         self.circle_widget = CircleFitWidget(self)
                 
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
-        self.addTab(self.sonogram_widget, "Sonogram")
+        #self.addTab(self.sonogram_widget, "Sonogram")
         self.addTab(self.transfer_widget, "Transfer Function")
         self.addTab(self.circle_widget, "Modal Fitting")
 
@@ -93,7 +93,8 @@ class AnalysisWindow(QMainWindow):
         fft_btn = QPushButton("Convert to FFT",self.time_toolbox)
         fft_btn.clicked.connect(self.plot_fft)
         sono_btn = QPushButton("Sonogram",self.time_toolbox)
-        sono_btn.clicked.connect(self.plot_sonogram)
+        sono_btn.setDisabled(True)
+        #sono_btn.clicked.connect(self.plot_sonogram)
         hb.addWidget(fft_btn)
         hb.addWidget(sono_btn)
         self.time_toolbox.addTab(wd, "TimeTab1")
@@ -117,9 +118,9 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox.addTab(wd3, "Conversion")
         
 
-        self.sonogram_toolbox = Toolbox('left',self.toolbox)
-        self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
-        self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
+        #self.sonogram_toolbox = Toolbox('left',self.toolbox)
+        #self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
+        #self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
         
         self.TF_toolbox = Toolbox('left',self.toolbox)
         wd4 = QWidget(self)
@@ -134,7 +135,7 @@ class AnalysisWindow(QMainWindow):
         
         self.toolbox.add_toolbox(self.time_toolbox)
         self.toolbox.add_toolbox(self.frequency_toolbox)
-        self.toolbox.add_toolbox(self.sonogram_toolbox)
+        #self.toolbox.add_toolbox(self.sonogram_toolbox)
         self.toolbox.add_toolbox(self.TF_toolbox)
         self.toolbox.add_toolbox(self.modal_analysis_toolbox)
         self.toolbox.set_toolbox(0)
@@ -391,11 +392,11 @@ class AnalysisWindow(QMainWindow):
             else:
                 print('No specturm to plot')
     
-    def plot_sonogram(self):
-        signal = self.cs.get_channel_data(0,'time_series')
-        if not signal.shape[0] == 0:
-            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
-            self.display_tabwidget.currentWidget().plot(signal)
+    #def plot_sonogram(self):
+    #    signal = self.cs.get_channel_data(0,'time_series')
+    #    if not signal.shape[0] == 0:
+    #        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+    #        self.display_tabwidget.currentWidget().plot(signal)
         
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
