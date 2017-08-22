@@ -9,8 +9,9 @@ import sys
 
 from datalogger.analysis.circle_fit import CircleFitWidget
 from datalogger.analysis.frequency_domain import FrequencyDomainWidget
-from datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
+from datalogger.analysis.sonogram import SonogramWidget
 from datalogger.analysis.time_domain import TimeDomainWidget
+from datalogger.analysis.transfer_function import TransferFunctionWidget,compute_transfer_function
 
 from datalogger.api.addons import AddonManager
 from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
@@ -18,7 +19,7 @@ from datalogger.api.file_import import DataImportWidget
 from datalogger.api.toolbox import Toolbox, MasterToolbox
 
 import datalogger.acquisition_window as lpUI
-from datalogger.acquisition_window import DevConfigUI
+from datalogger.acquisition.RecordingUIs import DevConfigUI
 
 
 class AnalysisDisplayTabWidget(QTabWidget):
@@ -35,13 +36,15 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.timedomain_widget = TimeDomainWidget(self)
         
         self.freqdomain_widget = FrequencyDomainWidget(self)
-        self.sonogram_widget = SonogramDisplayWidget(self)
+        self.sonogram_widget = SonogramWidget(self)
+        self.transfer_widget = TransferFunctionWidget(self)
         self.circle_widget = CircleFitWidget(self)
                 
         # Create the tabs
         self.addTab(self.timedomain_widget, "Time Domain")
         self.addTab(self.freqdomain_widget, "Frequency Domain")
         self.addTab(self.sonogram_widget, "Sonogram")
+        self.addTab(self.transfer_widget, "Transfer Function")
         self.addTab(self.circle_widget, "Modal Fitting")
 
 
@@ -108,15 +111,22 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox.addTab(wd2, "View")
         wd3 = QWidget(self)
         hb3 = QVBoxLayout(wd3)
-        circle_btn = QPushButton("Circle_Fit",self.frequency_toolbox)
-        hb3.addWidget(circle_btn)
-        circle_btn.clicked.connect(self.circle_fitting)
+        tf_btn = QPushButton("Compute Transfer Function",self.frequency_toolbox)
+        hb3.addWidget(tf_btn)
+        tf_btn.clicked.connect(self.plot_tf)
         self.frequency_toolbox.addTab(wd3, "Conversion")
         
 
-        self.sonogram_toolbox = SonogramToolbox(self.toolbox)
-        #self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
-        #self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
+        self.sonogram_toolbox = Toolbox('left',self.toolbox)
+        self.sonogram_toolbox.addTab(QPushButton("Button 1",self.sonogram_toolbox), "SonTab1")
+        self.sonogram_toolbox.addTab(QPushButton("Button 2",self.sonogram_toolbox), "SonTab2")
+        
+        self.TF_toolbox = Toolbox('left',self.toolbox)
+        wd4 = QWidget(self)
+        hb4 = QVBoxLayout(wd4)
+        circle_btn = QPushButton("Perform Circle Fitting",self.TF_toolbox)
+        hb4.addWidget(circle_btn)
+        self.TF_toolbox.addTab(wd4, "TFTab")       
 
         self.modal_analysis_toolbox = Toolbox('left',self.toolbox)
         self.modal_analysis_toolbox.addTab(QPushButton("Button 1",self.modal_analysis_toolbox), "ModalTab1")
@@ -125,6 +135,7 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.add_toolbox(self.time_toolbox)
         self.toolbox.add_toolbox(self.frequency_toolbox)
         self.toolbox.add_toolbox(self.sonogram_toolbox)
+        self.toolbox.add_toolbox(self.TF_toolbox)
         self.toolbox.add_toolbox(self.modal_analysis_toolbox)
         self.toolbox.set_toolbox(0)
 
@@ -185,7 +196,7 @@ class AnalysisWindow(QMainWindow):
         self.plot_colours = ['r','g','b', 'k', 'm']
         self.timeplots = []
         self.freqplots = []
-        
+        self.tfplots = []
         self.config_channelset()
         self.plot_time_series()
         #self.plot_fft()
@@ -271,7 +282,7 @@ class AnalysisWindow(QMainWindow):
             if not fdata[i].shape[0] == 0 or not tdata[i].shape[0] == 0:
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
                 if not fdata[i].shape[0] == 0:
-                    f = np.arange(int(fdata[i].shape[0]))/fdata[i].shape[0] * sample_rate
+                    f = np.arange(int(fdata[i].shape[0]))/fdata[i].shape[0] * sample_rate/2
                     ft = np.abs(fdata[i])
                 elif not tdata[i].shape[0] == 0:
                     print('Calculating Spectrum from timeseries')
@@ -286,7 +297,7 @@ class AnalysisWindow(QMainWindow):
             else:
                 print('No specturm to plot')
                 self.freqplots.append(None)
-                return
+                continue
         
         self.set_fft_data()
         
@@ -300,6 +311,52 @@ class AnalysisWindow(QMainWindow):
         #self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
         #                                                           yRange = (0,max_data),
         #                                                           padding = 0.2)
+        
+    def plot_tf(self):
+        self.plot_fft()
+        self.tfplots = []
+        # Switch to frequency domain tab
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.transfer_widget)
+        self.display_tabwidget.currentWidget().resetPlotWidget()
+        
+        input_chan = 0
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        
+        input_chan_data = fdata[input_chan]
+        
+        data_end = 0
+        max_data = 0
+        for i in range(len(self.cs)):
+            if i==input_chan:
+                self.tfplots.append(None)
+                self.tfplots.append(None)
+                continue
+            
+            if not fdata[i].shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                tf,cor = compute_transfer_function(input_chan_data,fdata[i])
+                print(tf.shape,fdata[i].shape)
+                f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
+                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
+                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
+                data_end = max(data_end,f[-1])
+                max_data = max(max_data,max(tf))
+            else:
+                print('No Transfer function to plot')
+                self.tfplots.append(None)
+                self.tfplots.append(None)
+                continue
+        
+        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
+        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(data_end/100)
+        
+        self.display_tabwidget.freqdomain_widget.sp1.setValue(data_end*0.4)
+        self.display_tabwidget.freqdomain_widget.sp2.setValue(data_end*0.6)
+        self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
+                                                                    xMax = data_end)
+        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
+                                                                   yRange = (0,max_data),
+                                                                   padding = 0.2)
     
     def set_fft_data(self):
         fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
@@ -335,9 +392,10 @@ class AnalysisWindow(QMainWindow):
                 print('No specturm to plot')
     
     def plot_sonogram(self):
-        #if not signal.shape[0] == 0:
-        #    self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
-        self.display_tabwidget.sonogram_widget.set_data(self.cs.get_channel_data(0, 'time_series'))
+        signal = self.cs.get_channel_data(0,'time_series')
+        if not signal.shape[0] == 0:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+            self.display_tabwidget.currentWidget().plot(signal)
         
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
@@ -348,21 +406,32 @@ class AnalysisWindow(QMainWindow):
     def display_channel_plots(self, selected_channel_list):
         self.display_tabwidget.timedomain_widget.resetPlotWidget()
         self.display_tabwidget.freqdomain_widget.resetPlotWidget()
+        self.display_tabwidget.transfer_widget.resetPlotWidget()
         timeplotitem = self.display_tabwidget.timedomain_widget.plotitem
         freqplotitem = self.display_tabwidget.freqdomain_widget.plotitem
+        tfplotitem = self.display_tabwidget.transfer_widget.plotitem
+
         for i, channel in enumerate(self.cs.channels):
             if i in selected_channel_list:
                 if i< len(self.timeplots):
-                    if self.timeplots[i]:
+                    if not self.timeplots[i]== None:
                         timeplotitem.addItem(self.timeplots[i])
                 else:
                     self.timeplots.append(None)
                     
                 if i< len(self.freqplots): 
-                    if self.freqplots[i]:
+                    if not self.freqplots[i]== None:
                         freqplotitem.addItem(self.freqplots[i])
                 else:
                     self.freqplots.append(None)
+                    
+                
+                if i< len(self.tfplots)/2: 
+                    if not self.tfplots[2*i] == None:
+                        tfplotitem.addItem(self.tfplots[2*i])
+                        tfplotitem.addItem(self.tfplots[2*i+1])
+                else:
+                    self.tfplots.append(None)
                 
     def add_import_data(self,mode):
         if mode == 'Extend':
