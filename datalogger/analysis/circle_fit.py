@@ -4,6 +4,7 @@ if __name__ == '__main__':
 
 from datalogger.api.channel import ChannelSet
 from datalogger.api.file_import import import_from_mat
+from datalogger.api.toolbox import Toolbox
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -670,6 +671,18 @@ class CircleFitWidget(QWidget):
         except:
             print('Load failed. Revert to default!')
             import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+
+
+class CircleFitToolbox(Toolbox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        
+        self.init_ui()
+    
+    def init_ui(self):
+        self.addTab(QWidget(), "Empty")
+
 
 if __name__ == '__main__':
     app = 0

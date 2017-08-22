@@ -34,7 +34,7 @@ class InteractivePlotWidget(QWidget):
         self.hline = pg.InfiniteLine(angle=0)
         self.linregion = pg.LinearRegionItem(bounds = [0,None])
         self.linregion.sigRegionChanged.connect(self.checkRegion)
-        self.resetPlotWidget()
+        self.clear()
         
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.vb)
@@ -71,7 +71,7 @@ class InteractivePlotWidget(QWidget):
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
             
-    def resetPlotWidget(self):
+    def clear(self):
         self.plotitem.clear()
         self.plotitem.addItem(self.vline)
         self.plotitem.addItem(self.hline)
@@ -99,6 +99,26 @@ class InteractivePlotWidget(QWidget):
         if self.updatetimer.isActive():
             self.updatetimer.stop()
         event.accept()
+    
+    def plot(self, x=None, y=None, *args, **kwargs):
+        self.update_limits(x, y)
+        self.canvas.plot(x, y, *args, **kwargs)
+    
+    def update_limits(self, x, y):
+        if x is not None and y is not None:
+            # Update the increment of the spinboxes
+            self.sp1.setSingleStep(x.max()/100)
+            self.sp2.setSingleStep(x.max()/100)
+        
+            # Set the linear region to be in view
+            #self.sp1.setValue(x.max()*0.4)
+            #self.sp2.setValue(x.max()*0.6)
+            
+            # Set the limits of the plotitem
+            self.plotitem.setLimits(xMin=0, xMax=x.max())
+            self.plotitem.setRange(xRange=(x.min(), x.max()),
+                                   yRange=(y.min(), y.max()),
+                                   padding=0.2)
 
 
 class CustomPlotWidget(pg.PlotWidget):
@@ -502,7 +522,7 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         self.canvas.addItem(self.z_img)
         
         self.canvas.autoRange()
-        self.canvas.viewbox.autoRange()
+        #self.canvas.viewbox.autoRange()
 
     def get_scale_fact(self, var):
         return var.max() / var.size
