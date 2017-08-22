@@ -475,6 +475,26 @@ class DataSet(object):
 
 
 class ChannelSelectWidget(QWidget):
+    """
+    A widget used in the Global Toolbox to select channels.
+    
+    This widget is used as the master controller of what channels are selected.
+    It allows channel selection by checkboxes, an 'Invert Selection' button, 
+    a 'Select All' button, a 'Deselect All' button, and Matlab-style list
+    indexing (eg. ``1:10:2, 4`` selects all the odd channels between 1 and 10
+    and channel 4). Possible additional features to be implemented include
+    selection by tag and by other channel metadata.
+    
+    When the channel selection is changed it emits a signal containing the
+    list of currently selected channels. Widgets can be set to receive this 
+    signal and set the channels that they are displaying to that list.
+    
+    Attributes
+    ----------
+    channel_selection_changed : pyqtSignal
+        The signal emitted when the selected channels are changed, containing
+        a list of :class:`Channel` objects
+    """
 
     channel_selection_changed = pyqtSignal(list)
 
@@ -598,6 +618,7 @@ class ChannelSelectWidget(QWidget):
             self.checkbox_list[i].setText("{}: {}".format(i, channel.name))
         
     def set_channel_set(self, channel_set):
+        """Set the :class:`ChannelSet` used by this widget."""
         self.cs = channel_set
 
         self.checkbox_list = []
@@ -617,12 +638,12 @@ class ChannelSelectWidget(QWidget):
             # Add it to the layout
             self.viewbox_layout.addWidget(self.checkbox_list[i])
             
-        
         # Send out a signal with the updated channels
-        #self.on_channel_selection_change()
+        self.on_channel_selection_change()
 
     def selected_channels_index(self):
-        """Get a list of channel numbers of all currently selected channels"""
+        """Return a list of channel numbers of all currently selected 
+        channels."""
         selected_list = []
 
         for i, channel in enumerate(self.cs.channels):
@@ -632,6 +653,8 @@ class ChannelSelectWidget(QWidget):
         return selected_list
     
     def selected_channels(self):
+        """Return a list of all the currently selected :class:`Channel`
+        objects."""
         selected_list = []
 
         for i, channel in enumerate(self.cs.channels):
