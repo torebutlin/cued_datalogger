@@ -5,7 +5,7 @@ from datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
 from datalogger.api.pyqtgraph_extensions import ColorMapPlotWidget
 from datalogger.api.toolbox import Toolbox
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushButton, QLabel, QSpinBox, QHBoxLayout, QGridLayout
 
 import numpy as np
@@ -165,8 +165,12 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         
 
 class SonogramToolbox(Toolbox):
+    """Toolbox containing Sonogram controls"""  
     
-    #sig_sonogram_control_change = pyqtSignal(name, value)
+    sig_window_width_changed = pyqtSignal(int)
+    sig_window_overlap_fraction_changed = pyqtSignal(int)
+    sig_num_contours_changed = pyqtSignal(int)
+    sig_contour_spacing_changed = pyqtSignal(int)
     
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -181,7 +185,6 @@ class SonogramToolbox(Toolbox):
 
 
     def init_ui(self):
-
         #------------Window width controls------------
         self.window_width_label = QLabel(self)
         self.window_width_label.setText("Window width")
@@ -189,8 +192,7 @@ class SonogramToolbox(Toolbox):
         self.window_width_control = BaseNControl(Qt.Vertical, self)
         self.window_width_control.set_power_range(0, 10)
         self.window_width_control.set_value(self.window_width)
-        # Update screen on change
-        #self.window_width_control.valueChanged.connect(self.sig_sonogram_control_change.emit)
+        self.window_width_control.valueChanged.connect(self.sig_window_width_changed)
 
         #------------Window increment controls------------
         self.window_overlap_fraction_label = QLabel(self)
@@ -199,8 +201,7 @@ class SonogramToolbox(Toolbox):
         self.window_overlap_fraction_control = BaseNControl(Qt.Vertical, self)
         self.window_overlap_fraction_control.set_power_range(0, 6)
         self.window_overlap_fraction_control.set_value(self.window_overlap_fraction)
-        # Update screen on change
-        #self.window_overlap_fraction_control.valueChanged.connect(self.sig_sonogram_control_change.emit)
+        self.window_overlap_fraction_control.valueChanged.connect(self.sig_window_overlap_fraction_changed.emit)
 
         #------------Contour spacing controls------------
         self.contour_spacing_label = QLabel(self)
@@ -220,8 +221,8 @@ class SonogramToolbox(Toolbox):
         self.contour_spacing_spinbox.setValue(self.contour_spacing_dB)
         self.contour_spacing_slider.setValue(self.contour_spacing_dB)
         # Update screen on change
-        #self.contour_spacing_slider.valueChanged.connect(self.sig_sonogram_control_change.emit)
-        #self.contour_spacing_spinbox.valueChanged.connect(self.sig_sonogram_control_change.emit)
+        self.contour_spacing_slider.valueChanged.connect(self.sig_contour_spacing_changed.emit)
+        self.contour_spacing_spinbox.valueChanged.connect(self.sig_contour_spacing_changed.emit)
 
         #------------Num contours controls------------
         self.num_contours_label = QLabel(self)
@@ -241,8 +242,8 @@ class SonogramToolbox(Toolbox):
         self.num_contours_spinbox.setValue(self.num_contours)
         self.num_contours_slider.setValue(self.num_contours)
         # Update screen on change
-        #self.num_contours_slider.valueChanged.connect(self.sig_sonogram_control_change.emit)
-        #self.num_contours_spinbox.valueChanged.connect(self.sig_sonogram_control_change.emit)
+        self.num_contours_slider.valueChanged.connect(self.sig_num_contours_changed.emit)
+        self.num_contours_spinbox.valueChanged.connect(self.sig_num_contours_changed.emit)
 
         #------------Matplotlib window controls---------
         # Create button
@@ -283,7 +284,7 @@ class SonogramToolbox(Toolbox):
         
         self.export_tab.setLayout(export_layout)        
 
-        # Add tabs
+        #-------------Add tabs-----------------
         self.addTab(self.plot_controls_tab, "Plot Controls")
         self.addTab(self.sonogram_controls_tab, "Sonogram Controls")
         self.addTab(self.export_tab, "Export")
