@@ -126,6 +126,7 @@ class AnalysisWindow(QMainWindow):
         wd4 = QWidget(self)
         hb4 = QVBoxLayout(wd4)
         circle_btn = QPushButton("Perform Circle Fitting",self.TF_toolbox)
+        circle_btn.clicked.connect(self.circle_fitting)
         hb4.addWidget(circle_btn)
         self.TF_toolbox.addTab(wd4, "TFTab")       
 
@@ -217,10 +218,10 @@ class AnalysisWindow(QMainWindow):
         t = np.arange(1000)/44100
         for i, channel in enumerate(self.cs.channels):
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
-            self.cs.add_channel_dataset(i,'spectrum', []) 
+            self.cs.add_channel_dataset(i,'fft', []) 
             
         self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
-        self.cs.add_channel_dataset(i,'spectrum', []) 
+        self.cs.add_channel_dataset(i,'fft', []) 
          
     def open_liveplot(self):
         if not self.liveplot:
@@ -275,7 +276,7 @@ class AnalysisWindow(QMainWindow):
         self.freqplots = []
         
         tdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'time_series')
-        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'fft')
         
         data_end = 0
         max_data = 0
@@ -289,7 +290,7 @@ class AnalysisWindow(QMainWindow):
                     print('Calculating Spectrum from timeseries')
                     f = np.arange(int(tdata[i].shape[0]/2)+1)/tdata[i].shape[0] * sample_rate
                     ft = rfft(tdata[i])
-                    self.cs.add_channel_dataset(i,'spectrum', ft)
+                    self.cs.add_channel_dataset(i,'fft', ft)
                     ft = np.abs(ft)
                     #self.cs.add_channel_dataset(i,'spectrum', ft)
                 self.freqplots.append(self.display_tabwidget.freqdomain_widget.plotitem.plot(f,ft,pen = self.plot_colours[i%len(self.plot_colours)]))
@@ -321,19 +322,27 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.currentWidget().resetPlotWidget()
         
         input_chan = 0
-        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-        
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'fft')
+        sdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        print(sdata)
         input_chan_data = fdata[input_chan]
         
         data_end = 0
         max_data = 0
         for i in range(len(self.cs)):
-            if i==input_chan:
-                self.tfplots.append(None)
+            if not sdata[i].shape[0] == 0:
+                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+                f = np.arange(int(sdata[i].shape[0]))/sdata[i].shape[0] * sample_rate/2
+                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(sdata[i]),pen = self.plot_colours[i%len(self.plot_colours)]))
                 self.tfplots.append(None)
                 continue
             
             if not fdata[i].shape[0] == 0:
+                if i==input_chan:
+                    self.tfplots.append(None)
+                    self.tfplots.append(None)
+                    continue
+            
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
                 tf,cor = compute_transfer_function(input_chan_data,fdata[i])
                 print(tf.shape,fdata[i].shape)
@@ -342,6 +351,7 @@ class AnalysisWindow(QMainWindow):
                 self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
                 data_end = max(data_end,f[-1])
                 max_data = max(max_data,max(tf))
+                self.cs.add_channel_dataset(i,'spectrum', tf)
             else:
                 print('No Transfer function to plot')
                 self.tfplots.append(None)
@@ -360,7 +370,7 @@ class AnalysisWindow(QMainWindow):
                                                                    padding = 0.2)
     
     def set_fft_data(self):
-        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'fft')
         print('Showing %s' % self.dataview_dropdown.currentText())
             
         for i in range(len(self.cs)):
@@ -400,7 +410,11 @@ class AnalysisWindow(QMainWindow):
         
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
-        fdata = self.cs.get_channel_data(0, "spectrum")
+        fdata = self.cs.get_channel_data(1, "spectrum")
+        print(fdata)
+        if fdata.shape[0] == 0:
+            print('No Transfer Function')
+            return
         self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
         self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         
@@ -442,7 +456,7 @@ class AnalysisWindow(QMainWindow):
         
         self.config_channelset()
         self.plot_time_series()
-        self.plot_fft()
+        self.plot_tf()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         
         self.import_widget.clear()
