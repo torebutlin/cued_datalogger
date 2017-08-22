@@ -36,7 +36,7 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.timedomain_widget = TimeDomainWidget(self)
         
         self.freqdomain_widget = FrequencyDomainWidget(self)
-        #self.sonogram_widget = SonogramWidget(self)
+        self.sonogram_widget = SonogramDisplayWidget(self)
         self.transfer_widget = TransferFunctionWidget(self)
         self.circle_widget = CircleFitWidget(self)
                 
@@ -234,6 +234,8 @@ class AnalysisWindow(QMainWindow):
         
     def plot_fft(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+        self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
+
     def plot_tf(self):
         self.plot_fft()
         self.tfplots = []
@@ -248,39 +250,27 @@ class AnalysisWindow(QMainWindow):
         input_chan_data = fdata[input_chan]
         data_end = 0
         max_data = 0
-            if i==input_chan:
+
         for i in range(len(self.cs)):
-                self.tfplots.append(None)
-                self.tfplots.append(None)
-                continue
+            self.tfplots.append(None)
+            self.tfplots.append(None)
+            continue
+        
+        if not fdata[i].shape[0] == 0:
+            sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
+            tf,cor = compute_transfer_function(input_chan_data,fdata[i])
+            print(tf.shape,fdata[i].shape)
+            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
+            f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
+            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
+            max_data = max(max_data,max(tf))
+            data_end = max(data_end,f[-1])
+        else:
+            print('No Transfer function to plot')
+            self.tfplots.append(None)
+            self.tfplots.append(None)
             
-            if not fdata[i].shape[0] == 0:
-                sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
-                tf,cor = compute_transfer_function(input_chan_data,fdata[i])
-                print(tf.shape,fdata[i].shape)
-                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
-                f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
-                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
-                max_data = max(max_data,max(tf))
-                data_end = max(data_end,f[-1])
-            else:
-                print('No Transfer function to plot')
-                self.tfplots.append(None)
-                self.tfplots.append(None)
-                continue
         
-        self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
-        self.display_tabwidget.freqdomain_widget.sp2.setSingleStep(data_end/100)
-        
-        self.display_tabwidget.freqdomain_widget.sp1.setValue(data_end*0.4)
-        self.display_tabwidget.freqdomain_widget.sp2.setValue(data_end*0.6)
-        self.display_tabwidget.freqdomain_widget.plotitem.setLimits(xMin = 0,
-                                                                    xMax = data_end)
-        self.display_tabwidget.freqdomain_widget.plotitem.setRange(xRange = (0,data_end),
-    
-                                                                   yRange = (0,max_data),
-                                                                   padding = 0.2)
-        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
   
     def plot_sonogram(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
@@ -295,13 +285,6 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
         """
         pass
-                
-                if i< len(self.tfplots)/2: 
-                    if not self.tfplots[2*i] == None:
-                        tfplotitem.addItem(self.tfplots[2*i])
-                        tfplotitem.addItem(self.tfplots[2*i+1])
-                else:
-                    self.tfplots.append(None)
                 
     def add_import_data(self,mode):
         if mode == 'Extend':
