@@ -157,5 +157,8 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+#-----------Options put in by Theo--------------------------------------------
+autodoc_mock_imports = ["datalogger"]
+
 
 
