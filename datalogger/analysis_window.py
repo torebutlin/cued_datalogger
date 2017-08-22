@@ -233,7 +233,7 @@ class AnalysisWindow(QMainWindow):
         
     def plot_fft(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
-        self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
 
     def plot_tf(self):
         self.plot_fft()
@@ -259,8 +259,8 @@ class AnalysisWindow(QMainWindow):
             sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
             tf,cor = compute_transfer_function(input_chan_data,fdata[i])
             print(tf.shape,fdata[i].shape)
-            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
             f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
+            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
             self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
             max_data = max(max_data,max(tf))
             data_end = max(data_end,f[-1])
