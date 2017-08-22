@@ -38,6 +38,8 @@ class BaseWidget(QWidget):
         pass
             
 class ChanToggleUI(BaseWidget):
+    toggleChanged = pyqtSignal(QPushButton)
+    lineToggled = pyqtSignal(str)
     def initUI(self):
         # Set up the channel tickboxes widget
         chans_toggle_layout = QVBoxLayout(self)
@@ -78,6 +80,9 @@ class ChanToggleUI(BaseWidget):
         self.desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
         self.inv_sel_btn.clicked.connect(self.invert_checkboxes)
         
+        self.chan_btn_group.buttonClicked.connect(self.emit_toggleChanged)
+        self.chan_text.returnPressed.connect(self.emit_lineToggled)
+        
     def invert_checkboxes(self):
         for btn in self.channels_box.findChildren(QCheckBox):
             btn.click()
@@ -86,8 +91,42 @@ class ChanToggleUI(BaseWidget):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
+                
+    def emit_toggleChanged(self,btn):
+        self.toggleChanged.emit(btn)
+        
+    def emit_lineToggled(self,string):
+        self.lineToggled.emit(string)
+
+class AdvToggleUI(BaseWidget):
+    def initUI(self):
+        self.setAutoFillBackground(True)
+        lay = QVBoxLayout(self)
+        
+        self.close_ext_toggle = QPushButton('<<',self)
+        self.chan_text2 = ChanLineText(self)
+        self.chan_text3 = QLineEdit(self)
+        self.chan_text4 = QLineEdit(self)
+        self.search_status = QStatusBar(self)
+        self.search_status.setSizeGripEnabled(False)
+        code_warning = QLabel('**Toggling by expression or tags**')
+        code_warning.setWordWrap(True)
+        lay.addWidget(self.close_ext_toggle)
+        lay.addWidget(code_warning)
+        lay.addWidget(QLabel('Expression:'))
+        lay.addWidget(self.chan_text2)
+        
+        lay.addWidget(QLabel('Hashtag Toggle:'))
+        lay.addWidget(self.chan_text3)
+        lay.addWidget(QLabel('Channel(s) Toggled:'))
+        lay.addWidget(self.chan_text4)
+        lay.addWidget(self.search_status)
+                
+        self.search_status.showMessage('Awaiting...')        
+        
         
 class ChanConfigUI(BaseWidget):
+    
     def initUI(self):
         chans_prop_layout = QVBoxLayout(self)
         chans_prop_layout.setContentsMargins(5,5,5,5)
@@ -114,7 +153,6 @@ class ChanConfigUI(BaseWidget):
         chan_settings_layout = QVBoxLayout()
         chan_settings_layout.setSpacing(0)
         
-                
         self.time_offset_config = []
         self.fft_offset_config = []
         
@@ -139,12 +177,14 @@ class ChanConfigUI(BaseWidget):
             settings_gbox.setLayout(gbox_layout)
             chan_settings_layout.addWidget(settings_gbox)
              
-        chans_prop_layout.addLayout(chan_settings_layout)
-        
+        chans_prop_layout.addLayout(chan_settings_layout) 
+           
     def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)
+        cbox.setSingleStep(num)    
 
 class DevConfigUI(BaseWidget):
+    recorderSelected = pyqtSignal()
+    configRecorder = pyqtSignal()
     def initUI(self):
          # Set the device settings form
         config_form = QFormLayout(self)
@@ -188,7 +228,16 @@ class DevConfigUI(BaseWidget):
         # Add a button to device setting form
         self.config_button = QPushButton('Set Config', self)
         config_form.addRow(self.config_button)
-    
+                
+        self.config_button.clicked.connect(self.emit_configRecorder)
+        self.typebtngroup.buttonReleased.connect(self.emit_recorderSelected)
+
+    def emit_configRecorder(self):
+        self.configRecorder.emit()
+        
+    def emit_recorderSelected(self):
+        self.recorderSelected.emit()
+        
 class StatusUI(BaseWidget):
     def initUI(self):
         stps_layout = QHBoxLayout(self)
@@ -210,6 +259,8 @@ class StatusUI(BaseWidget):
         stps_layout.addWidget(self.sshotbtn)
         
 class RecUI(BaseWidget):
+    startRecording = pyqtSignal()
+    cancelRecording = pyqtSignal()
     def initUI(self):
         rec_settings_layout = QVBoxLayout(self)
         global_settings_layout = QFormLayout()
@@ -224,10 +275,10 @@ class RecUI(BaseWidget):
         rec_settings_layout.addLayout(global_settings_layout)
         rec_settings_layout.addLayout(spec_settings_layout)
         
-        switch_rec_box = QComboBox(self)
-        switch_rec_box.addItems(['Normal','TF Avg.','TF Grid','<something>'])
-        switch_rec_box.currentIndexChanged.connect(spec_settings_layout.setCurrentIndex)
-        global_settings_layout.addRow(QLabel('Mode',self),switch_rec_box)
+        self.switch_rec_box = QComboBox(self)
+        self.switch_rec_box.addItems(['Normal','TF Avg.','TF Grid','<something>'])
+        self.switch_rec_box.currentIndexChanged.connect(spec_settings_layout.setCurrentIndex)
+        global_settings_layout.addRow(QLabel('Mode',self),self.switch_rec_box)
 
         # Add the recording setting UIs with the Validators
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
@@ -249,16 +300,8 @@ class RecUI(BaseWidget):
             self.rec_boxes.append(cbox)     
         
         self.normal_rec = QWidget(self)
-        # Add the record and cancel buttons
-        normal_rec_layout = QHBoxLayout(self.normal_rec)
-        self.recordbtn = QPushButton('Record',self)
-        self.recordbtn.resize(self.recordbtn.sizeHint())
-        normal_rec_layout.addWidget(self.recordbtn)
-        self.cancelbtn = QPushButton('Cancel',self)
-        self.cancelbtn.resize(self.cancelbtn.sizeHint())
-        self.cancelbtn.setDisabled(True)
-        normal_rec_layout.addWidget(self.cancelbtn)
-        
+        normal_rec_layout = QVBoxLayout(self.normal_rec)
+        normal_rec_layout.addWidget(QLabel('No Additional Options',self)) 
         spec_settings_layout.addWidget(self.normal_rec)
         
         self.tfavg_rec = QWidget(self)
@@ -272,8 +315,6 @@ class RecUI(BaseWidget):
         tfavg_rec_layout.addLayout(tfavg_settings)
         
         tflog_btn_layout = QHBoxLayout()
-        self.tf_log_btn = QPushButton('Log',self)
-        tflog_btn_layout.addWidget(self.tf_log_btn)
         self.undo_log_btn = QPushButton('Undo Last',self)
         tflog_btn_layout.addWidget(self.undo_log_btn)
         self.clear_log_btn = QPushButton('Clear',self)
@@ -292,31 +333,24 @@ class RecUI(BaseWidget):
         something_rec_layout.addWidget(QLabel('<something is here>',self))
         spec_settings_layout.addWidget(self.something_rec)
         
-class AdvToggleUI(BaseWidget):
-    def initUI(self):
-        self.setAutoFillBackground(True)
-        lay = QVBoxLayout(self)
+        # Add the record and cancel buttons
+        rec_btn_layout = QHBoxLayout(self.normal_rec)
+        self.recordbtn = QPushButton('Log',self)
+        self.recordbtn.resize(self.recordbtn.sizeHint())
+        self.recordbtn.clicked.connect(self.emit_startRecording)
+        rec_btn_layout.addWidget(self.recordbtn)
+        self.cancelbtn = QPushButton('Cancel',self)
+        self.cancelbtn.resize(self.cancelbtn.sizeHint())
+        self.cancelbtn.setDisabled(True)
+        self.recordbtn.clicked.connect(self.emit_cancelRecording)
+        rec_btn_layout.addWidget(self.cancelbtn)
+        rec_settings_layout.addLayout(rec_btn_layout)
         
-        self.close_ext_toggle = QPushButton('<<',self)
-        self.chan_text2 = ChanLineText(self)
-        self.chan_text3 = QLineEdit(self)
-        self.chan_text4 = QLineEdit(self)
-        self.search_status = QStatusBar(self)
-        self.search_status.setSizeGripEnabled(False)
-        code_warning = QLabel('**Toggling by expression or tags**')
-        code_warning.setWordWrap(True)
-        lay.addWidget(self.close_ext_toggle)
-        lay.addWidget(code_warning)
-        lay.addWidget(QLabel('Expression:'))
-        lay.addWidget(self.chan_text2)
-        
-        lay.addWidget(QLabel('Hashtag Toggle:'))
-        lay.addWidget(self.chan_text3)
-        lay.addWidget(QLabel('Channel(s) Toggled:'))
-        lay.addWidget(self.chan_text4)
-        lay.addWidget(self.search_status)
-                
-        self.search_status.showMessage('Awaiting...')        
+        def emit_startRecording(self):
+            self.startRecording.emit()
+            
+        def emit_cancelRecording(self):
+            self.cancelRecording.emit()
         
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)

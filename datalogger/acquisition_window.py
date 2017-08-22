@@ -126,16 +126,14 @@ class LiveplotApp(QMainWindow):
         
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
-        self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
-        self.chantoggle_UI.chan_text.returnPressed.connect(self.chan_line_toggle)
-        #self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
+        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
+        self.chantoggle_UI.lineToggled.connect(self.chan_line_toggle)
         
         chan_toggle_layout.addWidget(self.chantoggle_UI)
         
     #---------------------------ADDITIONAL UIs----------------------------
         self.chan_toggle_ext = AdvToggleUI(self.main_widget)
         self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
-        #self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
         chan_toggle_layout.addWidget(self.chan_toggle_ext)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
@@ -155,9 +153,12 @@ class LiveplotApp(QMainWindow):
         self.ResetChanConfigs()
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
+        NI_btn = self.devconfig_UI.typegroup.findChildren(QRadioButton)[1]
+        if not NI_drivers:
+            NI_btn.setDisabled(True)
         
-        self.devconfig_UI.typebtngroup.buttonReleased.connect(self.display_sources)
-        self.devconfig_UI.config_button.clicked.connect(self.ResetRecording)
+        self.devconfig_UI.recorderSelected.connect(self.display_sources)
+        self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         
         self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
@@ -210,8 +211,8 @@ class LiveplotApp(QMainWindow):
         self.RecUI.rec_boxes[2].textEdited.connect(self.toggle_trigger)
         self.RecUI.rec_boxes[4].textEdited.connect(self.change_threshold)
 
-        self.RecUI.recordbtn.pressed.connect(self.start_recording)
-        self.RecUI.cancelbtn.pressed.connect(self.cancel_recording)
+        self.RecUI.startRecording.connect(self.start_recording)
+        self.RecUI.cancelRecording.connect(self.cancel_recording)
        
         self.ResetRecConfigs()
         self.autoset_record_config('Time')
@@ -618,7 +619,12 @@ class LiveplotApp(QMainWindow):
                 # Disable buttons
                 for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
                     btn.setDisabled(True)
-                
+        
+        for UIs in self.RecUI.children():
+            try:
+                UIs.setDisabled(True)
+            except AttributeError:
+                continue       
         self.RecUI.cancelbtn.setEnabled(True)
     
     # Stop the data recording and transfer the recorded data to main window    
@@ -626,10 +632,17 @@ class LiveplotApp(QMainWindow):
         #self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+            
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
+        
         self.save_data(data)
         self.stats_UI.statusbar.clearMessage()
+        for UIs in self.RecUI.children():
+            try:
+                UIs.setEnabled(True)
+            except AttributeError:
+                continue
     
     # Cancel the data recording
     def cancel_recording(self):
