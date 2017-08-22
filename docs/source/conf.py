@@ -36,7 +36,8 @@ extensions = ['sphinx.ext.todo',
     'sphinx.ext.imgmath',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon']
+    #'sphinx.ext.napoleon']
+    'numpydoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -159,6 +160,9 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-autodoc_mock_imports = ["pyaudio", 'scipy', 'PyQt5', 'pyqtgraph', 'matplotlib',
-                        'pyDAQmx', 'numpy', 'datalogger']
+#autodoc_mock_imports = ["pyaudio", 'scipy', 'PyQt5', 'pyqtgraph', 'matplotlib',
+#                        'pyDAQmx', 'numpy', 'datalogger']
+
+autodoc_default_flags = ['show-inheritance']
+autodoc_member_order = 'alphabetical'
 

@@ -15,8 +15,6 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
 
 class ChannelSet(object):
     """
-     **Inherits:** :class:`object`
-
     A group of channels, with methods for setting and getting data.
 
     In theory, a user will only need to interact with the ChannelSet to
@@ -31,12 +29,13 @@ class ChannelSet(object):
     so that multiple channels can be selected easily. 
     
 
-    Attributes:
-        channels (MatlabList): A 
-            :class:`MatlabList <datalogger.api.numpy_extensions.MatlabList>`
-            of the channels in this set.
-        colormap (pyqtgraph.ColorMap): A :class:`ColorMap` used for colouring
-            the channels in this set
+    Attributes
+    ----------
+    channels : MatlabList
+        A list of the channels in this set.
+        
+    colormap : ColorMap
+        A :class:`ColorMap` used for colouring the channels in this set.
     """
     def __init__(self, initial_num_channels=0):
         """Create the ChannelSet with a number of blank channels as given by
@@ -63,7 +62,8 @@ class ChannelSet(object):
             channel.get_info()
 
     def add_channels(self, num_channels=1):
-        """Add new empty Channels to the end of the channel list."""
+        """Add a number (*num_channels*) of new empty Channels to the end of 
+        the channel list."""
         for i in range(num_channels):
             self.channels.append(Channel())
         
@@ -110,7 +110,7 @@ class ChannelSet(object):
 
     def set_channel_metadata(self, channel_index, metadata_dict):
         """Set metadata of the Channel specified by *channel_index* using
-        the keys and values given in *metadata_dict*"""
+        the keys and values given in *metadata_dict*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
@@ -138,7 +138,7 @@ class ChannelSet(object):
     def set_channel_colour(self, channel_index):
         """Set the RGBA tuple specifying the colour of the Channel at 
         *channel_index* to a value determined by its index and the ChannelSet
-        Colourmap"""
+        :attr:`colormap`."""
         self.channels[channel_index].colour = self.colormap.map(channel_index)
     
     def get_channel_ids(self, channel_index):
@@ -204,13 +204,11 @@ class ChannelSet(object):
 
     def get_channel_colour(self, channel_index):
         """Get the RGBA tuple specifying the colour of the Channel at 
-        **channel_index**"""
+        *channel_index*."""
         return self.channels[channel_index].colour
 
 class Channel(object):
     """
-    **Inherits:** :class:`object`
-
     Contains a group of DataSets and associated metadata.
 
     Channels are the basic structure used throughout the Datalogger. Channels
@@ -220,20 +218,35 @@ class Channel(object):
     performed - eg. a Fourier Transform produces a 'spectrum' DataSet.
     Channels also contain metadata about the data.
 
-    Attributes:
-        name (str): A human-readable string identifying this channel
-            (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
-        datasets (list): A list of this Channel's DataSets.
-        comments (str): A string for any additional comments.
-        tags (list): A list of tags (eg. ['accelerometer', 'input']) for quick 
-            selection and sorting.
-        sample_rate (float): The rate (in Hz) that the data was sampled at.
-        calibration_factor (float): #TODO#
-        transfer_function_type (str): Either 'None', 'displacement', 
-            'velocity', or 'acceleration'- indicates what type of transfer 
-            function is stored.
-        colour (tuple): An RGBA tuple for this channel's colour - usually set
-            by its parent ChannelSet
+    Attributes
+    ----------
+    name : str
+        A human-readable string identifying this channel
+        (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
+        
+    datasets : list
+        A list of this Channel's DataSets.
+        
+    comments : str
+        A string for any additional comments.
+        
+    tags : list
+        A list of tags (eg. ['accelerometer', 'input']) for quick 
+        selection and sorting.
+        
+    sample_rate : float
+        The rate (in Hz) that the data was sampled at.
+        
+    calibration_factor : float
+        #TODO#
+        
+    transfer_function_type : str
+        Either 'None', 'displacement', 'velocity', or 'acceleration'- 
+        indicates what type of transfer function is stored.
+        
+    colour : tuple
+        An RGBA tuple for this channel's colour - usually set
+        by its parent ChannelSet
     """
     def __init__(self, name='', datasets=[],
                  comments='',
@@ -394,36 +407,47 @@ class Channel(object):
 
 class DataSet(object):
     """
-    **Inherits:** :class:`object`
-
     A DataSet is the basic unit for data storage - a named 1d vector with units.
 
-    Attributes:
-        id\_ (str): A lower-case string containing the name of the data stored
-            in the vector. Permitted values are:
+    Attributes
+    ----------
+    id\_ : str
+        A lower-case string containing the name of the data stored
+        in the vector. See Notes for permitted values.
         
-                        * ``"time_series"`` - The raw input time series data
-                        * ``"time"``\*	- Calculated from the sample rate and 
-                            number of samples   
-                        * ``"frequency"``\* - Calculated from the sample rate 
-                            and number of samples (Hz)
-                        * ``"omega"``\* - Angular frequency (rad), calculated
-                            from the sample rate and number of samples                
-                        * ``"spectrum"`` - The complex spectrum given by the
-                            Fourier Transform                   
-                        * ``"sonogram"`` - The complex sonogram array, with
-                            shape (number of FFTs, frequencies)                
-                        * ``"sonogram_frequency"``\* - The frequency bins (Hz)
-                            used in plotting the sonogram. Calculated from the
-                            sonogram parameters.                
-                        * ``"sonogram_omega"``\* - The frequency bins (rad) 
-                            used in plotting the sonogram. Calculated from the
-                            sonogram parameters.
+    units : str
+        The SI unit in which the data is measured.
+        
+    data : ndarray
+        A numpy array of data points associated with id\_.
+        
+    Notes
+    -----
+    Permitted values for the DataSet :attr:`id\_` are:  
+        
+    * ``"time_series"`` - The raw input time series data
+         
+    * ``"time"``\*	- Calculated from the sample rate and number of samples
+      (units ``'s'``)
+      
+    * ``"frequency"``\* - Calculated from the sample rate and number of samples
+      (units ``'Hz'``)
+      
+    * ``"omega"``\* - Angular frequency (units ``'rad'``), calculated from 
+      the sample rate and number of samples  
+              
+    * ``"spectrum"`` - The complex spectrum given by the Fourier Transform           
+        
+    * ``"sonogram"`` - The complex sonogram array, with shape (number of
+      FFTs, frequencies) 
+               
+    * ``"sonogram_frequency"``\* - The frequency bins (Hz) used in plotting the
+      sonogram. Calculated from the sonogram parameters.    
+            
+    * ``"sonogram_omega"``\* - The frequency bins (rad) used in plotting the 
+      sonogram. Calculated from the sonogram parameters.
 
-                    (\* indicates that this DataSet is auto-generated 
-                     by the Channel)         
-        units (str): The SI unit in which the data is measured.
-        data (ndarray): A numpy array of data points associated with id\_.
+    (\* indicates that this DataSet is auto-generated by the Channel)      
     """
     def __init__(self, id_, units=None, data=np.array(0)):
         """Create a new DataSet with unique *id_*. Can either be initialised as

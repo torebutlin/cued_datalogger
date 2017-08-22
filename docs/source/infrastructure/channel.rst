@@ -25,7 +25,7 @@ ChannelSet
 ----------
 .. autoclass:: datalogger.api.channel.ChannelSet
   :members:
-
+  
   .. automethod:: datalogger.api.channel.ChannelSet.__init__
 
   .. automethod:: datalogger.api.channel.ChannelSet.__len__
