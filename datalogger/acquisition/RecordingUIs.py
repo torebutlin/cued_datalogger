@@ -60,25 +60,35 @@ class ChanToggleUI(BaseWidget):
         chans_toggle_layout.addWidget(scroll)
         
         # Set up the selection toggle buttons
-        sel_btn_layout = QGridLayout()    
         self.sel_all_btn = QPushButton('Select All', self)
         self.desel_all_btn = QPushButton('Deselect All',self)
         self.inv_sel_btn = QPushButton('Invert Selection',self)
-        for y,btn in zip((0,1,2),(self.sel_all_btn,self.desel_all_btn,self.inv_sel_btn)):
+        for btn in [self.sel_all_btn,self.desel_all_btn,self.inv_sel_btn]:
             btn.resize(btn.sizeHint())
-            sel_btn_layout.addWidget(btn,y,0)
-        
-        self.chan_text = ChanLineText(self)
-        sel_btn_layout.addWidget(self.chan_text,0,1)
-        self.toggle_ext_button = QPushButton('>>',self)
-        sel_btn_layout.addWidget(self.toggle_ext_button,1,1)
-        
-        chans_toggle_layout.addLayout(sel_btn_layout)
-        #chanUI_layout.addLayout(chans_settings_layout)
+            chans_toggle_layout.addWidget(btn)
         
         self.sel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Checked))
         self.desel_all_btn.clicked.connect(lambda: self.toggle_all_checkboxes(Qt.Unchecked))
         self.inv_sel_btn.clicked.connect(self.invert_checkboxes)
+        
+        self.chan_text = ChanLineText(self)
+        self.chan_text2 = QLineEdit(self)
+        self.chan_text3 = QLineEdit(self)
+        self.search_status = QStatusBar(self)
+        self.search_status.setSizeGripEnabled(False)
+        code_warning = QLabel('**Toggling by expression or tags**')
+        code_warning.setWordWrap(True)
+        chans_toggle_layout.addWidget(code_warning)
+        chans_toggle_layout.addWidget(QLabel('Expression:'))
+        chans_toggle_layout.addWidget(self.chan_text)
+        
+        chans_toggle_layout.addWidget(QLabel('Hashtag Toggle:'))
+        chans_toggle_layout.addWidget(self.chan_text2)
+        chans_toggle_layout.addWidget(QLabel('Channel(s) Toggled:'))
+        chans_toggle_layout.addWidget(self.chan_text3)
+        chans_toggle_layout.addWidget(self.search_status)
+                
+        self.search_status.showMessage('Awaiting...')
         
         self.chan_btn_group.buttonClicked.connect(self.emit_toggleChanged)
         self.chan_text.returnPressed.connect(self.emit_lineToggled)
@@ -97,33 +107,6 @@ class ChanToggleUI(BaseWidget):
         
     def emit_lineToggled(self,chan_list):
         self.lineToggled.emit(chan_list)
-
-class AdvToggleUI(BaseWidget):
-    def initUI(self):
-        self.setAutoFillBackground(True)
-        lay = QVBoxLayout(self)
-        
-        self.close_ext_toggle = QPushButton('<<',self)
-        self.chan_text2 = ChanLineText(self)
-        self.chan_text3 = QLineEdit(self)
-        self.chan_text4 = QLineEdit(self)
-        self.search_status = QStatusBar(self)
-        self.search_status.setSizeGripEnabled(False)
-        code_warning = QLabel('**Toggling by expression or tags**')
-        code_warning.setWordWrap(True)
-        lay.addWidget(self.close_ext_toggle)
-        lay.addWidget(code_warning)
-        lay.addWidget(QLabel('Expression:'))
-        lay.addWidget(self.chan_text2)
-        
-        lay.addWidget(QLabel('Hashtag Toggle:'))
-        lay.addWidget(self.chan_text3)
-        lay.addWidget(QLabel('Channel(s) Toggled:'))
-        lay.addWidget(self.chan_text4)
-        lay.addWidget(self.search_status)
-                
-        self.search_status.showMessage('Awaiting...')        
-        
         
 class ChanConfigUI(BaseWidget):
     

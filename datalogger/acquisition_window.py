@@ -21,7 +21,7 @@ import functools as fct
 import math
 
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
-                                                 StatusUI,RecUI,AdvToggleUI)
+                                                 StatusUI,RecUI)
 from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 
 import datalogger.acquisition.myRecorder as mR
@@ -133,11 +133,6 @@ class LiveplotApp(QMainWindow):
         self.chantoggle_UI.lineToggled.connect(self.chan_line_toggle)
         
         chan_toggle_layout.addWidget(self.chantoggle_UI)
-        
-    #---------------------------ADDITIONAL UIs----------------------------
-        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
-        self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
-        chan_toggle_layout.addWidget(self.chan_toggle_ext)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
@@ -331,30 +326,8 @@ class LiveplotApp(QMainWindow):
         else:
             self.plotlines[2*chan_num].setPen(None)
             self.plotlines[2*chan_num+1].setPen(None)
-    '''
-    def toggle_ext_toggling(self,toggle):
-        if toggle:
-            tlpoint = self.chantoggle_UI.chan_text.mapTo(self,QPoint(0,0))
-            self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
-            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),
-                                             self.chantoggle_UI.chan_text.width()*3,
-                                             self.chantoggle_UI.chan_text.height()*15)
-            if not self.chan_toggle_ext.isVisible():
-                self.chan_toggle_ext.show()
-        else:
-            self.chan_toggle_ext.hide()
-    ''' 
+
     def chan_line_toggle(self,chan_list):
-        '''
-        try:
-            expression = eval(string)
-        except:
-            t,v,_ = sys.exc_info()
-            print(t)
-            print(v)
-            print('Invalid expression')
-            return False
-        '''
         all_selected_chan = []
         for str_in in chan_list:
             r_in = str_in.split(':')
@@ -373,18 +346,7 @@ class LiveplotApp(QMainWindow):
                     if not r_in[2]:
                         r_in[2] = 1
                     all_selected_chan.extend(range(int(r_in[0]),int(r_in[1]),int(r_in[2])))
-                    
-                    
-        '''
-        if isinstance(expression,Sequence) and not isinstance(expression,str) :
-            for n in expression:
-                if isinstance(n,Sequence) and not isinstance(n,str):
-                    all_selected_chan.extend(n)
-                elif isinstance(expression,int):
-                    all_selected_chan.append(n)
-        elif isinstance(expression,int):
-            all_selected_chan.append(expression)
-        '''    
+
         print(all_selected_chan)
         
         if all_selected_chan:
@@ -694,8 +656,6 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
         
-    
-    
 #-------------------------CHANNEL LEVELS WIDGET--------------------------------       
     def change_threshold(self,arg):
         if type(arg) == str:
