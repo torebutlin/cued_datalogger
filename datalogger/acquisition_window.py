@@ -16,6 +16,7 @@ import pyqtgraph as pg
 
 import copy
 import numpy as np
+from numpy.fft import rfft
 import functools as fct
 import math
 
@@ -33,6 +34,7 @@ except NotImplementedError:
 except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
+from datalogger.analysis.transfer_function import compute_transfer_function
 
 from datalogger.api import channel as ch
 from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
@@ -86,6 +88,7 @@ class LiveplotApp(QMainWindow):
         self.gen_plot_col()
         self.ResetMetaData()
            
+        self.past_tf_data = []
         try:
             # Construct UI        
             self.initUI()
@@ -458,77 +461,6 @@ class LiveplotApp(QMainWindow):
     def meta_win_closed(self):
         self.meta_window = None
         self.update_chan_names()
-
-#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
-    # Pause/Resume the stream, unless explicitly specified to stop or not       
-    def toggle_rec(self,stop = None):
-        if not stop == None:
-            self.playing = stop
-            
-        if self.playing:
-            self.rec.stream_stop()
-            self.stats_UI.togglebtn.setText('Resume')
-            self.RecUI.recordbtn.setDisabled(True)
-        else:
-            self.rec.stream_start()
-            self.stats_UI.togglebtn.setText('Pause')
-            self.RecUI.recordbtn.setEnabled(True)
-        self.playing = not self.playing
-        # Clear the status, allow it to auto update itself
-        self.stats_UI.statusbar.clearMessage()
-        
-    # Get the current instantaneous plot and transfer to main window     
-    def get_snapshot(self):
-        snapshot = self.rec.get_buffer()
-        self.save_data(data = snapshot[:,0])
-        self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
-        
-#----------------------PLOT WIDGETS-----------------------------------              
-    # Updates the plots    
-    def update_line(self):
-        # TODO: can this be merge with update channel levels plot
-        data = self.rec.get_buffer()
-        window = np.hanning(data.shape[0])
-        weightage = np.exp(2* self.timedata / self.timedata[-1])
-        currentdata = data[len(data)-self.rec.chunk_size:,:]
-        currentdata -= np.mean(currentdata)
-        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
-        maxs = np.amax(abs(currentdata),axis = 0)
-        
-        self.chanlvl_bars.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR, right = maxs-rms,left = rms)
-        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
-
-        for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),))
-            zc = 0
-            if self.sig_hold[i] == Qt.Checked:
-                avg = np.mean(plotdata);
-                zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
-                if zero_crossings.shape[0]:
-                    zc = zero_crossings[0]+1
-                
-            self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
-            self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
-
-            fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data)** 0.5
-            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
-
-            if self.trace_counter[i]>self.trace_countlimit:
-                self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
-                self.peak_decays[i] += TRACE_DECAY
-            self.trace_counter[i] += 1
-            
-            if self.peak_trace[i]<maxs[i]:
-                self.peak_trace[i] = maxs[i]
-                self.peak_decays[i] = 0
-                self.trace_counter[i] = 0
-                
-            self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
-                           y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
-            
-            self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
-
 #----------------DEVICE CONFIGURATION WIDGET---------------------------    
     def config_setup(self):
         rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
@@ -595,6 +527,82 @@ class LiveplotApp(QMainWindow):
                     
         print(recType,configs)
         return(recType, configs)
+
+#----------------------PLOT WIDGETS-----------------------------------              
+    # Updates the plots    
+    def update_line(self):
+        # TODO: can this be merge with update channel levels plot
+        data = self.rec.get_buffer()
+        window = np.hanning(data.shape[0])
+        weightage = np.exp(2* self.timedata / self.timedata[-1])
+        currentdata = data[len(data)-self.rec.chunk_size:,:]
+        currentdata -= np.mean(currentdata)
+        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
+        maxs = np.amax(abs(currentdata),axis = 0)
+        
+        self.chanlvl_bars.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR, right = maxs-rms,left = rms)
+        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
+
+        for i in range(data.shape[1]):
+            plotdata = data[:,i].reshape((len(data[:,i]),))
+            zc = 0
+            if self.sig_hold[i] == Qt.Checked:
+                avg = np.mean(plotdata);
+                zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
+                if zero_crossings.shape[0]:
+                    zc = zero_crossings[0]+1
+                
+            self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
+            self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
+
+            fft_data = np.fft.rfft(plotdata* window * weightage)
+            psd_data = abs(fft_data)** 0.5
+            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
+
+            if self.trace_counter[i]>self.trace_countlimit:
+                self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
+                self.peak_decays[i] += TRACE_DECAY
+            self.trace_counter[i] += 1
+            
+            if self.peak_trace[i]<maxs[i]:
+                self.peak_trace[i] = maxs[i]
+                self.peak_decays[i] = 0
+                self.trace_counter[i] = 0
+                
+            self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
+                           y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
+            
+            self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
+
+#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+    # Pause/Resume the stream, unless explicitly specified to stop or not       
+    def toggle_rec(self,stop = None):
+        if not stop == None:
+            self.playing = stop
+            
+        if self.playing:
+            self.rec.stream_stop()
+            self.stats_UI.togglebtn.setText('Resume')
+            self.RecUI.recordbtn.setDisabled(True)
+        else:
+            self.rec.stream_start()
+            self.stats_UI.togglebtn.setText('Pause')
+            self.RecUI.recordbtn.setEnabled(True)
+        self.playing = not self.playing
+        # Clear the status, allow it to auto update itself
+        self.stats_UI.statusbar.clearMessage()
+        
+    # Get the current instantaneous plot and transfer to main window     
+    def get_snapshot(self):
+        snapshot = self.rec.get_buffer()
+        for i in range(snapshot.shape[1]):
+            self.live_chanset.set_channel_data(i,'time_series',snapshot[:,i])
+                
+        self.live_chanset.set_channel_metadata( tuple(range(snapshot.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        self.save_data()
+        self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
+        
     
 #---------------------------RECORDING WIDGET-------------------------------    
     # Start the data recording        
@@ -636,8 +644,40 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
         
-        self.save_data(data)
-        self.stats_UI.statusbar.clearMessage()
+        for i in range(data.shape[1]):
+                self.live_chanset.set_channel_data(i,'time_series',data[:,i])
+        
+        rec_mode = self.RecUI.get_recording_mode()
+        if rec_mode == 'TF Avg.':
+            ft_datas = []
+            tf_datas = []
+            for i in range(data.shape[1]):
+                ft = rfft(data[:,i])
+                self.live_chanset.add_channel_dataset(i,'fft',ft)
+                ft_datas.append(ft)
+                
+            in_chan = self.RecUI.input_chan_box.currentIndex()
+            input_chan_data = ft_datas[in_chan]
+            for i in range(data.shape[1]):
+                tf,_ = compute_transfer_function(input_chan_data,ft_datas[i])
+                tf_datas.append(tf)
+                #self.live_chanset.set_channel_data(i,'spectrum',avg_tf)
+                
+            self.past_tf_data.append(tf_datas)
+            print('Avg : %i' % len(self.past_tf_data))
+            #avg_tf = np.array(self.past_tf_data).mean(axis=2)
+            #for i in range(data.shape[1]): 
+            #    self.live_chanset.set_channel_data(i,'spectrum',avg_tf[i,:])
+            
+        elif rec_mode == 'TF Grid':
+            pass
+        else:
+            pass
+       
+        self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        self.save_data()
+        self.stats_UI.statusbar.clearMessage() 
         for UIs in self.RecUI.children():
             try:
                 UIs.setEnabled(True)
@@ -649,6 +689,11 @@ class LiveplotApp(QMainWindow):
         self.rec.record_cancel()
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+        for UIs in self.RecUI.children():
+            try:
+                UIs.setEnabled(True)
+            except AttributeError:
+                continue
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
         
@@ -921,12 +966,8 @@ class LiveplotApp(QMainWindow):
         
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
-    def save_data(self,data = None):
+    def save_data(self):
         print('Saving data...')
-        for i in range(data.shape[1]):
-            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
-        self.live_chanset.set_channel_metadata(tuple(range(data.shape[1]))
-                                                ,{'sample_rate':self.rec.rate})
         self.parent.cs = copy.copy(self.live_chanset)
         self.dataSaved.emit()        
         print('Data saved!')

@@ -39,7 +39,7 @@ class BaseWidget(QWidget):
             
 class ChanToggleUI(BaseWidget):
     toggleChanged = pyqtSignal(QPushButton)
-    lineToggled = pyqtSignal(str)
+    lineToggled = pyqtSignal(list)
     def initUI(self):
         # Set up the channel tickboxes widget
         chans_toggle_layout = QVBoxLayout(self)
@@ -95,8 +95,8 @@ class ChanToggleUI(BaseWidget):
     def emit_toggleChanged(self,btn):
         self.toggleChanged.emit(btn)
         
-    def emit_lineToggled(self,string):
-        self.lineToggled.emit(string)
+    def emit_lineToggled(self,chan_list):
+        self.lineToggled.emit(chan_list)
 
 class AdvToggleUI(BaseWidget):
     def initUI(self):
@@ -342,15 +342,18 @@ class RecUI(BaseWidget):
         self.cancelbtn = QPushButton('Cancel',self)
         self.cancelbtn.resize(self.cancelbtn.sizeHint())
         self.cancelbtn.setDisabled(True)
-        self.recordbtn.clicked.connect(self.emit_cancelRecording)
+        self.cancelbtn.clicked.connect(self.emit_cancelRecording)
         rec_btn_layout.addWidget(self.cancelbtn)
         rec_settings_layout.addLayout(rec_btn_layout)
         
-        def emit_startRecording(self):
-            self.startRecording.emit()
-            
-        def emit_cancelRecording(self):
-            self.cancelRecording.emit()
+    def get_recording_mode(self):
+        return self.switch_rec_box.currentText()
+    
+    def emit_startRecording(self):
+        self.startRecording.emit()
+        
+    def emit_cancelRecording(self):
+        self.cancelRecording.emit()
         
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)

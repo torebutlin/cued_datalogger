@@ -227,10 +227,15 @@ class AnalysisWindow(QMainWindow):
         if not self.liveplot:
             self.liveplot = lpUI.LiveplotApp(self)
             self.liveplot.done.connect(self.done_liveplot)
-            self.liveplot.dataSaved.connect(self.plot_time_series)
-            self.liveplot.dataSaved.connect(self.config_channelset)
+            self.liveplot.dataSaved.connect(self.receive_data)
             self.liveplot.show()
-
+            
+    def receive_data(self):
+        self.config_channelset()
+        self.plot_time_series()
+        self.plot_tf()
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
     def done_liveplot(self):
         self.liveplot.done.disconnect()
         self.liveplot = None
@@ -334,28 +339,28 @@ class AnalysisWindow(QMainWindow):
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
                 f = np.arange(int(sdata[i].shape[0]))/sdata[i].shape[0] * sample_rate/2
                 self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(sdata[i]),pen = self.plot_colours[i%len(self.plot_colours)]))
-                self.tfplots.append(None)
+                #self.tfplots.append(None)
                 continue
             
             if not fdata[i].shape[0] == 0:
-                if i==input_chan:
-                    self.tfplots.append(None)
-                    self.tfplots.append(None)
-                    continue
+            #    if i==input_chan:
+            #        self.tfplots.append(None)
+            #        self.tfplots.append(None)
+            #        continue
             
                 sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
-                tf,cor = compute_transfer_function(input_chan_data,fdata[i])
+                tf,_ = compute_transfer_function(input_chan_data,fdata[i])
                 print(tf.shape,fdata[i].shape)
                 f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
                 self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
-                self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
+                #self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
                 data_end = max(data_end,f[-1])
                 max_data = max(max_data,max(tf))
                 self.cs.add_channel_dataset(i,'spectrum', tf)
             else:
                 print('No Transfer function to plot')
                 self.tfplots.append(None)
-                self.tfplots.append(None)
+                #self.tfplots.append(None)
                 continue
         
         self.display_tabwidget.freqdomain_widget.sp1.setSingleStep(data_end/100)
@@ -441,10 +446,9 @@ class AnalysisWindow(QMainWindow):
                     self.freqplots.append(None)
                     
                 
-                if i< len(self.tfplots)/2: 
-                    if not self.tfplots[2*i] == None:
-                        tfplotitem.addItem(self.tfplots[2*i])
-                        tfplotitem.addItem(self.tfplots[2*i+1])
+                if i< len(self.tfplots): 
+                    if not self.tfplots[i] == None:
+                        tfplotitem.addItem(self.tfplots[i])
                 else:
                     self.tfplots.append(None)
                 
@@ -454,11 +458,7 @@ class AnalysisWindow(QMainWindow):
         elif mode == 'Replace':
             self.cs = self.import_widget.new_cs
         
-        self.config_channelset()
-        self.plot_time_series()
-        self.plot_tf()
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
-        
+        self.receive_data()
         self.import_widget.clear()
         
     
