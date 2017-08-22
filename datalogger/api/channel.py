@@ -30,11 +30,14 @@ class ChannelSet(object):
     channelset.channels[1, 2, range(5,10)], so that multiple channels can be
     selected easily.
 
-    ========================  ==========================================
+    ================================  ============================================
     **Attributes:**
     
-    channels (*MatlabList*)    A MatlabList of the channels in this set.
-    ========================  ==========================================
+    channels (*MatlabList*)            A MatlabList of the channels in this set.
+    
+    colormap (*pyqtgraph.ColorMap*)    A :class:`ColorMap` used for colouring the
+                                       channels in this set
+    ================================  ============================================
     """
     def __init__(self, initial_num_channels=0):
         """Create the ChannelSet with a number of blank channels as given by
@@ -120,9 +123,8 @@ class ChannelSet(object):
             self.channels[channel_index].set_metadata(metadata_dict)
      
     def update_channel_colours(self):
-        """Update all the channel colours to use the full colour range. This function
-        maps the range of channel indexes to the range 0-255 so that the full colour
-        range is used."""
+        """Update the :attr:`colormap` so that the channels are mapped to
+        the full range of colours, and update all the channel colours."""
         # Set the PyQtGraph colormap to encompass the full range
         blue = [0, 0, 255, 255]
         red = [255, 0, 0, 255]
@@ -213,7 +215,7 @@ class Channel(object):
     Channels also contain metadata about the data.
 
         colour: an RGBA tuple for this channel's colour
-    ==============================  ========================================================
+    ==============================  ===================================================================
     **Attributes:**
 
     name (*str*)                      A human-readable string identifying this channel 
@@ -230,9 +232,12 @@ class Channel(object):
 
     calibration_factor (*float*)      #TODO#
 
-    transfer_function_type (*str*)    Either 'displacement', 'velocity', or 'acceleration'- 
+    transfer_function_type (*str*)    Either 'None', 'displacement', 'velocity', or 'acceleration'- 
                                       indicates what type of transfer function is stored.
-    ==============================  ========================================================
+                                      
+    colour (*tuple*)                  An RGBA tuple for this channel's colour - usually set
+                                      by its parent ChannelSet
+    ==============================  ===================================================================
     """
     def __init__(self, name='', datasets=[],
                  comments='',
