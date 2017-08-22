@@ -8,7 +8,7 @@ import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication)
+    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
 from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
 QPalette,QPainter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
@@ -1176,13 +1176,24 @@ class StatusUI(BaseWidget):
         
 class RecUI(BaseWidget):
     def initUI(self):
-        rec_settings_layout = QFormLayout(self)
+        rec_settings_layout = QVBoxLayout(self)
+        global_settings_layout = QFormLayout()
+        spec_settings_layout = QStackedLayout()
         
         rec_title = QLabel('Recording Settings', self)
         rec_title.setStyleSheet('''
                                 font: 18pt;
                                 ''')
-        rec_settings_layout.addRow(rec_title)
+        rec_settings_layout.addWidget(rec_title)
+                
+        rec_settings_layout.addLayout(global_settings_layout)
+        rec_settings_layout.addLayout(spec_settings_layout)
+        
+        switch_rec_box = QComboBox(self)
+        switch_rec_box.addItems(['Normal','TF Avg.','TF Grid','<something>'])
+        switch_rec_box.currentIndexChanged.connect(spec_settings_layout.setCurrentIndex)
+        global_settings_layout.addRow(QLabel('Mode',self),switch_rec_box)
+
         # Add the recording setting UIs with the Validators
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
         default_values = [None,'1.0', '200','0','0.0']
@@ -1199,21 +1210,52 @@ class RecUI(BaseWidget):
                 if vd:
                     cbox.setValidator(vd)
                 
-            rec_settings_layout.addRow(QLabel(c,self),cbox)
-            self.rec_boxes.append(cbox)  
-
-        # Add the record and cancel buttons
-        rec_buttons_layout = QHBoxLayout()
+            global_settings_layout.addRow(QLabel(c,self),cbox)
+            self.rec_boxes.append(cbox)     
         
+        self.normal_rec = QWidget(self)
+        # Add the record and cancel buttons
+        normal_rec_layout = QHBoxLayout(self.normal_rec)
         self.recordbtn = QPushButton('Record',self)
         self.recordbtn.resize(self.recordbtn.sizeHint())
-        rec_buttons_layout.addWidget(self.recordbtn)
+        normal_rec_layout.addWidget(self.recordbtn)
         self.cancelbtn = QPushButton('Cancel',self)
         self.cancelbtn.resize(self.cancelbtn.sizeHint())
         self.cancelbtn.setDisabled(True)
-        rec_buttons_layout.addWidget(self.cancelbtn)
+        normal_rec_layout.addWidget(self.cancelbtn)
         
-        rec_settings_layout.addRow(rec_buttons_layout)
+        spec_settings_layout.addWidget(self.normal_rec)
+        
+        self.tfavg_rec = QWidget(self)
+        tfavg_rec_layout = QVBoxLayout(self.tfavg_rec)
+        tfavg_settings = QFormLayout(self.tfavg_rec)
+        self.input_chan_box = QComboBox(self)
+        self.input_chan_box.addItems([str(i) for i in range(3)])
+        tfavg_settings.addRow(QLabel('Input',self),self.input_chan_box)
+        self.avg_input_box = QLineEdit(self)
+        tfavg_settings.addRow(QLabel('Averages',self),self.avg_input_box)
+        tfavg_rec_layout.addLayout(tfavg_settings)
+        
+        tflog_btn_layout = QHBoxLayout()
+        self.tf_log_btn = QPushButton('Log',self)
+        tflog_btn_layout.addWidget(self.tf_log_btn)
+        self.undo_log_btn = QPushButton('Undo Last',self)
+        tflog_btn_layout.addWidget(self.undo_log_btn)
+        self.clear_log_btn = QPushButton('Clear',self)
+        tflog_btn_layout.addWidget(self.clear_log_btn)        
+        tfavg_rec_layout.addLayout(tflog_btn_layout)
+        
+        spec_settings_layout.addWidget(self.tfavg_rec)
+        
+        self.tfgrid_rec = QWidget(self)
+        tfgrid_rec_layout = QVBoxLayout(self.tfgrid_rec)
+        tfgrid_rec_layout.addWidget(QLabel('Nothing is here :(',self))
+        spec_settings_layout.addWidget(self.tfgrid_rec)
+        
+        self.something_rec = QWidget(self)
+        something_rec_layout = QVBoxLayout(self.something_rec)
+        something_rec_layout.addWidget(QLabel('<something is here>',self))
+        spec_settings_layout.addWidget(self.something_rec)
         
 class AdvToggleUI(BaseWidget):
     def initUI(self):
