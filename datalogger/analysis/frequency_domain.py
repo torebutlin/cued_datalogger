@@ -41,8 +41,8 @@ class FrequencyDomainWidget(InteractivePlotWidget):
             # If no spectrum exists, calculate one
             print("Recalculating spectrum...")
             units = channel.get_units("time_series")
-            spectrum = scipy.fftpack.rfft(channel.get_data("time_series"))
-            
+            #spectrum = scipy.fftpack.rfft(channel.get_data("time_series"))
+            spectrum = np.fft.rfft(channel.get_data("time_series"))
             if not channel.is_dataset("spectrum"):
                 channel.add_dataset("spectrum", units, spectrum)
             else:
