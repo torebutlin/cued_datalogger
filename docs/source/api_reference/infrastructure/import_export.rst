@@ -4,7 +4,7 @@ Import & Export
 
 Importing
 ---------
-.. autofunc:: datalogger.api.file_import.import_from_mat
+.. autofunction:: datalogger.api.file_import.import_from_mat
 
 
 Exporting
