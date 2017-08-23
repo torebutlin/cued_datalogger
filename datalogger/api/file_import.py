@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)
 from PyQt5.QtCore import  Qt
 
+
 def import_from_mat(file, channel_set):
     # Load the matlab file as a dict
     file = sio.loadmat(file)

@@ -3,6 +3,18 @@ import sys
 import subprocess
 from os.path import isfile
 
+import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return MagicMock()
+
+MOCK_MODULES = ['pyaudio']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+
 def version():
     """Get version number"""
     with open('datalogger/VERSION') as f:
@@ -35,12 +47,8 @@ setup(name='cued-datalogger',
                       'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
                       'matplotlib>=1.5.1',
-                      'PyDAQmx>=1.3.2',
-                      'pyaudio>=0.2.11'],
-      entry_points={
-        'console_scripts': ['DataLogger_dbg = datalogger.__main__:run_datalogger_full'],
-        'gui_scripts': ['DataLogger = datalogger.__main__:run_datalogger_full']},
+                      'PyDAQmx>=1.3.2'],
+                      #'pyaudio>=0.2.11'],
       zip_safe=True,
       include_package_data=True)
-# -*- coding: utf-8 -*-
 
