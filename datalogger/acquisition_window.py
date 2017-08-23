@@ -214,6 +214,8 @@ class LiveplotApp(QMainWindow):
 
         self.RecUI.startRecording.connect(self.start_recording)
         self.RecUI.cancelRecording.connect(self.cancel_recording)
+        self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
+        self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
        
         self.right_splitter.addWidget(self.RecUI)
         
@@ -606,50 +608,38 @@ class LiveplotApp(QMainWindow):
             
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
-        
+        ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
         for i in range(data.shape[1]):
-                self.live_chanset.set_channel_data(i,'time_series',data[:,i])
+            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
+            ft = rfft(data[:,i])
+            self.live_chanset.add_channel_dataset(i,'spectrum',ft)
+            ft_datas[:,i] = ft
         
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'TF Avg.':
-            ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
-            
-            for i in range(data.shape[1]):
-                ft = rfft(data[:,i])
-                self.live_chanset.add_channel_dataset(i,'spectrum',ft)
-                ft_datas[:,i] = ft
-            
-            in_chan = self.RecUI.input_chan_box.currentIndex()
+            chans = list(range(self.rec.channels))
+            in_chan = self.RecUI.get_input_channel()
+            chans.remove(in_chan)
             input_chan_data = ft_datas[:,in_chan]
             self.autospec_in_tally.append(compute_autospec(input_chan_data))
             
             autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
             crossspec = np.zeros(autospec_out.shape,dtype = np.complex)
-            for i in range(ft_datas.shape[1]):
-                if i< in_chan:
-                    autospec_out[:,i] = compute_autospec(ft_datas[:,i])
-                    crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,i])
-                elif i> in_chan:
-                    autospec_out[:,i-1] = compute_autospec(ft_datas[:,i])
-                    crossspec[:,i-1] = compute_crossspec(input_chan_data,ft_datas[:,i])
+            for i,chan in enumerate(chans):
+                autospec_out[:,i] = compute_autospec(ft_datas[:,chan])
+                crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,chan])
                     
             self.autospec_out_tally.append(autospec_out)
             self.crossspec_tally.append(crossspec)     
             auto_in_sum = np.array(self.autospec_in_tally).sum(axis = 0)
             auto_out_sum = np.array(self.autospec_out_tally).sum(axis = 0)
             cross_sum = np.array(self.crossspec_tally).sum(axis = 0)     
-            for i in range(ft_datas.shape[1]):
-                if i == in_chan:
-                    continue
-                elif i< in_chan:
-                    tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
-                elif i> in_chan:
-                    tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i-1],cross_sum[:,i-1])
-                
+            for i,chan in enumerate(chans):
+                tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
                 print(tf_avg)
-                self.live_chanset.add_channel_dataset(i,'TF',tf_avg)
-            
-            print(len(self.autospec_in_tally))
+                self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
+        
+            self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
             
         elif rec_mode == 'TF Grid':
             pass
@@ -665,6 +655,20 @@ class LiveplotApp(QMainWindow):
                 UIs.setEnabled(True)
             except AttributeError:
                 continue
+            
+    def undo_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally.pop()
+            self.autospec_out_tally.pop()
+            self.crossspec_tally.pop()
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+        
+    def remove_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally = []
+            self.autospec_out_tally = []
+            self.crossspec_tally = []
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
     
     # Cancel the data recording
     def cancel_recording(self):

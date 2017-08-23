@@ -168,6 +168,7 @@ class ChanConfigUI(BaseWidget):
 class DevConfigUI(BaseWidget):
     recorderSelected = pyqtSignal()
     configRecorder = pyqtSignal()
+    
     def initUI(self):
          # Set the device settings form
         config_form = QFormLayout(self)
@@ -244,6 +245,10 @@ class StatusUI(BaseWidget):
 class RecUI(BaseWidget):
     startRecording = pyqtSignal()
     cancelRecording = pyqtSignal()
+    
+    undoLastTfAvg = pyqtSignal()
+    clearTfAvg = pyqtSignal()
+    
     def initUI(self):
         
         rec_settings_layout = QVBoxLayout(self)
@@ -295,16 +300,21 @@ class RecUI(BaseWidget):
         tfavg_rec_layout = QVBoxLayout(self.tfavg_rec)
         tfavg_settings = QFormLayout(self.tfavg_rec)
         self.input_chan_box = QComboBox(self)
-        self.input_chan_box.addItems([str(i) for i in range(3)])
         tfavg_settings.addRow(QLabel('Input',self),self.input_chan_box)
-        self.avg_input_box = QLineEdit(self)
-        tfavg_settings.addRow(QLabel('Averages',self),self.avg_input_box)
+        avg_layout = QHBoxLayout()
+        #self.avg_input_box = QLineEdit(self)
+        self.avg_count_box = QLabel('Count: 0',self)
+        #avg_layout.addWidget(self.avg_input_box)
+        avg_layout.addWidget(self.avg_count_box)
+        tfavg_settings.addRow(QLabel('Averages',self),avg_layout)
         tfavg_rec_layout.addLayout(tfavg_settings)
         
         tflog_btn_layout = QHBoxLayout()
         self.undo_log_btn = QPushButton('Undo Last',self)
+        self.undo_log_btn.clicked.connect(self.undoLastTfAvg.emit)
         tflog_btn_layout.addWidget(self.undo_log_btn)
         self.clear_log_btn = QPushButton('Clear',self)
+        self.clear_log_btn.clicked.connect(self.clearTfAvg.emit)
         tflog_btn_layout.addWidget(self.clear_log_btn)        
         tfavg_rec_layout.addLayout(tflog_btn_layout)
         
@@ -324,12 +334,12 @@ class RecUI(BaseWidget):
         rec_btn_layout = QHBoxLayout(self.normal_rec)
         self.recordbtn = QPushButton('Log',self)
         self.recordbtn.resize(self.recordbtn.sizeHint())
-        self.recordbtn.clicked.connect(self.emit_startRecording)
+        self.recordbtn.clicked.connect(self.startRecording.emit)
         rec_btn_layout.addWidget(self.recordbtn)
         self.cancelbtn = QPushButton('Cancel',self)
         self.cancelbtn.resize(self.cancelbtn.sizeHint())
         self.cancelbtn.setDisabled(True)
-        self.cancelbtn.clicked.connect(self.emit_cancelRecording)
+        self.cancelbtn.clicked.connect(self.cancelRecording.emit)
         rec_btn_layout.addWidget(self.cancelbtn)
         rec_settings_layout.addLayout(rec_btn_layout)
 
@@ -338,9 +348,18 @@ class RecUI(BaseWidget):
         self.rec = recorder
         self.reset_configs()
         self.autoset_record_config('Time')
+        if self.rec.channels <2:
+            self.tfavg_rec.setDisabled(True)
+        else:
+            self.tfavg_rec.setEnabled(True)
+            self.input_chan_box.clear()
+            self.input_chan_box.addItems([str(i) for i in range(self.rec.channels)])
         
     def get_recording_mode(self):
         return self.switch_rec_box.currentText()
+    
+    def get_input_channel(self):
+        return self.input_chan_box.currentIndex()
     
     # Read the recording setting inputs
     def get_record_config(self, *arg):
@@ -389,12 +408,9 @@ class RecUI(BaseWidget):
                      QIntValidator(-1,self.rec.chunk_size)]
         for cbox,vd in zip(self.rec_boxes[1:-2],validators):
             cbox.setValidator(vd)
-    
-    def emit_startRecording(self):
-        self.startRecording.emit()
-        
-    def emit_cancelRecording(self):
-        self.cancelRecording.emit()
+            
+    def update_TFavg_count(self,val):
+        self.avg_count_box.setText('Count: %i' % val)
         
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)
