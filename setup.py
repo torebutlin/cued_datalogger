@@ -1,12 +1,7 @@
 from setuptools import setup
 import sys
-import subprocess
-from os.path import isfile
 
-try:
-    from unittest.mock import MagicMock
-except:
-    from mock import Mock as MagicMock
+from mock import Mock as MagicMock
 
 class Mock(MagicMock):
     @classmethod
@@ -14,7 +9,13 @@ class Mock(MagicMock):
             return MagicMock()
 
 
-MOCK_MODULES = ['pyaudio', 'PyQt5', 'scipy']
+MOCK_MODULES = ['pyaudio',
+                'PyQt5',
+                'numpy',
+                'scipy',
+                'pyqtgraph',
+                'matplotlib',
+                'PyDAQmx']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
@@ -40,17 +41,6 @@ setup(name='cued-datalogger',
                 'datalogger/acquisition',
                 'datalogger/analysis',
                 'datalogger/api'],
-      # TODO
-      # If you include this in the setup code, when it tries to install
-      # itself in an Anaconda environment, a lot of things break. Fix this.
-      # (currently the workaround is telling the user to install some stuff)
-      install_requires=[
-                      #'PyQt5>=5.9',
-                      'numpy>=1.11.3',
-                      'pyqtgraph>=0.9.10',
-                      'matplotlib>=1.5.1',
-                      'PyDAQmx>=1.3.2'],
-                      #'pyaudio>=0.2.11'],
       zip_safe=True,
       include_package_data=True)
 
