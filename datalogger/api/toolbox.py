@@ -8,7 +8,7 @@ class Toolbox(QSplitter):
     expanded. 
     
     A Toolbox is designed to be a container for sets of controls, grouped into
-    'pages' and accessible by a TabBar, in the same way a TabWidget. 
+    'pages' and accessible by a TabBar, in the same way as a TabWidget. 
     A page is normally a QWidget with a layout that contains controls.
     A widget can be added as a new tab using :meth:`addTab`.
     The Toolbox has slots for triggering its collapse and expansion, both in an
@@ -153,7 +153,8 @@ class MasterToolbox(QStackedWidget):
     
     Attributes
     ----------
-    See :class:`PyQt5.QtWidgets.QStackedWidget` for inherited attributes.
+    Inherited attributes :
+        See ``PyQt5.QtWidgets.QStackedWidget`` for inherited attributes.
     """
     def __init__(self, parent=None):
         super().__init__(parent)

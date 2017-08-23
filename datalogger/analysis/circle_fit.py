@@ -3,8 +3,10 @@ if __name__ == '__main__':
     sys.path.append('..')
 
 from datalogger.api.channel import ChannelSet
+from datalogger.api.workspace import Workspace
 from datalogger.api.file_import import import_from_mat
 from datalogger.api.toolbox import Toolbox
+from datalogger.api.numpy_extensions import to_dB, from_dB
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -18,33 +20,55 @@ from scipy.optimize import curve_fit
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
-pg.setConfigOption('background', 'w')
-pg.setConfigOption('foreground', 'k')
-pg.setConfigOption('antialias', True)
-defaultpen = pg.mkPen('k')
-
 
 # External functions ----------------------------------------------------------
-def to_dB(x):
-    """A simple function that converts x to dB"""
-    return 20*np.log10(x)
-
-
-def from_dB(x):
-    """A simple function that converts x in dB to a ratio over 1"""
-    return 10**(x/20)
-
 
 def sdof_modal_peak(w, wr, zr, cr, phi):
-    """A modal peak"""
+    """Return a modal peak generated from the given parameters.
+    
+    Parameters
+    ----------
+    w : ndarray or float
+        An array of omega (angular frequency) values.
+    wr : float
+        The resonant angular frequency.
+    zr : float
+        The damping factor.
+    cr : float
+        The magnitude of the modal constant.
+    phi : float
+        The phase of the modal constant"""
     return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
 
-def circle_fit(data):
-    # Take the real and imaginary parts
-    x = data.real
-    y = data.imag
-
+def fit_circle_to_data(x, y):
+    """
+    Fit a geometric circle to the data given in x, y.
+        
+    Parameters
+    ----------
+    x : ndarray
+    y : ndarray
+    
+    Returns
+    -------
+    x0 : float
+        The x-coordinate of the centre of the circle.
+    y0 : float
+        The y-coordinate of the centre of the circle.
+    R0 : float
+        The radius of the circle.
+        
+    Notes
+    -----
+    This function solves a standard eigenvector formulation of the circle fit
+    problem. See [1]_ for the derivation.
+    
+    References
+    ----------
+    .. [1]  Maia, N.M.M., Silva, J.M.M. et al, Theoretical and Experimental
+       Modal Analysis, p221, Research Studies Press, 1997.
+    """
     # Use the method from "Theoretical and Experimental Modal Analysis" p221
     # Set up the matrices
     xs = np.sum(x)
@@ -52,7 +76,7 @@ def circle_fit(data):
     xx = np.square(x).sum()
     yy = np.square(y).sum()
     xy = np.sum(x*y)
-    L = data.size
+    L = x.size
     xxx = np.sum(x*np.square(x))
     yyy = np.sum(y*np.square(y))
     xyy = np.sum(x*np.square(y))
@@ -561,7 +585,7 @@ class CircleFitWidget(QWidget):
 
     def update_from_plot(self):
         # Recalculate the geometric circle fit
-        self.x0, self.y0, self.R0 = circle_fit(self.a_reg)
+        self.x0, self.y0, self.R0 = fit_circle_to_data(self.a_reg.real, self.a_reg.imag)
 
         # Recalculate the parameters
         wr, zr, cr, phi = self.sdof_get_parameters()
@@ -685,6 +709,8 @@ class CircleFitToolbox(Toolbox):
 
 
 if __name__ == '__main__':
+    defaultpen = 'k'
+    CurrentWorkspace = Workspace()
     app = 0
 
     app = QApplication(sys.argv)
@@ -712,7 +738,7 @@ if __name__ == '__main__':
     cs = ChannelSet()
     
     #c.load_tf(cs)
-    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+    import_from_mat("../../tests/transfer_function_clean.mat", cs)
     a = cs.get_channel_data(0, "spectrum")
     c.transfer_function_type = 'acceleration'
     c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)

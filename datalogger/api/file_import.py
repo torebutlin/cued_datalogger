@@ -22,6 +22,8 @@ def import_from_mat(file, channel_set=None):
     if channel_set is None:
         new_channel_set = True
         channel_set = ChannelSet()
+    else:
+        new_channel_set = False
     
     # Load the matlab file as a dict
     file = sio.loadmat(file)
