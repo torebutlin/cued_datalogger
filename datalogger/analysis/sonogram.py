@@ -90,8 +90,8 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         self.contour_spacing_dB = contour_spacing_dB
         self.num_contours = num_contours
 
-        self.canvas.setLabel('bottom', "Frequency", "Hz")
-        self.canvas.setLabel('left', "Time", "s")
+        self.plotWidget.setLabel('bottom', "Frequency", "Hz")
+        self.plotWidget.setLabel('left', "Time", "s")
 
         self.show()
 

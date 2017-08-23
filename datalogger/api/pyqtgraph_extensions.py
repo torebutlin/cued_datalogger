@@ -18,45 +18,49 @@ from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer
 
 
 class InteractivePlotWidget(QWidget):
-    """Widget for the tabs inside Analysis Window"""
+    """A QWidget containing a :class:`CustomPlotWidget` with mouse tracking
+    crosshairs, a :class:`LinearRegionItem`, and spinboxes 
+    to display and control the values of the bounds of the linear region."""
     def __init__(self,parent):
         super().__init__()
         
-        vbox = QVBoxLayout(self)
+        layout = QVBoxLayout(self)
+
+        # # Set up the plotWidget        
+        self.plotWidget = pg.PlotWidget(self)
+
+        self.plotItem = self.plotWidget.getPlotItem()
+        self.plotItem.disableAutoRange()
         
-        # Set up data time plot
-        self.canvas = pg.PlotWidget(self, background = 'default')
-        vbox.addWidget(self.canvas)
-        self.plotitem = self.canvas.getPlotItem()
-        self.plotitem.disableAutoRange()
-        self.vb = self.canvas.getViewBox()
+        self.viewBox = self.plotWidget.getViewBox()
+        
         self.vline = pg.InfiniteLine(angle=90)
         self.hline = pg.InfiniteLine(angle=0)
-        self.linregion = pg.LinearRegionItem(bounds = [0,None])
-        self.linregion.sigRegionChanged.connect(self.checkRegion)
-        self.clear()
         
-        self.label = pg.LabelItem(angle = 0)
-        self.label.setParentItem(self.vb)
-        #self.vb.addItem(self.label)
+        self.region = pg.LinearRegionItem(bounds=[0, None])
+        self.region.sigRegionChanged.connect(self.checkRegion)
         
-        #self.proxy = pg.SignalProxy(self.canvas.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+        layout.addWidget(self.plotWidget)
         
-        ui_layout = QHBoxLayout()
-        t1 = QLabel('Lower',self)
+        #self.label = pg.LabelItem(angle = 0)
+        #self.label.setParentItem(self.viewBox)
+        #viewBox.addItem(self.label)
+        
+        #self.proxy = pg.SignalProxy(self.plotWidget.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+                
+        # # Set up the controls
+        control_layout = QHBoxLayout()
         self.sp1 = pg.SpinBox(self,bounds = (0,None))
-        t2 = QLabel('Upper',self)
         self.sp2 = pg.SpinBox(self,bounds = (0,None))
         self.zoom_btn = QPushButton('Zoom',self)
-        ui_layout.addWidget(t1)
-        ui_layout.addWidget(self.sp1)
-        ui_layout.addWidget(t2)
-        ui_layout.addWidget(self.sp2)
-        ui_layout.addWidget(self.zoom_btn)
-        
-        
         self.zoom_btn.clicked.connect(self.zoomToRegion)
-        vbox.addLayout(ui_layout)
+        
+        control_layout.addWidget(QLabel('Lower', self))
+        control_layout.addWidget(self.sp1)
+        control_layout.addWidget(QLabel('Upper', self))
+        control_layout.addWidget(self.sp2)
+        control_layout.addWidget(self.zoom_btn)
+        layout.addLayout(control_layout)
         
         self.updatetimer = QTimer(self)
         self.updatetimer.timeout.connect(self.updateRegion)
@@ -64,35 +68,35 @@ class InteractivePlotWidget(QWidget):
         
     def mouseMoved(self,evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
-        if self.plotitem.sceneBoundingRect().contains(pos):
-            mousePoint = self.vb.mapSceneToView(pos)
+        if self.plotItem.sceneBoundingRect().contains(pos):
+            mousePoint = self.viewBox.mapSceneToView(pos)
             self.label.setText(("<span style='font-size: 12pt;color: black'>x=%0.4f,   <span style='color: red'>y1=%0.4f</span>" 
                                 % (mousePoint.x(), mousePoint.y()) ))
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
             
     def clear(self):
-        self.plotitem.clear()
-        self.plotitem.addItem(self.vline)
-        self.plotitem.addItem(self.hline)
-        self.plotitem.addItem(self.linregion)
+        self.plotItem.clear()
+        self.plotItem.addItem(self.vline)
+        self.plotItem.addItem(self.hline)
+        self.plotItem.addItem(self.region)
         
     def updateRegion(self):
         pos = [self.sp1.value(),self.sp2.value()]
         pos.sort()
-        self.linregion.setRegion(pos)
+        self.region.setRegion(pos)
         self.sp1.setValue(pos[0])
         self.sp2.setValue(pos[1])
         
     def checkRegion(self):
-        pos = list(self.linregion.getRegion())
+        pos = list(self.region.getRegion())
         pos.sort()
         self.sp1.setValue(pos[0])
         self.sp2.setValue(pos[1])
         
     def zoomToRegion(self):
-        pos = self.linregion.getRegion()
-        self.plotitem.setXRange(pos[0],pos[1],padding = 0.1)
+        pos = self.region.getRegion()
+        self.plotItem.setXRange(pos[0],pos[1],padding = 0.1)
         
     def closeEvent(self,event):
         #self.proxy.disconnect()
@@ -102,7 +106,7 @@ class InteractivePlotWidget(QWidget):
     
     def plot(self, x=None, y=None, *args, **kwargs):
         self.update_limits(x, y)
-        self.canvas.plot(x, y, *args, **kwargs)
+        self.plotWidget.plot(x, y, *args, **kwargs)
     
     def update_limits(self, x, y):
         if x is not None and y is not None:
@@ -114,9 +118,9 @@ class InteractivePlotWidget(QWidget):
             #self.sp1.setValue(x.max()*0.4)
             #self.sp2.setValue(x.max()*0.6)
             
-            # Set the limits of the plotitem
-            self.plotitem.setLimits(xMin=0, xMax=x.max())
-            self.plotitem.setRange(xRange=(x.min(), x.max()),
+            # Set the limits of the plotItem
+            self.plotItem.setLimits(xMin=0, xMax=x.max())
+            self.plotItem.setRange(xRange=(x.min(), x.max()),
                                    yRange=(y.min(), y.max()),
                                    padding=0.2)
 
@@ -125,8 +129,8 @@ class CustomPlotWidget(pg.PlotWidget):
     def __init__(self,*arg, **kwarg):
         super().__init__(*arg, viewBox = CustomViewBox(cparent = self),**kwarg)
         
-        self.plotitem = self.getPlotItem()
-        self.viewbox = self.plotitem.getViewBox()
+        self.plotItem = self.getPlotItem()
+        self.viewbox = self.plotItem.getViewBox()
         
         # Removing some plot options
         ext_menu = self.plotItem.ctrlMenu
@@ -157,7 +161,7 @@ class CustomViewBox(pg.ViewBox):
 
     def raiseContextMenu(self, ev):
         menu = self.getMenu(ev)
-        menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
+        menu.addMenu(self.cparent.getplotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint())
 
     def autoRange(self, padding= None, items=None):
@@ -493,7 +497,7 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         """Plot *x*, *y* and *z* on a colourmap, with colour intervals defined
         by *num_contours* at *contour_spacing_dB* intervals"""
         
-        #self.canvas.removeItem(self.z_img)
+        #self.plotWidget.removeItem(self.z_img)
         
         self.x = x
         self.y = y
@@ -504,8 +508,8 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         self.update_lowest_contour()
         
         # Set up axes:
-        x_axis = self.canvas.getAxis('bottom')
-        y_axis = self.canvas.getAxis('left')
+        x_axis = self.plotWidget.getAxis('bottom')
+        y_axis = self.plotWidget.getAxis('left')
 
         self.x_scale_fact = self.get_scale_fact(x)
         self.y_scale_fact = self.get_scale_fact(y)
@@ -519,10 +523,10 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         self.z_img.setLookupTable(self.lookup_table)
         self.z_img.setLevels([self.lowest_contour, self.highest_contour])
         
-        self.canvas.addItem(self.z_img)
+        self.plotWidget.addItem(self.z_img)
         
-        self.canvas.autoRange()
-        #self.canvas.viewbox.autoRange()
+        self.plotWidget.autoRange()
+        #self.plotWidget.viewbox.autoRange()
 
     def get_scale_fact(self, var):
         return var.max() / var.size

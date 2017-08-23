@@ -6,7 +6,6 @@ import numpy as np
 import pyqtgraph as pg
 
 from datalogger.api.numpy_extensions import MatlabList
-from datalogger.api.pyqt_widgets import SimpleColormap
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
@@ -54,8 +53,7 @@ class ChannelSet(object):
         """Print the information about all of the Channels in this 
         ChannelSet."""
         print("ChannelSet: \n Channels: \n")
-        self.colormap = SimpleColormap("brg")
-
+        
         for i, channel in enumerate(self.channels):
             print("--------------------\n"
                 + "{}    ".format(i))
