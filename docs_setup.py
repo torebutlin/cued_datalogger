@@ -3,8 +3,10 @@ import sys
 import subprocess
 from os.path import isfile
 
-import sys
-from unittest.mock import MagicMock
+try:
+    from unittest.mock import MagicMock
+except:
+    from mock import Mock as MagicMock
 
 class Mock(MagicMock):
     @classmethod

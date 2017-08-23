@@ -4,3 +4,4 @@ dependencies:
   - numpydoc
   - numpy
   - scipy
+  - mock
