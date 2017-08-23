@@ -34,7 +34,7 @@ except NotImplementedError:
 except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
-from datalogger.analysis.transfer_function import (compute_transfer_function,
+from datalogger.analysis.frequency_domain import (compute_transfer_function,
                                                    compute_autospec,compute_crossspec)
 
 from datalogger.api import channel as ch
@@ -612,7 +612,7 @@ class LiveplotApp(QMainWindow):
         
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'TF Avg.':
-            ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]))
+            ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
             
             for i in range(data.shape[1]):
                 ft = rfft(data[:,i])
@@ -623,8 +623,8 @@ class LiveplotApp(QMainWindow):
             input_chan_data = ft_datas[:,in_chan]
             self.autospec_in_tally.append(compute_autospec(input_chan_data))
             
-            autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1))
-            crossspec = np.zeros(autospec_out.shape)
+            autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
+            crossspec = np.zeros(autospec_out.shape,dtype = np.complex)
             for i in range(ft_datas.shape[1]):
                 if i< in_chan:
                     autospec_out[:,i] = compute_autospec(ft_datas[:,i])
@@ -638,8 +638,15 @@ class LiveplotApp(QMainWindow):
             auto_in_sum = np.array(self.autospec_in_tally).sum(axis = 0)
             auto_out_sum = np.array(self.autospec_out_tally).sum(axis = 0)
             cross_sum = np.array(self.crossspec_tally).sum(axis = 0)     
-            for i in range(auto_out_sum.shape[1]):
-                tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
+            for i in range(ft_datas.shape[1]):
+                if i == in_chan:
+                    continue
+                elif i< in_chan:
+                    tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
+                elif i> in_chan:
+                    tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i-1],cross_sum[:,i-1])
+                
+                print(tf_avg)
                 self.live_chanset.add_channel_dataset(i,'TF',tf_avg)
             
             print(len(self.autospec_in_tally))

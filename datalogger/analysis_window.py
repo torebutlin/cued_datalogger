@@ -8,10 +8,10 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
 import sys
 
 from datalogger.analysis.circle_fit import CircleFitWidget, CircleFitToolbox
-from datalogger.analysis.frequency_domain import FrequencyDomainWidget, FrequencyToolbox
+from datalogger.analysis.frequency_domain import (FrequencyDomainWidget, FrequencyToolbox,compute_transfer_function,
+                                                   compute_autospec,compute_crossspec)
 from datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
 from datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
-from datalogger.analysis.transfer_function import TransferFunctionWidget,compute_transfer_function
 
 from datalogger.api.addons import AddonManager
 from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
@@ -37,7 +37,6 @@ class AnalysisDisplayTabWidget(QTabWidget):
         
         self.freqdomain_widget = FrequencyDomainWidget(self)
         self.sonogram_widget = SonogramDisplayWidget(self)
-        self.transfer_widget = TransferFunctionWidget(self)
         self.circle_widget = CircleFitWidget(self)
                 
         # Create the tabs
@@ -45,7 +44,6 @@ class AnalysisDisplayTabWidget(QTabWidget):
         self.addTab(self.freqdomain_widget, "Frequency Domain")
         self.addTab(self.sonogram_widget, "Sonogram")
         self.addTab(self.circle_widget, "Circle Fit")
-        self.addTab(self.transfer_widget, "Transfer Function")
 
 
 class ProjectMenu(QMenu):
@@ -96,6 +94,7 @@ class AnalysisWindow(QMainWindow):
         # # Frequency toolbox
         self.frequency_toolbox = FrequencyToolbox(self.toolbox)
         self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
+        self.frequency_toolbox.sig_convert_to_TF.connect(self.plot_tf)
         self.frequency_toolbox.sig_convert_to_circle_fit.connect(self.circle_fitting)
 
         # # Sonogram toolbox       
@@ -104,14 +103,7 @@ class AnalysisWindow(QMainWindow):
         self.sonogram_toolbox.sig_num_contours_changed.connect(self.display_tabwidget.sonogram_widget.update_num_contours)
         self.sonogram_toolbox.sig_window_overlap_fraction_changed.connect(self.display_tabwidget.sonogram_widget.update_window_overlap_fraction)
         self.sonogram_toolbox.sig_window_width_changed.connect(self.display_tabwidget.sonogram_widget.update_window_width)
-        
-        self.TF_toolbox = Toolbox('left',self.toolbox)
-        wd4 = QWidget(self)
-        hb4 = QVBoxLayout(wd4)
-        circle_btn = QPushButton("Perform Circle Fitting",self.TF_toolbox)
-        hb4.addWidget(circle_btn)
-        self.TF_toolbox.addTab(wd4, "TFTab")       
-
+       
         # # Circle Fit toolbox
         self.circle_fit_toolbox = CircleFitToolbox(self.toolbox) 
         
@@ -119,7 +111,6 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.add_toolbox(self.frequency_toolbox)
         self.toolbox.add_toolbox(self.sonogram_toolbox)
         self.toolbox.add_toolbox(self.circle_fit_toolbox)
-        self.toolbox.add_toolbox(self.TF_toolbox)
         self.toolbox.set_toolbox(0)
 
     def init_global_toolbox(self):        
@@ -240,42 +231,40 @@ class AnalysisWindow(QMainWindow):
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+        self.display_tabwidget.freqdomain_widget.current_plot = "spectrum"
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
 
     def plot_tf(self):
-        self.plot_fft()
-        self.tfplots = []
-        # Switch to frequency domain tab
-        self.display_tabwidget.currentWidget().resetPlotWidget()
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.transfer_widget)
-        input_chan = 0
-        
+        #TODO: calculate TF function if none is found
+        '''
         fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
+        tfdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'TF')
+        if not len(self.cs) <=1:
+            print("There is less than 2 channels, cannot plot Transfer Function")
+            return
         
-        
-        input_chan_data = fdata[input_chan]
-        
-        data_end = 0
-        max_data = 0
-        for i in range(len(self.cs)):
-            self.tfplots.append(None)
-            self.tfplots.append(None)
-            continue
-        
-        if not fdata[i].shape[0] == 0:
-            sample_rate = self.cs.get_channel_metadata(i,'sample_rate')
-            tf,cor = compute_transfer_function(input_chan_data,fdata[i])
-            print(tf.shape,fdata[i].shape)
-            f = np.arange(int(tf.shape[0]))/tf.shape[0] * sample_rate/2
-            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.abs(tf),pen = self.plot_colours[i%len(self.plot_colours)]))
-            self.tfplots.append(self.display_tabwidget.transfer_widget.plotitem.plot(f,np.real(cor),pen = self.plot_colours[i%len(self.plot_colours)]))
-            max_data = max(max_data,max(tf))
-            data_end = max(data_end,f[-1])
-        else:
-            print('No Transfer function to plot')
-            self.tfplots.append(None)
-            self.tfplots.append(None)
+        for i,tf in enumerate(tfdata):
+            fft_in = fdata[0]
+            if fft_in.shape == 0:
+                print('Just no')
+                return
             
+            if len(tf) == 0:
+                if not fdata[i].shape[0]>0:
+                    print("Calculating TF, Input: Channel 0...")
+                    auto_in = compute_autospec(fft_in)
+                    auto_out = compute_autospec(fdata[])
+                    cross = compute_crossspec(fft_in)
+                    new_tf = compute_transfer_function(auto_in,auto_out,cross)
+                    if not channel.is_dataset('TF'):
+                        self.cs.add_channel_dataset(i, 'TF',new_tf)
+                    
+                    print("Done.")
+        '''
+        print(self.cs.get_channel_data(tuple(range(len(self.cs))),'TF'))
+        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+        self.display_tabwidget.freqdomain_widget.current_plot = "TF"
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
         
   
     def plot_sonogram(self):

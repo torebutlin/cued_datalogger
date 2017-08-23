@@ -19,6 +19,8 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                            'Imaginary Part',
                            'Nyquist']
         self.current_plot_type = self.plot_types[0]
+                
+        self.current_plot = "spectrum"
     
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted"""
@@ -36,61 +38,66 @@ class FrequencyDomainWidget(InteractivePlotWidget):
     
     def update_plot(self):
         self.clear()
-        
+ 
         for channel in self.channels:
-            # If no spectrum exists, calculate one
-            print("Recalculating spectrum...")
-            units = channel.get_units("time_series")
-            #spectrum = scipy.fftpack.rfft(channel.get_data("time_series"))
-            spectrum = np.fft.rfft(channel.get_data("time_series"))
-            if not channel.is_dataset("spectrum"):
-                channel.add_dataset("spectrum", units, spectrum)
-            else:
-                channel.set_data("spectrum", spectrum)
+            if self.current_plot == "spectrum":
+                # If no spectrum exists, calculate one
+                print("Recalculating spectrum...")
+                units = channel.get_units("time_series")
+                #spectrum = scipy.fftpack.rfft(channel.get_data("time_series"))
+                spectrum = np.fft.rfft(channel.get_data("time_series"))
+                if not channel.is_dataset(self.current_plot):
+                    channel.add_dataset(self.current_plot, units, spectrum)
+                else:
+                    channel.set_data(self.current_plot, spectrum)
                 
-            print("Done.")
+                print("Done.")
+            elif self.current_plot == "TF":
+                if not channel.is_dataset(self.current_plot):
+                    print('No Transfer Function to plot')   
+                    continue
                 
             # Plot
             if self.current_plot_type == 'Linear Magnitude':
                 print("Plotting Linear Magnitude.")
                 self.plot(channel.get_data("frequency"), 
-                          np.abs(channel.get_data("spectrum")),
+                          np.abs(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Log Magnitude':
                 print("Plotting Log Magnitude.")
                 self.plot(channel.get_data("frequency"),
-                          to_dB(np.abs(channel.get_data("spectrum"))),
+                          to_dB(np.abs(channel.get_data(self.current_plot))),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Phase':
                 print("Plotting Phase.")
                 self.plot(channel.get_data("frequency"), 
-                          np.angle(channel.get_data("spectrum")),
+                          np.angle(channel.get_data(self.current_plot),deg=True),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Real Part':
                 print("Plotting Real Part.")
                 self.plot(channel.get_data("frequency"),
-                          np.real(channel.get_data("spectrum")),
+                          np.real(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Imaginary Part':
                 print("Plotting Imaginary Part.")
                 self.plot(channel.get_data("frequency"), 
-                          np.imag(channel.get_data("spectrum")),
+                          np.imag(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Nyquist':
                 print("Plotting Nyquist.")
-                self.plot(np.real(channel.get_data("spectrum")), 
-                          np.imag(channel.get_data("spectrum")),
+                self.plot(np.real(channel.get_data(self.current_plot)), 
+                          np.imag(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
 
             
 class FrequencyToolbox(Toolbox):
     """Toolbox containing the Frequency Domain controls"""
-    
+    sig_convert_to_TF = pyqtSignal()
     sig_convert_to_circle_fit = pyqtSignal()
     sig_plot_type_changed = pyqtSignal(int)
     
@@ -104,7 +111,11 @@ class FrequencyToolbox(Toolbox):
         # # Conversion tab
         self.convert_tab = QWidget(self)
         convert_tab_layout = QVBoxLayout()
-
+        
+        self.view_tf_btn = QPushButton("Convert to TF")
+        self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
+        convert_tab_layout.addWidget(self.view_tf_btn)
+        
         self.circle_fit_btn = QPushButton("Convert to Circle Fit")
         self.circle_fit_btn.clicked.connect(self.sig_convert_to_circle_fit.emit)
         convert_tab_layout.addWidget(self.circle_fit_btn)
@@ -132,3 +143,16 @@ class FrequencyToolbox(Toolbox):
         self.plot_options_tab.setLayout(plot_options_tab_layout)
         
         self.addTab(self.plot_options_tab, "Plot Options")
+        
+def compute_autospec(fft_data):
+    return(fft_data * np.conjugate(fft_data))
+
+def compute_crossspec(in_fft_data,out_fft_data):
+    return(np.conjugate(in_fft_data) * out_fft_data)
+
+def compute_transfer_function(autospec_in,autospec_out,crossspec):
+   
+    transfer_func = (autospec_out/crossspec)
+    coherence = ((crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out))
+    
+    return(transfer_func,coherence)
