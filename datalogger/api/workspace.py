@@ -7,9 +7,13 @@ class Workspace(object):
     The ``Workspace`` class stores the workspace attributes and has methods for
     saving, loading, configuring, and displaying the workspace settings.
     
-    Normally, a ``CurrentWorkspace`` instance is initiated that will store the 
-    current settings and all the workspace functionality will be accessed 
-    through the ``CurrentWorkspace``.
+    Workspaces are designed so that specific configurations of the DataLogger
+    can be created, eg. for undergraduate labs, with different features 
+    enabled or disabled, and stored in a ``.wsp`` file that can be read using
+    the :class:`Workspace` class. In the DataLogger, a ``CurrentWorkspace`` 
+    instance is normally initiated that will store the current settings and all 
+    the workspace functionality will be accessed through the
+    ``CurrentWorkspace``. 
     
     Attributes
     ----------
