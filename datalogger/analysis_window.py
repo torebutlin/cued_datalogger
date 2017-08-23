@@ -94,7 +94,8 @@ class AnalysisWindow(QMainWindow):
         # # Frequency toolbox
         self.frequency_toolbox = FrequencyToolbox(self.toolbox)
         self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
-        self.frequency_toolbox.sig_convert_to_TF.connect(self.plot_tf)
+        self.frequency_toolbox.sig_view_type_changed.connect(self.switch_freq_plot)
+        #self.frequency_toolbox.sig_convert_to_TF.connect(self.plot_tf)
         self.frequency_toolbox.sig_convert_to_circle_fit.connect(self.circle_fitting)
 
         # # Sonogram toolbox       
@@ -228,6 +229,12 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
         
+    def switch_freq_plot(self,dtype):
+        if dtype == 'Fourier Transform':
+            self.plot_fft()
+        elif dtype == 'Transfer Function':
+            self.plot_tf()
+            
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)

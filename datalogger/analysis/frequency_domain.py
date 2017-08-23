@@ -100,6 +100,7 @@ class FrequencyToolbox(Toolbox):
     sig_convert_to_TF = pyqtSignal()
     sig_convert_to_circle_fit = pyqtSignal()
     sig_plot_type_changed = pyqtSignal(int)
+    sig_view_type_changed = pyqtSignal(str)
     
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -108,26 +109,13 @@ class FrequencyToolbox(Toolbox):
         self.init_ui()
     
     def init_ui(self):
-        # # Conversion tab
-        self.convert_tab = QWidget(self)
-        convert_tab_layout = QVBoxLayout()
-        
-        self.view_tf_btn = QPushButton("Convert to TF")
-        self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
-        convert_tab_layout.addWidget(self.view_tf_btn)
-        
-        self.circle_fit_btn = QPushButton("Convert to Circle Fit")
-        self.circle_fit_btn.clicked.connect(self.sig_convert_to_circle_fit.emit)
-        convert_tab_layout.addWidget(self.circle_fit_btn)
-      
-        self.convert_tab.setLayout(convert_tab_layout)
-        
-        self.addTab(self.convert_tab, "Conversion")
-        
         # # Plot options tab
         self.plot_options_tab = QWidget(self)
         plot_options_tab_layout = QVBoxLayout()
-
+        self.view_type_combobox = QComboBox(self)
+        self.view_type_combobox.addItems(['Fourier Transform','Transfer Function'])
+        self.view_type_combobox.currentIndexChanged[str].connect(self.sig_view_type_changed.emit)
+        plot_options_tab_layout.addWidget(self.view_type_combobox)
         self.plot_type_combobox = QComboBox(self.plot_options_tab)
         self.plot_type_combobox.addItems(['Linear Magnitude',
                                           'Log Magnitude',
@@ -143,6 +131,23 @@ class FrequencyToolbox(Toolbox):
         self.plot_options_tab.setLayout(plot_options_tab_layout)
         
         self.addTab(self.plot_options_tab, "Plot Options")
+        # # Conversion tab
+        self.convert_tab = QWidget(self)
+        convert_tab_layout = QVBoxLayout()
+        
+        self.view_tf_btn = QPushButton("Convert FFT to TF")
+        self.convert_tab.setLayout(convert_tab_layout)
+        #self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
+        convert_tab_layout.addWidget(self.view_tf_btn)        
+        
+        self.circle_fit_btn = QPushButton("Convert to Circle Fit")
+        self.circle_fit_btn.clicked.connect(self.sig_convert_to_circle_fit.emit)
+        convert_tab_layout.addWidget(self.circle_fit_btn)
+      
+
+        self.addTab(self.convert_tab, "Conversion")
+        
+
         
 def compute_autospec(fft_data):
     return(fft_data * np.conjugate(fft_data))
