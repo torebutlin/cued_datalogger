@@ -294,13 +294,17 @@ class AnalysisWindow(QMainWindow):
         
         
     def circle_fitting(self):
-        """
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
-        fdata = self.cs.get_channel_data(0, "spectrum")
-        self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
-        self.display_tabwidget.circle_widget.set_data(np.linspace(0, self.cs.get_channel_metadata(0, "sample_rate"), fdata.size), fdata)
-        """
-        pass
+        
+        for i in range(len(self.cs)):
+            fdata = self.cs.get_channel_data(i, "TF")
+            if not fdata.shape[0] == 0:
+                self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
+                self.display_tabwidget.circle_widget.set_data(
+                        np.linspace(0, self.cs.get_channel_metadata(i, "sample_rate"),fdata.size),
+                        fdata)
+
+        print('No Transfer Function Available')
                 
     def add_import_data(self,mode):
         if mode == 'Extend':
