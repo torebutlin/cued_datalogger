@@ -5,12 +5,12 @@ from os.path import isfile
 
 def version():
     """Get version number"""
-    with open('../datalogger/VERSION') as f:
+    with open('datalogger/VERSION') as f:
         return f.read()
 
 def readme():
     """Get text from the README.rst"""
-    with open('../README.rst') as f:
+    with open('README.rst') as f:
         return f.read()
 
 setup(name='cued-datalogger',
