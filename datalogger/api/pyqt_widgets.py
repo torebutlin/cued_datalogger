@@ -7,7 +7,20 @@ import numpy as np
 from PyQt5.QtWidgets import QSlider, QSpinBox, QVBoxLayout, QHBoxLayout, QWidget
 
 class BaseNControl(QWidget):
+    """
+    A QWidget containing a paired SpinBox and Slider that are constrained to 
+    show values in a given base.
     
+    Attributes
+    ----------
+    valueChanged : pyqtSignal(int)
+        The signal emitted when the current value is changed, containing the 
+        current value.
+    orientation : Qt.Vertical or Qt.Horizontal
+        The orientation of the SpinBox - Slider pair
+    base : int
+        The current base that the BaseNControl is using.
+    """
     valueChanged = pyqtSignal(int)
     
     def __init__(self, orientation, parent=None, 
@@ -17,6 +30,7 @@ class BaseNControl(QWidget):
         
         super().__init__(parent)
         
+        self.parent = parent
         self.orientation = orientation
         self.base = base
         
@@ -47,13 +61,17 @@ class BaseNControl(QWidget):
         
         self.setLayout(layout)
     
-    def set_power_range(self, min_power_n, max_power_n):       
+    def set_power_range(self, min_power_n, max_power_n):    
+        """Set the range of allowed values to be from ``base**min_power_n`` to
+        ``base**max_power_n``."""
         self.slider.setRange(min_power_n, max_power_n)
         self.spinbox.setRange(self.base**min_power_n, self.base**max_power_n)
         
         self.set_n(min_power_n)
     
     def set_value_range(self, min_value, max_value):
+        """Set the range of allowed values to be from *min_value* to 
+        *max_value*."""
         self.spinbox.setRange(min_value, max_value)
         min_n = int(np.floor(np.log(min_value)/np.log(self.base)))
         max_n = int(np.ceil(np.log(max_value)/np.log(self.base)))
@@ -62,7 +80,10 @@ class BaseNControl(QWidget):
         self.set_n(min_n)
 
     def set_n(self, n, set_both=False):
-        """If *n* is in range, set it as the current n-value"""
+        """If *n* is in range, set it as the current n-value.
+        
+        If *set_both*, set the values for both the slider and spinbox, 
+        otherwise set the value for whichever did not send the signal."""
         if n >= self.slider.minimum() and n <= self.slider.maximum(): 
             self.n = n
             if set_both:
@@ -74,8 +95,8 @@ class BaseNControl(QWidget):
                 self.slider.setValue(self.n)     
             self.valueChanged.emit(self.base**self.n)
 
-
     def set_value(self, value):
+        """Set the value for the slider and the spinbox to *value*."""
         n = int(np.round(np.log(value)/np.log(self.base)))
         self.set_n(n, True)
         
@@ -87,6 +108,10 @@ class BaseNControl(QWidget):
     
     def on_spinbox_edit_finished(self):
         self.set_value(self.spinbox.value())
+    
+    def value(self):
+        """Return the current value of the BaseNControl."""
+        return self.spinbox.value()
         
 
 class BaseNSpinBox(QSpinBox):
