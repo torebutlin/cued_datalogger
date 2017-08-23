@@ -2,7 +2,7 @@ import pyqtgraph as pg
 import re
 
 
-class Workspace():
+class Workspace(object):
     """The Workspace class, containing all the attributes and functions of a
     Workspace (configuration of the DataLogger)"""
 

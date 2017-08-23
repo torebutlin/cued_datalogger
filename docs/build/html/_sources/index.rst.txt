@@ -4,14 +4,14 @@ CUED DataLogger Documentation
 =============================
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 3
   :caption: Contents:
    
   introduction
    
   old/api_reference_old
 
-  api_reference
+  api_reference/api_reference
 
 
 

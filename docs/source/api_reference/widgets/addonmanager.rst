@@ -1,5 +1,5 @@
 =============
-Addon Manager
+AddonManager
 =============
 
 .. autoclass:: datalogger.api.addons.AddonManager

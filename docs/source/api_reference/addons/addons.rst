@@ -56,6 +56,5 @@ And probably a lot of other things as well.
 Addon Manager
 -------------
 
-Addons are normally run through the :class:`Addon Manager <datalogger.api.addons.AddonManager>`.
-
+Addons are normally run through the :class:`~datalogger.api.addons.AddonManager`.
 

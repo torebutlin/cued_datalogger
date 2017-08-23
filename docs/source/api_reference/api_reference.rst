@@ -18,4 +18,6 @@ API Reference
 
   widgets/widgets
 
+  convenience_functions_classes/convenience_functions_classes
+
 

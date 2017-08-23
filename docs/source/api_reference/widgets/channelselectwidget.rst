@@ -1,5 +1,5 @@
 =====================
-Channel Select Widget
+ChannelSelectWidget
 =====================
 
 .. autoclass:: datalogger.api.channel.ChannelSelectWidget

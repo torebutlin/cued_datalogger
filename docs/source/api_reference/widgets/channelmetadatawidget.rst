@@ -1,5 +1,5 @@
 =======================
-Channel Metadata Widget
+ChannelMetadataWidget
 =======================
 
 .. autoclass:: datalogger.api.channel.ChannelMetadataWidget
