@@ -6,6 +6,5 @@ dependencies:
   - scipy
   - mock
   - pyqt
-  - pyaudio
   - matplotlib
   - pyqtgraph
