@@ -12,14 +12,18 @@ class TransferFunctionWidget(InteractivePlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-def compute_transfer_function(in_fft_data,out_fft_data):
-    autospec_in = in_fft_data * np.conjugate(in_fft_data)
-    autospec_out = out_fft_data * np.conjugate(out_fft_data)
-    #crossspec = in_fft_data * np.conjugate(out_fft_data)
-    crossspec = out_fft_data * np.conjugate(in_fft_data)
+def compute_autospec(fft_data):
+    return(fft_data * np.conjugate(fft_data))
+
+def compute_crossspec(in_fft_data,out_fft_data):
+    #crossspecs = []
+    #for fft_data in out_fft_datas:
+    #    crossspecs.append(in_fft_data * np.conjugate(fft_data))
+    return(in_fft_data * np.conjugate(out_fft_data))
+
+def compute_transfer_function(autospec_in,autospec_out,crossspec):
+   
+    transfer_func = (autospec_out/crossspec)
+    coherence = ((crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out))
     
-    transfer_func = autospec_out/crossspec
-    coherence = (crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out)
-    
-    #print(transfer_func,coherence)
     return(transfer_func,coherence)
