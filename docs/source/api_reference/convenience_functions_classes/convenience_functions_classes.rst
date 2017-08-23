@@ -10,3 +10,5 @@ streamline the implementation of some functionality.
 .. autofunction:: datalogger.api.numpy_extensions.from_dB
 
 .. autoclass:: datalogger.api.numpy_extensions.MatlabList
+
+.. autofunction:: datalogger.api.numpy_extensions.sdof_modal_peak

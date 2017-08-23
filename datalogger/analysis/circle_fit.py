@@ -6,7 +6,7 @@ from datalogger.api.channel import ChannelSet
 from datalogger.api.workspace import Workspace
 from datalogger.api.file_import import import_from_mat
 from datalogger.api.toolbox import Toolbox
-from datalogger.api.numpy_extensions import to_dB, from_dB
+from datalogger.api.numpy_extensions import to_dB, from_dB, sdof_modal_peak
 
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
@@ -20,25 +20,6 @@ from scipy.optimize import curve_fit
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
-
-# External functions ----------------------------------------------------------
-
-def sdof_modal_peak(w, wr, zr, cr, phi):
-    """Return a modal peak generated from the given parameters.
-    
-    Parameters
-    ----------
-    w : ndarray or float
-        An array of omega (angular frequency) values.
-    wr : float
-        The resonant angular frequency.
-    zr : float
-        The damping factor.
-    cr : float
-        The magnitude of the modal constant.
-    phi : float
-        The phase of the modal constant"""
-    return cr*np.exp(1j*phi) / (wr**2 - w**2 + 2j * zr * wr**2)
 
 
 def fit_circle_to_data(x, y):
@@ -107,7 +88,6 @@ def plot_circle(x0, y0, R0):
     return x, y
 
 
-# Circle Fit window -----------------------------------------------------------
 class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()

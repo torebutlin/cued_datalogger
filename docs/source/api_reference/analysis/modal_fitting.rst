@@ -12,5 +12,5 @@ Circle fitting
 .. autoclass:: datalogger.analysis.circle_fit.CircleFitToolbox
   :members:
 
-.. autofunction:: datalogger.analysis.circle_fit.circle_fit
+.. autofunction:: datalogger.analysis.circle_fit.fit_circle_to_data
 
