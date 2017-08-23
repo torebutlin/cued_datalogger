@@ -12,6 +12,8 @@ Widgets
 
   channelselectwidget
 
+  colormapplotwidget
+
   dataimportwidget
 
   frequency_domain_widgets

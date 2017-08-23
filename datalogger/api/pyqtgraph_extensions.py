@@ -50,7 +50,7 @@ class InteractivePlotWidget(QWidget):
         layout = QVBoxLayout(self)
 
         # # Set up the PlotWidget        
-        self.PlotWidget = pg.PlotWidget(self)
+        self.PlotWidget = CustomPlotWidget(self)
 
         self.PlotItem = self.PlotWidget.getPlotItem()
         self.PlotItem.disableAutoRange()
@@ -69,7 +69,7 @@ class InteractivePlotWidget(QWidget):
         self.label.setParentItem(self.ViewBox)
         #ViewBox.addItem(self.label)
         
-        #self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot= self.mouseMoved)
+        self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
                 
         # # Set up the controls
         control_layout = QHBoxLayout()
@@ -172,8 +172,8 @@ class InteractivePlotWidget(QWidget):
 
 
 class CustomPlotWidget(pg.PlotWidget):
-    def __init__(self,*arg, **kwarg):
-        super().__init__(*arg, ViewBox = CustomViewBox(cparent = self),**kwarg)
+    def __init__(self, *arg, **kwarg):
+        super().__init__(*arg, ViewBox=CustomViewBox(cparent=self), **kwarg)
         
         self.PlotItem = self.getPlotItem()
         self.ViewBox = self.PlotItem.getViewBox()
@@ -531,7 +531,18 @@ class CustomUITemplate(object):
 
 
 class ColorMapPlotWidget(InteractivePlotWidget):
-    """An InteractivePlotWidget optimised for plotting color(heat) maps"""
+    """An InteractivePlotWidget optimised for plotting color(heat) maps. 
+    Uses the Matplotlib colormap given by *cmap* to color the map.
+    
+    Attributes
+    ----------
+    lookup_table : ndarray
+        The lookup table generated from *cmap* to colour the image with
+    num_contours : int
+        The number of different colour levels to plot
+    contour_spacing : int
+        How closely spaced the colour levels are
+    """
     def __init__(self, parent=None, cmap="jet"):
         self.lookup_table = matplotlib_lookup_table(cmap)
         self.num_contours = 5
@@ -541,7 +552,7 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         
     def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
         """Plot *x*, *y* and *z* on a colourmap, with colour intervals defined
-        by *num_contours* at *contour_spacing_dB* intervals"""
+        by *num_contours* at *contour_spacing_dB* intervals."""
         
         #self.PlotWidget.removeItem(self.z_img)
         
@@ -578,7 +589,8 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         return var.max() / var.size
     
     def update_lowest_contour(self):
-        """Find the lowest contour to plot"""
+        """Find the lowest contour to plot, as determined by the number of
+        contours and the contour spacing."""
         self.lowest_contour = self.z.max() - (self.num_contours * self.contour_spacing_dB)
         self.highest_contour = self.z.max()
 

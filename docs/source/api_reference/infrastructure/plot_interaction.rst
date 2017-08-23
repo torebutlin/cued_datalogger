@@ -19,6 +19,3 @@ A description.
 .. autoclass:: datalogger.api.pyqtgraph_extensions.CustomUITemplate
   :members:
 
-
-.. autoclass:: datalogger.api.pyqtgraph_extensions.ColorMapPlotWidget
-  :members:
