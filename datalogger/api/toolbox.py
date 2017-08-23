@@ -1,11 +1,33 @@
-from PyQt5.QtCore import Qt, QPropertyAnimation
+from PyQt5.QtCore import QPropertyAnimation
 from PyQt5.QtWidgets import (QTabBar, QSplitter, QSizePolicy, QStackedWidget)
 
 COLLAPSE_FACTOR = 0.7
 
 class Toolbox(QSplitter):
-    """A side-oriented widget (like a TabWidget) that collapses when 
-    the tabBar is double-clicked"""
+    """A side-oriented widget similar to a TabWidget that can be collapsed and
+    expanded. 
+    
+    A Toolbox is designed to be a container for sets of controls, grouped into
+    'pages' and accessible by a TabBar, in the same way as a TabWidget. 
+    A page is normally a QWidget with a layout that contains controls.
+    A widget can be added as a new tab using :meth:`addTab`.
+    The Toolbox has slots for triggering its collapse and expansion, both in an
+    animated mode (soft slide) and a 'quick' mode which skips the animation.
+    Commonly the collapse/expand slots are connected to the tabBar's 
+    :meth:`tabBarDoubleClicked` signal. Normally in the DataLogger a Toolbox is
+    created and then added to a :class:`~datalogger.api.toolbox.MasterToolbox`,
+    which connects the relevant signals for collapsing and expanding the
+    Toolbox.
+   
+    
+    Attributes
+    ----------
+    tabBar : QTabBar
+    tabPages : QStackedWidget
+        The stack of widgets that form the pages of the tabs.
+    collapse_animation : QPropertyAnimation
+        The animation that controls how the Toolbox collapses.
+    """
     
     def __init__(self, widget_side='left', parent=None):
         self.parent = parent
@@ -35,8 +57,6 @@ class Toolbox(QSplitter):
 
             self.addWidget(self.tabBar)
             self.addWidget(self.tabPages)
-            #self.setStretchFactor(0, 1)
-            #self.setStretchFactor(1, 0)
             
         # Left side orientation
         else:
@@ -44,8 +64,6 @@ class Toolbox(QSplitter):
             
             self.addWidget(self.tabPages)
             self.addWidget(self.tabBar)     
-            #self.setStretchFactor(0, 1)
-            #self.setStretchFactor(1, 0)
         
         # # Create the animation
         self.collapse_animation = QPropertyAnimation(self.tabPages, b'maximumWidth')
@@ -57,17 +75,14 @@ class Toolbox(QSplitter):
         self.max_width = 250
                 
     def addTab(self, widget, title):
-        """Add a new tab, with widget **widget** and title **title**"""
+        """Add a new tab, with the page widget *widget* and tab title
+        *title*."""
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
-        """
-        if widget.sizeHint().width() >= self.max_width:
-            self.max_width = widget.sizeHint().width()
-        """
         
     def toggle_collapse(self):
         """If collapsed, expand the widget so the pages are visible. If not 
-        collapsed, collapse the widget so that only the tabBar is showing"""
+        collapsed, collapse the widget so that only the tabBar is showing."""
         # If collapsed, expand
         if self.collapsed:
             self.expand()
@@ -89,7 +104,7 @@ class Toolbox(QSplitter):
         self.collapsed = False
     
     def collapse(self):
-        """Collapse the widget so that only the tab bar is visible"""
+        """Collapse the widget so that only the tab bar is visible."""
         self.collapse_animation.setStartValue(self.max_width)
 
         self.collapse_animation.setDirection(QPropertyAnimation.Forward)
@@ -97,19 +112,19 @@ class Toolbox(QSplitter):
         self.collapsed = True
     
     def fast_collapse(self):
-        """Collapse the widget without the animation"""
+        """Collapse the widget without the animation."""
         self.tabPages.hide()
         self.tabPages.setMaximumWidth(0)
         self.collapsed = True
         
     def fast_expand(self):
-        """Expand the widget without the animation"""
+        """Expand the widget without the animation."""
         self.tabPages.show()
         self.tabPages.setMaximumWidth(self.max_width)
         self.collapsed = False
 
     def changePage(self, index):
-        """Set the current page to **index**"""        
+        """Set the current page to *index*."""        
         self.tabBar.setCurrentIndex(index)
         self.tabPages.setCurrentIndex(index)
         
@@ -119,7 +134,7 @@ class Toolbox(QSplitter):
             self.tabPages.currentWidget().resize(self.tabPages.size())
 
     def clear(self):
-        """Remove all tabs and pages"""
+        """Remove all tabs and pages."""
         for i in range(self.tabBar.count()):
             # Remove the tab and page at position 0
             self.tabBar.removeTab(0)
@@ -127,19 +142,35 @@ class Toolbox(QSplitter):
 
 
 class MasterToolbox(QStackedWidget):
-    """A Master Toolbox is a stack of CollapsingSideTabWidgets ('Toolboxes')"""
+    """A QStackedWidget of one or more Toolboxes that toggle collapse when
+    the tabBar is double clicked.
     
+    In the MasterToolbox, only the top Toolbox is expanded, and all the others
+    are collapsed. When the index is changed with :meth:`set_toolbox`, the
+    top Toolbox is changed and all other Toolboxes are collapsed and hidden.
+    The MasterToolbox is the normal location for all tools and controls in the
+    DataLogger.
+    
+    Attributes
+    ----------
+    Inherited attributes :
+        See ``PyQt5.QtWidgets.QStackedWidget`` for inherited attributes.
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         
         
     def toggle_collapse(self):
-        """Toggle collapse of the Stack by toggle the collapse of the Toolbox
-        that is on top."""
+        """Toggle collapse of the MasterToolbox by toggling the collapse of the
+        Toolbox that is on top."""
         self.currentWidget().toggle_collapse()
 
     def set_toolbox(self, toolbox_index):
-        """Set current toolbox to toolbox given by **toolbox_index**"""
+        """Set current Toolbox to the Toolbox given by *toolbox_index*, by 
+        quick-collapsing and hiding all of the other Toolboxes. The new
+        current Toolbox will be in the same collapse/expand state as the
+        former current Toolbox (ie if the previous Toolbox was collapsed,
+        the new current Toolbox will be collapsed, and vice versa)."""
         # Save the old toolbox
         old_toolbox_collapsed = self.currentWidget().collapsed
         
@@ -162,7 +193,7 @@ class MasterToolbox(QStackedWidget):
             
             
     def add_toolbox(self, toolbox):
-        """Add a Toolbox to the stack"""
+        """Add a Toolbox to the MasterToolbox stack."""
         # Set the Toolbox's parent
         toolbox.parent = self
         toolbox.setParent(self)
