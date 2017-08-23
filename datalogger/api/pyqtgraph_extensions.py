@@ -26,7 +26,7 @@ class InteractivePlotWidget(QWidget):
     ----------
     PlotWidget : pg.PlotWidget
         The PlotWidget contained in the InteractivePlotWidget.
-    ViewBox: pg.ViewBox
+    ViewBox : pg.ViewBox
         The ViewBox contained in the InteractivePlotWidget.
     region : pg.LinearRegionItem
         The LinearRegionItem contained in the InteractivePlotWidget.
