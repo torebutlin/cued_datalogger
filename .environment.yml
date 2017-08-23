@@ -2,3 +2,5 @@ name: readthedocs-install-env
 dependencies:
   - portaudio
   - numpydoc
+  - numpy
+  - scipy
