@@ -41,6 +41,10 @@ class FrequencyDomainWidget(InteractivePlotWidget):
  
         for channel in self.channels:
             if self.current_plot == "spectrum":
+                if not channel.is_dataset(self.current_plot):
+                    print('No Fourier Transform to plot')   
+                    continue
+                '''
                 # If no spectrum exists, calculate one
                 print("Recalculating spectrum...")
                 units = channel.get_units("time_series")
@@ -52,6 +56,7 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                     channel.set_data(self.current_plot, spectrum)
                 
                 print("Done.")
+                '''
             elif self.current_plot == "TF":
                 if not channel.is_dataset(self.current_plot):
                     print('No Transfer Function to plot')   
@@ -143,11 +148,11 @@ class FrequencyToolbox(Toolbox):
         self.circle_fit_btn = QPushButton("Convert to Circle Fit")
         self.circle_fit_btn.clicked.connect(self.sig_convert_to_circle_fit.emit)
         convert_tab_layout.addWidget(self.circle_fit_btn)
-      
 
         self.addTab(self.convert_tab, "Conversion")
         
-
+    def set_view_type(self,vtype):
+        self.view_type_combobox.setCurrentText(vtype)
         
 def compute_autospec(fft_data):
     return(fft_data * np.conjugate(fft_data))

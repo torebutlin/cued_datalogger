@@ -88,7 +88,7 @@ class AnalysisWindow(QMainWindow):
         
         # # Time toolbox
         self.time_toolbox = TimeToolbox(self.toolbox)
-        self.time_toolbox.sig_convert_to_fft.connect(self.plot_fft)
+        self.time_toolbox.sig_convert_to_fft.connect(self.compute_fft)
         self.time_toolbox.sig_convert_to_sonogram.connect(self.plot_sonogram)
         
         # # Frequency toolbox
@@ -234,44 +234,55 @@ class AnalysisWindow(QMainWindow):
             self.plot_fft()
         elif dtype == 'Transfer Function':
             self.plot_tf()
+    
+    def compute_fft(self):
+        # If no spectrum exists, calculate one
+        print("Calculating spectrum...")
+        for i in range(len(self.cs)):
+            time_sig = self.cs.get_channel_data(i,"time_series")
+            if not time_sig.shape[0] == 0:
+                spectrum = rfft(time_sig)
+                if not self.cs.channels[i].is_dataset("spectrum"):
+                    self.cs.add_channel_dataset(i, "spectrum", spectrum)
+                else:
+                    self.cs.set_channel_data(i, "spectrum", spectrum)
+            else:
+                print('No Time Signal')
             
+        print("Done.")
+        self.plot_fft()
+        
+    def compute_tf(self):
+        # If no spectrum exists, calculate one
+        print("Calculating TF...")
+        '''
+        for i in range(len(self.cs)):
+            time_sig = self.cs.get_channel_data(i,"time_series")
+            if time_sig:
+                spectrum = rfft(time_sig)
+                if not self.cs.channels[i].is_dataset("spectrum"):
+                    self.cs.add_channel_dataset(i, "spectrum", spectrum)
+                else:
+                    self.cs.set_channel_data(i, "spectrum", spectrum)
+            else:
+                print('No Time Signal')
+        '''    
+        print("Done.")
+        
+        
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.current_plot = "spectrum"
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
+        self.frequency_toolbox.set_view_type('Fourier Transform')
 
     def plot_tf(self):
         #TODO: calculate TF function if none is found
-        '''
-        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'spectrum')
-        tfdata = self.cs.get_channel_data(tuple(range(len(self.cs))),'TF')
-        if not len(self.cs) <=1:
-            print("There is less than 2 channels, cannot plot Transfer Function")
-            return
-        
-        for i,tf in enumerate(tfdata):
-            fft_in = fdata[0]
-            if fft_in.shape == 0:
-                print('Just no')
-                return
-            
-            if len(tf) == 0:
-                if not fdata[i].shape[0]>0:
-                    print("Calculating TF, Input: Channel 0...")
-                    auto_in = compute_autospec(fft_in)
-                    auto_out = compute_autospec(fdata[])
-                    cross = compute_crossspec(fft_in)
-                    new_tf = compute_transfer_function(auto_in,auto_out,cross)
-                    if not channel.is_dataset('TF'):
-                        self.cs.add_channel_dataset(i, 'TF',new_tf)
-                    
-                    print("Done.")
-        '''
-        print(self.cs.get_channel_data(tuple(range(len(self.cs))),'TF'))
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.current_plot = "TF"
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
+        self.frequency_toolbox.set_view_type('Transfer Function')
         
   
     def plot_sonogram(self):
