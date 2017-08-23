@@ -11,8 +11,9 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QComboBox)
 from PyQt5.QtGui import QFontMetrics,QFont
 
-is_py2 = sys.version[0] == '2'
-if is_py2:
+# Queue module version name changed between Python 2 & 3, so this allows
+# for both
+if sys.version[0] == '2':
     from Queue import Queue
 else:
     from queue import Queue

@@ -10,16 +10,15 @@ import sys,traceback
 
 try:
     import pyaudio
-except ImportError:   
+except ImportError:
+    # If pyaudio doesn't work, create mock version of it
     from mock import Mock
-    
     class MockModule(Mock):
         @classmethod
         def __getattr__(cls, name):
                 return Mock()
-    
-    sys.modules['pyaudio'] = MockModule()
 
+    sys.modules['pyaudio'] = MockModule()
     import pyaudio
 
 import numpy as np
