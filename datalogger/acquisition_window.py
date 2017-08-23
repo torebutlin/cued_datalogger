@@ -593,11 +593,9 @@ class LiveplotApp(QMainWindow):
                 for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
                     btn.setDisabled(True)
         
-        for UIs in self.RecUI.children():
-            try:
-                UIs.setDisabled(True)
-            except AttributeError:
-                continue       
+
+        self.RecUI.switch_rec_box.setDisabled(True)
+        self.RecUI.spec_settings_widget.setDisabled(True)
         self.RecUI.cancelbtn.setEnabled(True)
     
     # Stop the data recording and transfer the recorded data to main window    
@@ -650,11 +648,8 @@ class LiveplotApp(QMainWindow):
                                                    {'sample_rate':self.rec.rate})
         self.save_data()
         self.stats_UI.statusbar.clearMessage() 
-        for UIs in self.RecUI.children():
-            try:
-                UIs.setEnabled(True)
-            except AttributeError:
-                continue
+        self.RecUI.spec_settings_widget.setEnabled(True)
+        self.RecUI.switch_rec_box.setEnabled(True) 
             
     def undo_tf_tally(self):
         if self.autospec_in_tally:
@@ -675,11 +670,9 @@ class LiveplotApp(QMainWindow):
         self.rec.record_cancel()
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
-        for UIs in self.RecUI.children():
-            try:
-                UIs.setEnabled(True)
-            except AttributeError:
-                continue
+            
+        self.RecUI.switch_rec_box.setEnabled(True) 
+        self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
         
@@ -903,10 +896,11 @@ class LiveplotApp(QMainWindow):
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
     def save_data(self):
-        print('Saving data...')
-        self.parent.cs = copy.copy(self.live_chanset)
-        self.dataSaved.emit()        
-        print('Data saved!')
+        if self.parent:
+            print('Saving data...')
+            self.parent.cs = copy.copy(self.live_chanset)
+            self.dataSaved.emit()        
+            print('Data saved!')
 
 #-------------------------- STREAM METHODS ------------------------------------        
     def init_and_check_stream(self):

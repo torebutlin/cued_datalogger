@@ -7,7 +7,7 @@ Created on Tue Aug 22 11:19:29 2017
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
+    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedWidget)
 from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
 QPalette,QPainter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
@@ -253,7 +253,7 @@ class RecUI(BaseWidget):
         
         rec_settings_layout = QVBoxLayout(self)
         global_settings_layout = QFormLayout()
-        spec_settings_layout = QStackedLayout()
+        self.spec_settings_widget= QStackedWidget(self)
         
         rec_title = QLabel('Recording Settings', self)
         rec_title.setStyleSheet('''
@@ -262,11 +262,11 @@ class RecUI(BaseWidget):
         rec_settings_layout.addWidget(rec_title)
                 
         rec_settings_layout.addLayout(global_settings_layout)
-        rec_settings_layout.addLayout(spec_settings_layout)
+        rec_settings_layout.addWidget(self.spec_settings_widget)
         
         self.switch_rec_box = QComboBox(self)
         self.switch_rec_box.addItems(['Normal','TF Avg.','TF Grid','<something>'])
-        self.switch_rec_box.currentIndexChanged.connect(spec_settings_layout.setCurrentIndex)
+        self.switch_rec_box.currentIndexChanged.connect(self.spec_settings_widget.setCurrentIndex)
         global_settings_layout.addRow(QLabel('Mode',self),self.switch_rec_box)
 
         # Add the recording setting UIs with the Validators
@@ -294,7 +294,7 @@ class RecUI(BaseWidget):
         self.normal_rec = QWidget(self)
         normal_rec_layout = QVBoxLayout(self.normal_rec)
         normal_rec_layout.addWidget(QLabel('No Additional Options',self)) 
-        spec_settings_layout.addWidget(self.normal_rec)
+        self.spec_settings_widget.addWidget(self.normal_rec)
         
         self.tfavg_rec = QWidget(self)
         tfavg_rec_layout = QVBoxLayout(self.tfavg_rec)
@@ -318,17 +318,17 @@ class RecUI(BaseWidget):
         tflog_btn_layout.addWidget(self.clear_log_btn)        
         tfavg_rec_layout.addLayout(tflog_btn_layout)
         
-        spec_settings_layout.addWidget(self.tfavg_rec)
+        self.spec_settings_widget.addWidget(self.tfavg_rec)
         
         self.tfgrid_rec = QWidget(self)
         tfgrid_rec_layout = QVBoxLayout(self.tfgrid_rec)
         tfgrid_rec_layout.addWidget(QLabel('Nothing is here :(',self))
-        spec_settings_layout.addWidget(self.tfgrid_rec)
+        self.spec_settings_widget.addWidget(self.tfgrid_rec)
         
         self.something_rec = QWidget(self)
         something_rec_layout = QVBoxLayout(self.something_rec)
         something_rec_layout.addWidget(QLabel('<something is here>',self))
-        spec_settings_layout.addWidget(self.something_rec)
+        self.spec_settings_widget.addWidget(self.something_rec)
         
         # Add the record and cancel buttons
         rec_btn_layout = QHBoxLayout(self.normal_rec)

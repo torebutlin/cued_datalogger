@@ -38,7 +38,7 @@ class FrequencyDomainWidget(InteractivePlotWidget):
     
     def update_plot(self):
         self.clear()
- 
+        print("Plotting %s." % self.current_plot_type)
         for channel in self.channels:
             if self.current_plot == "spectrum":
                 if not channel.is_dataset(self.current_plot):
@@ -64,37 +64,31 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                 
             # Plot
             if self.current_plot_type == 'Linear Magnitude':
-                print("Plotting Linear Magnitude.")
                 self.plot(channel.get_data("frequency"), 
                           np.abs(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Log Magnitude':
-                print("Plotting Log Magnitude.")
                 self.plot(channel.get_data("frequency"),
                           to_dB(np.abs(channel.get_data(self.current_plot))),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Phase':
-                print("Plotting Phase.")
                 self.plot(channel.get_data("frequency"), 
                           np.angle(channel.get_data(self.current_plot),deg=True),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Real Part':
-                print("Plotting Real Part.")
                 self.plot(channel.get_data("frequency"),
                           np.real(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Imaginary Part':
-                print("Plotting Imaginary Part.")
                 self.plot(channel.get_data("frequency"), 
                           np.imag(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Nyquist':
-                print("Plotting Nyquist.")
                 self.plot(np.real(channel.get_data(self.current_plot)), 
                           np.imag(channel.get_data(self.current_plot)),
                           pen=pg.mkPen(channel.colour))
@@ -142,7 +136,7 @@ class FrequencyToolbox(Toolbox):
         
         self.view_tf_btn = QPushButton("Convert FFT to TF")
         self.convert_tab.setLayout(convert_tab_layout)
-        #self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
+        self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
         convert_tab_layout.addWidget(self.view_tf_btn)        
         
         self.circle_fit_btn = QPushButton("Convert to Circle Fit")
