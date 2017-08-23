@@ -11,7 +11,7 @@ class Mock(MagicMock):
     def __getattr__(cls, name):
             return MagicMock()
 
-MOCK_MODULES = ['pyaudio']
+MOCK_MODULES = ['pyaudio', 'PyQt5']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
@@ -42,7 +42,7 @@ setup(name='cued-datalogger',
       # itself in an Anaconda environment, a lot of things break. Fix this.
       # (currently the workaround is telling the user to install some stuff)
       install_requires=[
-                      'PyQt5>=5.9',
+                      #'PyQt5>=5.9',
                       'numpy>=1.11.3',
                       'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
