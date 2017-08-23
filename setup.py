@@ -49,8 +49,8 @@ setup(name='cued-datalogger',
                       'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
                       'matplotlib>=1.5.1',
-                      'PyDAQmx>=1.3.2',
-                      'pyaudio>=0.2.11'],
+                      'PyDAQmx>=1.3.2'],
+                      #'pyaudio>=0.2.11'],
       zip_safe=True,
       include_package_data=True)
 
