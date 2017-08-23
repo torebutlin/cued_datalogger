@@ -8,7 +8,7 @@ from datalogger.api.file_import import import_from_mat
 from datalogger.api.toolbox import Toolbox
 from datalogger.api.numpy_extensions import to_dB, from_dB, sdof_modal_peak
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
@@ -20,6 +20,7 @@ from scipy.optimize import curve_fit
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
+defaultpen='k'
 
 
 def fit_circle_to_data(x, y):
@@ -94,12 +95,13 @@ class CircleFitWidget(QWidget):
 
         self.w = np.zeros(1)
 
+        self.autofit_parameters = set(["frequency", "z", "amplitude", "phase"])
 
         self.init_ui()
 
     # Initialisation functions ------------------------------------------------
     def init_ui(self):
-        # # Transfer function plotlock
+        # # Transfer function plot
         self.transfer_func_plot_w = pg.PlotWidget(title="Transfer Function",
                                                   labels={'bottom':
                                                           ("Frequency", "rad"),
@@ -172,24 +174,6 @@ class CircleFitWidget(QWidget):
         controls.addLayout(spacer_hbox, 0, 1)
         controls.addWidget(self.add_peak_btn, 0, 2)
 
-        # # Transfer function reconstruction
-        self.construct_transfer_fn_btn = QPushButton(self)
-        self.construct_transfer_fn_btn.setText("Construct transfer function")
-        self.construct_transfer_fn_btn.clicked.connect(self.construct_transfer_fn)
-
-        self.show_transfer_fn_checkbox = QCheckBox(self)
-        self.show_transfer_fn_checkbox.setText("Show/hide")
-        self.show_transfer_fn_checkbox.stateChanged.connect(self.show_transfer_fn)
-
-        transfer_fn_hbox = QHBoxLayout()
-        transfer_fn_hbox.addWidget(self.construct_transfer_fn_btn)
-        transfer_fn_hbox.addWidget(self.show_transfer_fn_checkbox)
-        transfer_fn_hbox.addLayout(spacer_hbox)
-
-        transfer_fn_groupbox = QGroupBox(self)
-        transfer_fn_groupbox.setTitle("Transfer function")
-        transfer_fn_groupbox.setLayout(transfer_fn_hbox)
-
         # # Table of results
         self.init_table()
 
@@ -202,38 +186,11 @@ class CircleFitWidget(QWidget):
 
         results_groupbox.setLayout(results_groupbox_vbox)
 
-        # # Fit controls
-        self.init_fit_controls()
-
-        # # Region selection controls
-        self.autorange_to_region_checkbox = QCheckBox("Autorange to region")
-        self.autorange_to_region_checkbox.clicked.connect(self.autorange_to_region)
-
-        selection_vbox_spacer = QVBoxLayout()
-        selection_vbox_spacer.addStretch(1)
-
-        selection_vbox = QVBoxLayout()
-        selection_vbox.addWidget(self.autorange_to_region_checkbox)
-        selection_vbox.addLayout(selection_vbox_spacer)
-
-        selection_groupbox = QGroupBox()
-        selection_groupbox.setTitle("Selection controls")
-        selection_groupbox.setLayout(selection_vbox)
-
         # # Widget layout
-        controls_hbox = QHBoxLayout()
-        controls_hbox.addWidget(self.fit_controls_groupbox)
-        controls_hbox.addWidget(selection_groupbox)
-
-        controls_vbox = QVBoxLayout()
-        controls_vbox.addWidget(results_groupbox)
-        controls_vbox.addWidget(transfer_fn_groupbox)
-        controls_vbox.addLayout(controls_hbox)
-
         layout = QGridLayout()
         layout.addWidget(self.transfer_func_plot_w, 0, 0)
         layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addLayout(controls_vbox, 2, 0)
+        layout.addWidget(results_groupbox, 2, 0)
         layout.addWidget(self.circle_plot_w, 2, 1)
         self.setLayout(layout)
 
@@ -259,51 +216,7 @@ class CircleFitWidget(QWidget):
         self.row_list = []
         self.modal_peaks = []
 
-    def init_fit_controls(self):
-        self.fit_controls_freq_combobox = QComboBox()
-        self.fit_controls_z_combobox = QComboBox()
-        self.fit_controls_amp_combobox = QComboBox()
-        self.fit_controls_phase_combobox = QComboBox()
-
-        self.fit_controls_freq_combobox.addItems(["Automatic", "Manual"])
-        self.fit_controls_z_combobox.addItems(["Automatic", "Manual"])
-        self.fit_controls_amp_combobox.addItems(["Automatic", "Manual"])
-        self.fit_controls_phase_combobox.addItems(["Automatic", "Manual"])
-
-        self.fit_controls_freq_combobox.setCurrentIndex(0)
-        self.fit_controls_z_combobox.setCurrentIndex(0)
-        self.fit_controls_amp_combobox.setCurrentIndex(0)
-        self.fit_controls_phase_combobox.setCurrentIndex(0)
-
-        self.fit_controls_reset_btn = QPushButton("Reset")
-        self.fit_controls_reset_btn.clicked.connect(self.reset_to_auto_fit)
-
-        fit_controls_grid_layout = QGridLayout()
-        fit_controls_grid_layout.addWidget(QLabel("Parameters"), 0, 0)
-        fit_controls_grid_layout.addWidget(QLabel("Frequency:"), 1, 0)
-        fit_controls_grid_layout.addWidget(self.fit_controls_freq_combobox, 1, 1)
-        fit_controls_grid_layout.addWidget(QLabel("Damping ratio:"), 2, 0)
-        fit_controls_grid_layout.addWidget(self.fit_controls_z_combobox, 2, 1)
-        fit_controls_grid_layout.addWidget(QLabel("Amplitude:"), 3, 0)
-        fit_controls_grid_layout.addWidget(self.fit_controls_amp_combobox, 3, 1)
-        fit_controls_grid_layout.addWidget(QLabel("Phase:"), 4, 0)
-        fit_controls_grid_layout.addWidget(self.fit_controls_phase_combobox, 4, 1)
-        fit_controls_grid_layout.addWidget(self.fit_controls_reset_btn, 5, 1)
-
-        fit_controls_grid_layout.setColumnStretch(2, 1)
-
-        self.fit_controls_groupbox = QGroupBox()
-        self.fit_controls_groupbox.setTitle("Fit controls")
-        self.fit_controls_groupbox.setLayout(fit_controls_grid_layout)
-
     # Interaction functions ---------------------------------------------------
-    def reset_to_auto_fit(self):
-        self.fit_controls_freq_combobox.setCurrentIndex(0)
-        self.fit_controls_z_combobox.setCurrentIndex(0)
-        self.fit_controls_amp_combobox.setCurrentIndex(0)
-        self.fit_controls_phase_combobox.setCurrentIndex(0)
-
-
     def add_peak(self):
         # Add the new row at the end
         self.tableWidget.insertRow(self.tableWidget.rowCount())
@@ -373,13 +286,10 @@ class CircleFitWidget(QWidget):
         self.set_active_row(new_row=True)
         self.update_plots()
 
-    def show_transfer_fn(self):
-        if self.show_transfer_fn_checkbox.isChecked():
-            self.constructed_transfer_fn1.show()
-            self.constructed_transfer_fn2.show()
-        else:
-            self.constructed_transfer_fn1.hide()
-            self.constructed_transfer_fn2.hide()
+    def show_transfer_fn(self, visible):
+        print("Setting transfer function visible to " + str(visible))
+        self.constructed_transfer_fn1.setVisible(visible)
+        self.constructed_transfer_fn2.setVisible(visible)
 
     def update_spinbox_step(self, value):
         if np.abs(value) > 1:
@@ -414,7 +324,7 @@ class CircleFitWidget(QWidget):
         # With pyqtgraph's removeItem, all the other items are set back to being visible
         # so need to undo this for those that are unchecked
         self.update_peak_selection()
-        self.show_transfer_fn()
+        self.show_transfer_fn(True)
 
     def set_active_row(self, checked=False, new_row=False):
         for i, row in enumerate(self.row_list):
@@ -570,21 +480,19 @@ class CircleFitWidget(QWidget):
         # Recalculate the parameters
         wr, zr, cr, phi = self.sdof_get_parameters()
 
-        if self.fit_controls_freq_combobox.currentText() == "Automatic":
+        if "frequency" in self.autofit_parameters:
             self.modal_peaks[self.tableWidget.currentRow()]["wr"] = wr
-        if self.fit_controls_z_combobox.currentText() == "Automatic":
+        if "z" in self.autofit_parameters:
             self.modal_peaks[self.tableWidget.currentRow()]["zr"] = zr
-        if self.fit_controls_amp_combobox.currentText() == "Automatic":
+        if "amplitude" in self.autofit_parameters:
             self.modal_peaks[self.tableWidget.currentRow()]["cr"] = cr
-        if self.fit_controls_phase_combobox.currentText() == "Automatic":
+        if "phase" in self.autofit_parameters:
             self.modal_peaks[self.tableWidget.currentRow()]["phi"] = phi
 
         self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
         self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
         self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["cr"])
         self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
-
-
 
     def update_from_row(self, value):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
@@ -596,6 +504,11 @@ class CircleFitWidget(QWidget):
         if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
             self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
 
+    def update_autofit_parameters(self, autofit, parameter):
+        if autofit:
+            self.autofit_parameters.add(parameter)
+        else:
+            self.autofit_parameters.remove(parameter)            
 
 # Fitting functions -----------------------------------------------------------
     def single_pole(self, w, wr, zr, cr, phi):
@@ -678,6 +591,11 @@ class CircleFitWidget(QWidget):
 
 
 class CircleFitToolbox(Toolbox):
+    
+    sig_autofit_parameter_change = pyqtSignal([bool, str])
+    sig_construct_transfer_fn = pyqtSignal()
+    sig_show_transfer_fn = pyqtSignal(bool)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -685,7 +603,88 @@ class CircleFitToolbox(Toolbox):
         self.init_ui()
     
     def init_ui(self):
-        self.addTab(QWidget(), "Empty")
+        self.init_transfer_function_tab()
+        self.init_autofit_tab()
+        
+    def init_transfer_function_tab(self):
+        self.transfer_function_tab = QWidget()
+        transfer_function_tab_layout = QGridLayout()
+        
+        self.construct_transfer_fn_btn = QPushButton()
+        self.construct_transfer_fn_btn.setText("Construct transfer function")
+        self.construct_transfer_fn_btn.clicked.connect(self.sig_construct_transfer_fn.emit)
+        transfer_function_tab_layout.addWidget(self.construct_transfer_fn_btn, 0, 0)
+        
+        self.show_transfer_fn_checkbox = QCheckBox()
+        self.show_transfer_fn_checkbox.setText("Show transfer function")
+        self.show_transfer_fn_checkbox.stateChanged.connect(self.sig_show_transfer_fn.emit)
+        transfer_function_tab_layout.addWidget(self.show_transfer_fn_checkbox, 1, 0)
+        
+        self.transfer_function_tab.setLayout(transfer_function_tab_layout)
+        transfer_function_tab_layout.setColumnStretch(1, 1)
+        transfer_function_tab_layout.setRowStretch(2, 1)
+        
+        self.addTab(self.transfer_function_tab, "Transfer function")
+    
+    def init_autofit_tab(self):
+        self.autofit_tab = QWidget()
+        autofit_layout = QGridLayout()
+        
+        self.autofit_freq_combobox = QComboBox()
+        self.autofit_z_combobox = QComboBox()
+        self.autofit_amp_combobox = QComboBox()
+        self.autofit_phase_combobox = QComboBox()
+
+        self.autofit_freq_combobox.addItems(["Manual", "Automatic"])
+        self.autofit_z_combobox.addItems(["Manual", "Automatic"])
+        self.autofit_amp_combobox.addItems(["Manual", "Automatic"])
+        self.autofit_phase_combobox.addItems(["Manual", "Automatic"])
+
+        self.autofit_freq_combobox.setCurrentIndex(1)
+        self.autofit_z_combobox.setCurrentIndex(1)
+        self.autofit_amp_combobox.setCurrentIndex(1)
+        self.autofit_phase_combobox.setCurrentIndex(1)
+
+        self.autofit_freq_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
+        self.autofit_z_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
+        self.autofit_amp_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
+        self.autofit_phase_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
+
+        self.autofit_reset_btn = QPushButton("Reset")
+        self.autofit_reset_btn.clicked.connect(self.reset_to_auto_fit)
+
+        autofit_layout.addWidget(QLabel("Parameters"), 0, 0)
+        autofit_layout.addWidget(QLabel("Frequency:"), 1, 0)
+        autofit_layout.addWidget(self.autofit_freq_combobox, 1, 1)
+        autofit_layout.addWidget(QLabel("Damping ratio:"), 2, 0)
+        autofit_layout.addWidget(self.autofit_z_combobox, 2, 1)
+        autofit_layout.addWidget(QLabel("Amplitude:"), 3, 0)
+        autofit_layout.addWidget(self.autofit_amp_combobox, 3, 1)
+        autofit_layout.addWidget(QLabel("Phase:"), 4, 0)
+        autofit_layout.addWidget(self.autofit_phase_combobox, 4, 1)
+        autofit_layout.addWidget(self.autofit_reset_btn, 5, 1)
+
+        autofit_layout.setColumnStretch(2, 1)
+        autofit_layout.setRowStretch(6, 1)
+
+        self.autofit_tab.setLayout(autofit_layout)
+        self.addTab(self.autofit_tab, "Autofit controls")
+    
+    def on_autofit_parameter_change(self, index):
+        if self.sender() == self.autofit_freq_combobox:
+            self.sig_autofit_parameter_change.emit(index, "frequency")
+        elif self.sender() == self.autofit_z_combobox:
+            self.sig_autofit_parameter_change.emit(index, "amplitude")
+        elif self.sender() == self.autofit_amp_combobox:
+            self.sig_autofit_parameter_change.emit(index, "z")
+        elif self.sender() == self.autofit_phase_combobox:
+            self.sig_autofit_parameter_change.emit(index, "phase")
+    
+    def reset_to_auto_fit(self):
+        self.autofit_freq_combobox.setCurrentIndex(1)
+        self.autofit_z_combobox.setCurrentIndex(1)
+        self.autofit_amp_combobox.setCurrentIndex(1)
+        self.autofit_phase_combobox.setCurrentIndex(1)
 
 
 if __name__ == '__main__':

@@ -112,7 +112,10 @@ class AnalysisWindow(QMainWindow):
         self.TF_toolbox.addTab(wd4, "TFTab")       
 
         # # Circle Fit toolbox
-        self.circle_fit_toolbox = CircleFitToolbox(self.toolbox) 
+        self.circle_fit_toolbox = CircleFitToolbox(self.toolbox)
+        self.circle_fit_toolbox.sig_show_transfer_fn.connect(self.display_tabwidget.circle_widget.show_transfer_fn)
+        self.circle_fit_toolbox.sig_construct_transfer_fn.connect(self.display_tabwidget.circle_widget.construct_transfer_fn)
+        self.circle_fit_toolbox.sig_autofit_parameter_change.connect(self.display_tabwidget.circle_widget.update_autofit_parameters)
         
         self.toolbox.add_toolbox(self.time_toolbox)
         self.toolbox.add_toolbox(self.frequency_toolbox)
@@ -268,8 +271,6 @@ class AnalysisWindow(QMainWindow):
             print('No Transfer function to plot')
             self.tfplots.append(None)
             self.tfplots.append(None)
-            
-        
   
     def plot_sonogram(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
