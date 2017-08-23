@@ -2,7 +2,7 @@ from setuptools import setup
 import sys
 
 from mock import Mock as MagicMock
-
+"""
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
@@ -10,17 +10,9 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = ['pyaudio']
-""",
-                'PyQt5',
-                'PyQt5.QtWidgets',
-                'numpy',
-                'scipy',
-                'pyqtgraph',
-                'matplotlib',
-                'PyDAQmx']
-"""
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+"""
 
 def version():
     """Get version number"""
@@ -44,13 +36,13 @@ setup(name='cued-datalogger',
                 'datalogger/acquisition',
                 'datalogger/analysis',
                 'datalogger/api'],
-      install_requires=['PyQt5>=5.9',
-                      'numpy>=1.11.3',
-                      'scipy>=0.18.1',
-                      'pyqtgraph>=0.9.10',
-                      'matplotlib>=1.5.1',
-                      'PyDAQmx>=1.3.2'],
-                      #'pyaudio>=0.2.11'],
+      install_requires=['PyQt5',
+                      'numpy',
+                      'scipy',
+                      'pyqtgraph',
+                      'matplotlib',
+                      'PyDAQmx',
+                      'pyaudio'],
       zip_safe=True,
       include_package_data=True)
 
