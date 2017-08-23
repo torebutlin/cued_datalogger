@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import ImageItem
-from datalogger.api.pyqt_widgets import SimpleColormap
+from datalogger.api.pyqt_widgets import matplotlib_lookup_table
 from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGridLayout,
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
@@ -483,7 +483,7 @@ class CustomUITemplate(object):
 class ColorMapPlotWidget(InteractivePlotWidget):
     """An InteractivePlotWidget optimised for plotting color(heat) maps"""
     def __init__(self, parent=None, cmap="jet"):
-        self.cmap = SimpleColormap(cmap)
+        self.lookup_table = matplotlib_lookup_table(cmap)
         self.num_contours = 5
         self.contour_spacing_dB = 5
         self.parent = parent
@@ -516,7 +516,7 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         #self.autoRange()
         
         self.z_img = ImageItem(z.transpose())
-        self.z_img.setLookupTable(self.cmap.to_rgb(np.arange(256)))
+        self.z_img.setLookupTable(self.lookup_table)
         self.z_img.setLevels([self.lowest_contour, self.highest_contour])
         
         self.canvas.addItem(self.z_img)

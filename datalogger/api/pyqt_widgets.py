@@ -165,15 +165,9 @@ class MatplotlibCanvas(FigureCanvas):
         pass
 
 from matplotlib.cm import get_cmap
-from matplotlib.colors import Colormap
 
-class SimpleColormap(Colormap):
-    """A wrapper for :class:`~/matplotlib.colors.Colormap` providing a method
-    for converting the matplotlib colormap to a pyqtgraph-style lookup table"""
-    def __init__(self, name):
-        self.cmap = get_cmap(name)
-        super().__init__(name)
-    
-    def create_lookup_table(self):
-        """Return a pyqtgraph-style lookup table (*ndarray*)."""
-        return np.asarray(self.cmap(np.arange(256))) * 255
+def matplotlib_lookup_table(name):
+    """Return a pyqtgraph-style lookup table (*ndarray*) from a 
+    :class:`~/matplotlib.colors.Colormap`"""
+    cmap = get_cmap(name)
+    return cmap(np.arange(256)) * 255
