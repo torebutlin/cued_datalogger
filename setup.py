@@ -11,7 +11,7 @@ class Mock(MagicMock):
     def __getattr__(cls, name):
             return MagicMock()
 
-MOCK_MODULES = ['pyaudio', 'PyQt5']
+MOCK_MODULES = ['pyaudio', 'PyQt5', 'scipy']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
@@ -44,7 +44,6 @@ setup(name='cued-datalogger',
       install_requires=[
                       #'PyQt5>=5.9',
                       'numpy>=1.11.3',
-                      'scipy>=0.18.1',
                       'pyqtgraph>=0.9.10',
                       'matplotlib>=1.5.1',
                       'PyDAQmx>=1.3.2'],
