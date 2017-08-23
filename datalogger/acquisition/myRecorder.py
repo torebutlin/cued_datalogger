@@ -7,7 +7,21 @@ Functions:
 from datalogger.acquisition.RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
 import sys,traceback
-import pyaudio
+
+try:
+    import pyaudio
+except ImportError:   
+    from mock import Mock
+    
+    class MockModule(Mock):
+        @classmethod
+        def __getattr__(cls, name):
+                return Mock()
+    
+    sys.modules['pyaudio'] = MockModule()
+
+    import pyaudio
+
 import numpy as np
 import pprint as pp
 import copy as cp
