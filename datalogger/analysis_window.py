@@ -135,10 +135,10 @@ class AnalysisWindow(QMainWindow):
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_tools)
-        self.channel_select_widget.channel_selection_changed.connect(self.display_tabwidget.timedomain_widget.set_selected_channels)
-        self.channel_select_widget.channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
-        self.channel_select_widget.channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
-        #self.channel_select_widget.channel_selection_changed.connect(self.display_tabwidget.circlefit_widget.set_selected_channels)
+        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.timedomain_widget.set_selected_channels)
+        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
+        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
+        #self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circlefit_widget.set_selected_channels)
 
         self.global_tools.addTab(self.channel_select_widget, 'Channel Selection')
 
@@ -236,9 +236,9 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
 
     def plot_tf(self):
+        # Switch to frequency domain tab
         self.plot_fft()
         self.tfplots = []
-        # Switch to frequency domain tab
         self.display_tabwidget.currentWidget().resetPlotWidget()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.transfer_widget)
         input_chan = 0

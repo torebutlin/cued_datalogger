@@ -6,7 +6,6 @@ import numpy as np
 import pyqtgraph as pg
 
 from datalogger.api.numpy_extensions import MatlabList
-from datalogger.api.pyqt_widgets import SimpleColormap
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
@@ -54,8 +53,7 @@ class ChannelSet(object):
         """Print the information about all of the Channels in this 
         ChannelSet."""
         print("ChannelSet: \n Channels: \n")
-        self.colormap = SimpleColormap("brg")
-
+        
         for i, channel in enumerate(self.channels):
             print("--------------------\n"
                 + "{}    ".format(i))
@@ -491,12 +489,12 @@ class ChannelSelectWidget(QWidget):
     
     Attributes
     ----------
-    channel_selection_changed : pyqtSignal
+    sig_channel_selection_changed : pyqtSignal
         The signal emitted when the selected channels are changed, containing
         a list of :class:`Channel` objects
     """
 
-    channel_selection_changed = pyqtSignal(list)
+    sig_channel_selection_changed = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -610,7 +608,7 @@ class ChannelSelectWidget(QWidget):
         # Emit the "Selection changed" signal with a list of channels
         # that are currently selected
         print("Currently selected channels: {}".format(self.selected_channels_index()))
-        self.channel_selection_changed.emit(self.selected_channels())
+        self.sig_channel_selection_changed.emit(self.selected_channels())
         
     def set_channel_name(self):
         for i, channel in enumerate(self.cs.channels):

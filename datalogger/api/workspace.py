@@ -2,10 +2,41 @@ import pyqtgraph as pg
 import re
 
 
-class Workspace():
-    """The Workspace class, containing all the attributes and functions of a
-    Workspace (configuration of the DataLogger)"""
-
+class Workspace(object):
+    """
+    The ``Workspace`` class stores the workspace attributes and has methods for
+    saving, loading, configuring, and displaying the workspace settings.
+    
+    Workspaces are designed so that specific configurations of the DataLogger
+    can be created, eg. for undergraduate labs, with different features 
+    enabled or disabled, and stored in a ``.wsp`` file that can be read using
+    the :class:`Workspace` class. In the DataLogger, a ``CurrentWorkspace`` 
+    instance is normally initiated that will store the current settings and all 
+    the workspace functionality will be accessed through the
+    ``CurrentWorkspace``. 
+    
+    Attributes
+    ----------
+    name : str
+        A human-readable name for this workspace, eg. ``"Lab 4C6"``
+    path : str
+        The path to this workspace's directory. Addons will be loaded from the
+        directory ``path/addons/``, and files will be saved to ``path`` (not 
+        implemented yet). Default value is ``"./"``.
+    add_ons_enabled : bool
+        Flag that sets whether to addons are enabled (not implemented yet - 
+        currently has no effect). Default value is ``True``
+    pyqtgraph_inverted : bool
+        Flag that sets whether pyqtgraph uses a white background and black
+        lines (``False``), or black background and white lines (``True``).
+        Default value is ``False``.
+    default_pen : str
+        The default colour of the pen, set by :attr:`pyqtgraph_inverted`.
+        Cannot be set manually.
+    pyqtgraph_antialias : bool
+        Flag that sets whether pyqtgraph uses antialiasing for smoother lines.
+        Default value is ``True``.
+    """
     def __init__(self):
         # Set default values:
         self.name = "Default Workspace"
@@ -18,12 +49,12 @@ class Workspace():
         self.configure()
 
     def settings(self):
-        """A quick method of accessing this workspace's configuration"""
-
+        """A convenience method to access this workspace's configuration"""
         return vars(self)
 
     def save(self, destination):
-        """Save this workspace to the `destination` (/path/to/workspace.wsp)"""
+        """Save this workspace to *destination* (of the form 
+        ``"/path/to/workspace.wsp"``)."""
 
         print("Saving current workspace to {} ...".format(destination))
         print("\t Settings found:")
@@ -41,8 +72,8 @@ class Workspace():
         print("Done.")
 
     def load(self, workspace):
-        """Load the settings found in the .wsp file given by `workspace`
-        (/path/to/workspace.wsp)"""
+        """Load the settings found in the .wsp file given by *workspace*`
+        (of the form ``"/path/to/workspace.wsp"``)."""
 
         print("Loading workspace {} ...".format(workspace))
         print("\t Settings found:")
@@ -81,8 +112,8 @@ class Workspace():
         self.configure()
 
     def configure(self):
-        """Set the global configuration to be the configuration of this
-        workspace"""
+        """Set the global configuration of the DataLogger
+        to the settings in this workspace."""
 
         print("Configuring workspace...")
 

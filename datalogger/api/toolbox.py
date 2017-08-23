@@ -1,15 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Aug 18 14:49:48 2017
-
-@author: eyt21
-"""
-from PyQt5.QtCore import QCoreApplication, QSize, Qt,QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QGridLayout, QHBoxLayout,
-                             QMainWindow, QPushButton, QMouseEventTransition,
-                             QTabBar, QSplitter,QStackedLayout,QLabel, QSizePolicy, QStackedWidget,
-                             QVBoxLayout,QFormLayout,QGroupBox,QRadioButton,QButtonGroup,QComboBox,
-                             QLineEdit,QAction,QMenu, QCheckBox,QFileDialog)
+from PyQt5.QtCore import Qt, QPropertyAnimation
+from PyQt5.QtWidgets import (QTabBar, QSplitter, QSizePolicy, QStackedWidget)
 
 COLLAPSE_FACTOR = 0.7
 
@@ -33,6 +23,7 @@ class Toolbox(QSplitter):
 
         # # Create the Stacked widget for the pages
         self.tabPages = QStackedWidget(self)
+        self.tabPages.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         # # Link the signals so that changing tab leads to a change of page
         self.tabBar.currentChanged.connect(self.changePage)
@@ -69,10 +60,11 @@ class Toolbox(QSplitter):
         """Add a new tab, with widget **widget** and title **title**"""
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
-        
+        """
         if widget.sizeHint().width() >= self.max_width:
             self.max_width = widget.sizeHint().width()
-
+        """
+        
     def toggle_collapse(self):
         """If collapsed, expand the widget so the pages are visible. If not 
         collapsed, collapse the widget so that only the tabBar is showing"""
@@ -106,14 +98,14 @@ class Toolbox(QSplitter):
     
     def fast_collapse(self):
         """Collapse the widget without the animation"""
-        self.tabPages.setMaximumWidth(0)
         self.tabPages.hide()
+        self.tabPages.setMaximumWidth(0)
         self.collapsed = True
         
     def fast_expand(self):
         """Expand the widget without the animation"""
-        self.tabPages.setMaximumWidth(self.max_width)
         self.tabPages.show()
+        self.tabPages.setMaximumWidth(self.max_width)
         self.collapsed = False
 
     def changePage(self, index):
@@ -124,8 +116,7 @@ class Toolbox(QSplitter):
         self.tabPages.setMaximumWidth(self.max_width)
         
         if self.tabPages.currentWidget():
-            self.tabPages.currentWidget().resize(self.max_width, 
-                                                 self.tabPages.height())
+            self.tabPages.currentWidget().resize(self.tabPages.size())
 
     def clear(self):
         """Remove all tabs and pages"""

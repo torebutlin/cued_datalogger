@@ -11,12 +11,15 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
                              QComboBox)
 from PyQt5.QtGui import QFontMetrics,QFont
 
-from io import StringIO
-from queue import Queue
-from contextlib import redirect_stdout
+# Queue module version name changed between Python 2 & 3, so this allows
+# for both
+if sys.version[0] == '2':
+    from Queue import Queue
+else:
+    from queue import Queue
+    
 import os,traceback,sys
 
-import pyqtgraph as pg
 import re
 
 from datalogger.api.channel import ChannelSet

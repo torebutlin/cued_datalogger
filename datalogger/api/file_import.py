@@ -5,7 +5,24 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)
 from PyQt5.QtCore import  Qt
 
-def import_from_mat(file, channel_set):
+
+def import_from_mat(file, channel_set=None):
+    """
+    A function for importing data and metadata to a ChannelSet from an 
+    old-style DataLogger ``.mat`` file.
+    
+    Parameters
+    ----------
+    file : path_to_file
+        The path to the ``.mat`` file to import data from.
+    channel_set : ChannelSet
+        The ChannelSet to save the imported data and metadata to. If ``None``, 
+        a new ChannelSet is created and returned.
+    """
+    if channel_set is None:
+        new_channel_set = True
+        channel_set = ChannelSet()
+    
     # Load the matlab file as a dict
     file = sio.loadmat(file)
 
@@ -87,7 +104,8 @@ def import_from_mat(file, channel_set):
                                             "sonogram_phase",
                                             sonogram_phase[i],
                                             'rad')
-            
+    if new_channel_set:
+        return channel_set
             
 class DataImportWidget(QWidget):
     def __init__(self,parent):
