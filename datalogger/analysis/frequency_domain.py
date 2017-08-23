@@ -40,10 +40,11 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         self.clear()
         print("Plotting %s." % self.current_plot_type)
         for channel in self.channels:
-            if self.current_plot == "spectrum":
-                if not channel.is_dataset(self.current_plot):
-                    print('No Fourier Transform to plot')   
-                    continue
+            #if self.current_plot == "spectrum":
+            data = channel.get_data(self.current_plot)
+            if data.shape[0] == 0:
+                print('No %s to plot' % self.current_plot)   
+                continue
                 '''
                 # If no spectrum exists, calculate one
                 print("Recalculating spectrum...")
@@ -57,40 +58,40 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                 
                 print("Done.")
                 '''
-            elif self.current_plot == "TF":
-                if not channel.is_dataset(self.current_plot):
-                    print('No Transfer Function to plot')   
-                    continue
+            #elif self.current_plot == "TF":
+            #    if not channel.is_dataset(self.current_plot):
+            #        print('No Transfer Function to plot')   
+            #        continue
                 
             # Plot
             if self.current_plot_type == 'Linear Magnitude':
                 self.plot(channel.get_data("frequency"), 
-                          np.abs(channel.get_data(self.current_plot)),
+                          np.abs(data),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Log Magnitude':
                 self.plot(channel.get_data("frequency"),
-                          to_dB(np.abs(channel.get_data(self.current_plot))),
+                          to_dB(np.abs(data)),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Phase':
                 self.plot(channel.get_data("frequency"), 
-                          np.angle(channel.get_data(self.current_plot),deg=True),
+                          np.angle(data,deg=True),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Real Part':
                 self.plot(channel.get_data("frequency"),
-                          np.real(channel.get_data(self.current_plot)),
+                          np.real(data),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Imaginary Part':
                 self.plot(channel.get_data("frequency"), 
-                          np.imag(channel.get_data(self.current_plot)),
+                          np.imag(data),
                           pen=pg.mkPen(channel.colour))
                 
             elif self.current_plot_type == 'Nyquist':
-                self.plot(np.real(channel.get_data(self.current_plot)), 
-                          np.imag(channel.get_data(self.current_plot)),
+                self.plot(np.real(data), 
+                          np.imag(data),
                           pen=pg.mkPen(channel.colour))
 
             
