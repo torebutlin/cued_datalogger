@@ -5,3 +5,7 @@ dependencies:
   - numpy
   - scipy
   - mock
+  - pyqt
+  - pyaudio
+  - matplotlib
+  - pyqtgraph
