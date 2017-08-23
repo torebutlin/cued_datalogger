@@ -150,7 +150,7 @@ class CustomPlotWidget(pg.PlotWidget):
         return indices_of_data_in_display[0], indices_of_data_in_display[-1]
 
 class CustomViewBox(pg.ViewBox):
-    def __init__(self, *arg,cparent = None,**kwarg):
+    def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
         self.cparent = cparent
         self.menu = CustomViewMenu(self)
