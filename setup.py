@@ -3,13 +3,16 @@ import sys
 import subprocess
 from os.path import isfile
 
-import sys
-from unittest.mock import MagicMock
+try:
+    from unittest.mock import MagicMock
+except:
+    from mock import Mock as MagicMock
 
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
             return MagicMock()
+
 
 MOCK_MODULES = ['pyaudio', 'PyQt5', 'scipy']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
