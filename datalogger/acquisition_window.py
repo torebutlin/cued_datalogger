@@ -619,6 +619,16 @@ class LiveplotApp(QMainWindow):
             in_chan = self.RecUI.get_input_channel()
             chans.remove(in_chan)
             input_chan_data = ft_datas[:,in_chan]
+            
+            if not len(self.autospec_in_tally)==0: 
+                if not input_chan_data.shape[0] == self.autospec_in_tally[-1].shape[0]:
+                    print('Data shape does not match, you may have fiddle the settings')
+                    print('Please either clear the past data, or revert the settings')
+                    self.stats_UI.statusbar.clearMessage() 
+                    self.RecUI.spec_settings_widget.setEnabled(True)
+                    self.RecUI.switch_rec_box.setEnabled(True) 
+                    return
+                
             self.autospec_in_tally.append(compute_autospec(input_chan_data))
             
             autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
@@ -626,16 +636,16 @@ class LiveplotApp(QMainWindow):
             for i,chan in enumerate(chans):
                 autospec_out[:,i] = compute_autospec(ft_datas[:,chan])
                 crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,chan])
-                    
+             
             self.autospec_out_tally.append(autospec_out)
             self.crossspec_tally.append(crossspec)     
             auto_in_sum = np.array(self.autospec_in_tally).sum(axis = 0)
             auto_out_sum = np.array(self.autospec_out_tally).sum(axis = 0)
             cross_sum = np.array(self.crossspec_tally).sum(axis = 0)     
             for i,chan in enumerate(chans):
-                tf_avg,_ = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
-                print(tf_avg)
+                tf_avg,cor = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
                 self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
+                self.live_chanset.add_channel_dataset(chan,'coherence',cor)
         
             self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
             
@@ -760,7 +770,7 @@ class LiveplotApp(QMainWindow):
         try:
             # Reset recording configuration Validators and inputs checks
             self.RecUI.set_recorder(self.rec)
-            self.autoset_record_config('Samples')
+            self.remove_tf_tally()
         except:
             t,v,tb = sys.exc_info()
             print(t)

@@ -21,6 +21,8 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         self.current_plot_type = self.plot_types[0]
                 
         self.current_plot = "spectrum"
+        
+        self.coherence_plot = False
     
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted"""
@@ -45,23 +47,6 @@ class FrequencyDomainWidget(InteractivePlotWidget):
             if data.shape[0] == 0:
                 print('No %s to plot' % self.current_plot)   
                 continue
-                '''
-                # If no spectrum exists, calculate one
-                print("Recalculating spectrum...")
-                units = channel.get_units("time_series")
-                #spectrum = scipy.fftpack.rfft(channel.get_data("time_series"))
-                spectrum = np.fft.rfft(channel.get_data("time_series"))
-                if not channel.is_dataset(self.current_plot):
-                    channel.add_dataset(self.current_plot, units, spectrum)
-                else:
-                    channel.set_data(self.current_plot, spectrum)
-                
-                print("Done.")
-                '''
-            #elif self.current_plot == "TF":
-            #    if not channel.is_dataset(self.current_plot):
-            #        print('No Transfer Function to plot')   
-            #        continue
                 
             # Plot
             if self.current_plot_type == 'Linear Magnitude':
@@ -93,6 +78,10 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                 self.plot(np.real(data), 
                           np.imag(data),
                           pen=pg.mkPen(channel.colour))
+                
+            if self.current_plot == "TF" and self.coherence_plot:
+                # Plot the coherences
+                pass
 
             
 class FrequencyToolbox(Toolbox):
