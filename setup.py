@@ -16,7 +16,7 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 def version():
     """Get version number"""
-    with open('datalogger/VERSION.txt') as f:
+    with open('datalogger/VERSION') as f:
         return f.read()
 
 def readme():
