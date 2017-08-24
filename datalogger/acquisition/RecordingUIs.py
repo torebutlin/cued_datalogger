@@ -17,6 +17,17 @@ import re
 import pyqtgraph as pg
 import functools as fct
 
+import datalogger.acquisition.myRecorder as mR
+try:
+    import datalogger.acquisition.NIRecorder as NIR
+    NI_drivers = True
+except NotImplementedError:
+    print("Seems like you don't have National Instruments drivers")
+    NI_drivers = False
+except ImportError:
+    print("ImportError: Seems like you don't have pyDAQmx modules")
+    NI_drivers = False
+
 MAX_SAMPLE = 1e9 
 
 #----------------------WIDGET CLASSES------------------------------------            
@@ -213,14 +224,75 @@ class DevConfigUI(BaseWidget):
         self.config_button = QPushButton('Set Config', self)
         config_form.addRow(self.config_button)
                 
-        self.config_button.clicked.connect(self.emit_configRecorder)
-        self.typebtngroup.buttonReleased.connect(self.emit_recorderSelected)
-
-    def emit_configRecorder(self):
-        self.configRecorder.emit()
+        self.config_button.clicked.connect(self.configRecorder.emit)
+        self.typebtngroup.buttonReleased.connect(self.display_sources)
         
-    def emit_recorderSelected(self):
-        self.recorderSelected.emit()
+    def set_recorder(self,recorder):
+        self.rec = recorder
+        
+    def config_setup(self):
+        rb = self.typegroup.findChildren(QRadioButton)
+        if type(self.rec) == mR.Recorder:
+            rb[0].setChecked(True)
+        elif type(self.rec) == NIR.Recorder:
+            rb[1].setChecked(True)
+            
+        self.display_sources()
+        
+        info = [self.rec.rate,self.rec.channels,
+                self.rec.chunk_size,self.rec.num_chunk]
+        for cbox,i in zip(self.configboxes[1:],info):
+            cbox.setText(str(i))
+        
+    def display_sources(self):
+        rb = self.typegroup.findChildren(QRadioButton)
+        if not NI_drivers and rb[1].isChecked():
+            print("You don't seem to have National Instrument drivers/modules")
+            rb[0].setChecked(True)
+            return 0
+        
+        if rb[0].isChecked():
+            selR = mR.Recorder()
+        elif rb[1].isChecked():
+            selR = NIR.Recorder()
+        else:
+            return 0
+        
+        source_box = self.configboxes[0]
+        source_box.clear()
+        
+        try:
+            full_device_name = []
+            s,b =  selR.available_devices()
+            for a,b in zip(s,b):
+                if type(b) == str:
+                    full_device_name.append(a + ' - ' + b)
+                else:
+                    full_device_name.append(a)
+                    
+            source_box.addItems(full_device_name)
+        except Exception as e:
+            print(e)
+            source_box.addItems(selR.available_devices()[0])
+            
+        if self.rec.device_name:
+            source_box.setCurrentText(self.rec.device_name)
+            
+        del selR
+        
+    def read_device_config(self, *arg):
+        # TODO: Put in Validators
+        recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
+        configs = []
+        for cbox in self.configboxes:
+            if type(cbox) == QComboBox:
+                configs.append(cbox.currentIndex())
+            else:
+                config_input = cbox.text().strip(' ')
+                configs.append(int(float(config_input)))
+                    
+        print(recType,configs)
+        return(recType, configs)
         
 class StatusUI(BaseWidget):
     def initUI(self):

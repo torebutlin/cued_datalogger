@@ -72,7 +72,6 @@ class LiveplotApp(QMainWindow):
         
         self.meta_window = None
         
-        
         # Set recorder object
         self.playing = False
         self.rec = mR.Recorder(channels = 2,
@@ -96,14 +95,13 @@ class LiveplotApp(QMainWindow):
         try:
             # Construct UI        
             self.initUI()
-            self.config_setup()
+            #self.config_setup()
         except Exception as e:
             print(e)
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            #self.close()
             self.show()
             return
         
@@ -155,11 +153,14 @@ class LiveplotApp(QMainWindow):
         self.ResetChanConfigs()
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
+        self.devconfig_UI.set_recorder(self.rec)
+        self.devconfig_UI.config_setup()
+        
         NI_btn = self.devconfig_UI.typegroup.findChildren(QRadioButton)[1]
         if not NI_drivers:
             NI_btn.setDisabled(True)
         
-        self.devconfig_UI.recorderSelected.connect(self.display_sources)
+        #self.devconfig_UI.recorderSelected.connect(self.display_sources)
         self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         
         self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
@@ -426,72 +427,6 @@ class LiveplotApp(QMainWindow):
     def meta_win_closed(self):
         self.meta_window = None
         self.update_chan_names()
-#----------------DEVICE CONFIGURATION WIDGET---------------------------    
-    def config_setup(self):
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if type(self.rec) == mR.Recorder:
-            rb[0].setChecked(True)
-        elif type(self.rec) == NIR.Recorder:
-            rb[1].setChecked(True)
-            
-        self.display_sources()
-        
-        info = [self.rec.rate,self.rec.channels,
-                self.rec.chunk_size,self.rec.num_chunk]
-        for cbox,i in zip(self.devconfig_UI.configboxes[1:],info):
-            cbox.setText(str(i))
-    
-    def display_sources(self):
-        # TODO: make use of the button input in callback?
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if not NI_drivers and rb[1].isChecked():
-            print("You don't seem to have National Instrument drivers/modules")
-            rb[0].setChecked(True)
-            return 0
-        
-        if rb[0].isChecked():
-            selR = mR.Recorder()
-        elif rb[1].isChecked():
-            selR = NIR.Recorder()
-        else:
-            return 0
-        
-        source_box = self.devconfig_UI.configboxes[0]
-        source_box.clear()
-        
-        try:
-            full_device_name = []
-            s,b =  selR.available_devices()
-            for a,b in zip(s,b):
-                if type(b) == str:
-                    full_device_name.append(a + ' - ' + b)
-                else:
-                    full_device_name.append(a)
-                    
-            source_box.addItems(full_device_name)
-        except Exception as e:
-            print(e)
-            source_box.addItems(selR.available_devices()[0])
-            
-        if self.rec.device_name:
-            source_box.setCurrentText(self.rec.device_name)
-            
-        del selR
-                
-    def read_device_config(self, *arg):
-        recType =  [rb.isChecked() for rb in self.devconfig_UI.typegroup.findChildren(QRadioButton)]
-        configs = []
-        for cbox in self.devconfig_UI.configboxes:
-            if type(cbox) == QComboBox:
-                #configs.append(cbox.currentText())
-                configs.append(cbox.currentIndex())
-            else:
-                #notnumRegex = re.compile(r'(\D)+')
-                config_input = cbox.text().strip(' ')
-                configs.append(int(float(config_input)))
-                    
-        print(recType,configs)
-        return(recType, configs)
 
 #----------------------PLOT WIDGETS-----------------------------------              
     # Updates the plots    
@@ -618,6 +553,8 @@ class LiveplotApp(QMainWindow):
         
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'Normal':
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'TF',[])
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
             self.save_data(0)
         elif rec_mode == 'TF Avg.':
             chans = list(range(self.rec.channels))
@@ -735,7 +672,7 @@ class LiveplotApp(QMainWindow):
                 
         try:    
             # Get Input from the Acquisition settings UI
-            Rtype, settings = self.read_device_config()
+            Rtype, settings = self.devconfig_UI.read_device_config()
             # Delete and reinitialise the recording object
             if Rtype[0]:
                 self.rec = mR.Recorder()
@@ -775,6 +712,7 @@ class LiveplotApp(QMainWindow):
         try:
             # Reset recording configuration Validators and inputs checks
             self.RecUI.set_recorder(self.rec)
+            self.devconfig_UI.set_recorder(self.rec)
             self.remove_tf_tally()
         except:
             t,v,tb = sys.exc_info()
