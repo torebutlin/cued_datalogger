@@ -38,6 +38,7 @@ class RecorderParent(object):
      Recorder abstract class. Sets up the buffer and skeleton for audio streaming
     
      Attributes:
+     ----------
         channels(int): Number of channels
         rate(int): Sampling rate
         chunk_size(int): Number of samples to get from each channel in one chunk
@@ -54,6 +55,7 @@ class RecorderParent(object):
         Initialise a ciruclar buffer, array and trigger for recording
          
         Args:
+        ----------
             channels(int): Number of Channels
             rate(int): Sampling rate
             chunk_size(int): Number of samples to get from each channel in one chunk
@@ -181,6 +183,7 @@ class RecorderParent(object):
         amount of samples required + putting in pretrigger data
         
         Args:
+        ----------
             samples(int): Number of samples to record
             duration(int): The recording duration
         
@@ -285,6 +288,7 @@ class RecorderParent(object):
         Add in any pretrigger data
         
         Returns:
+        ----------
             flushed_data(numpy array): 2D numpy array (similar to get_buffer) 
         """
         if self.recorded_data:
@@ -336,6 +340,7 @@ class RecorderParent(object):
         Start the trigger if possible
         
         Returns:
+        ----------
             True if successful, False otherwise
         """
         if self.recording:
@@ -362,7 +367,8 @@ class RecorderParent(object):
         Check if the trigger is set off
         Start recording if so and emit a signal if possible
         
-        arg:
+        Args:
+        ----------
             data(numpy_array): data to be analysed
         """
         trig_data = data[:,self.trigger_channel]
