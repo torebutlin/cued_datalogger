@@ -2,7 +2,7 @@ from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 from datalogger.api.toolbox import Toolbox
 from datalogger.api.numpy_extensions import to_dB
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QComboBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QComboBox,QCheckBox
 from PyQt5.QtCore import pyqtSignal
 
 import scipy.fftpack
@@ -80,7 +80,11 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                           pen=pg.mkPen(channel.colour))
                 
             if self.current_plot == "TF" and self.coherence_plot:
-                # Plot the coherences
+                cor = channel.get_data("coherence")
+                if cor.shape[0]:
+                    self.plot(channel.get_data("frequency"),
+                          cor,
+                          pen=pg.mkPen('k'))
                 pass
 
             
@@ -90,6 +94,7 @@ class FrequencyToolbox(Toolbox):
     sig_convert_to_circle_fit = pyqtSignal()
     sig_plot_type_changed = pyqtSignal(int)
     sig_view_type_changed = pyqtSignal(str)
+    sig_coherence_plot = pyqtSignal(int)
     
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -105,6 +110,9 @@ class FrequencyToolbox(Toolbox):
         self.view_type_combobox.addItems(['Fourier Transform','Transfer Function'])
         self.view_type_combobox.currentIndexChanged[str].connect(self.sig_view_type_changed.emit)
         plot_options_tab_layout.addWidget(self.view_type_combobox)
+        self.coherence_plot_tickbox = QCheckBox('Plot Coherence',self)
+        self.coherence_plot_tickbox.stateChanged.connect(self.sig_coherence_plot.emit)
+        plot_options_tab_layout.addWidget(self.coherence_plot_tickbox)
         self.plot_type_combobox = QComboBox(self.plot_options_tab)
         self.plot_type_combobox.addItems(['Linear Magnitude',
                                           'Log Magnitude',
@@ -148,5 +156,5 @@ def compute_transfer_function(autospec_in,autospec_out,crossspec):
    
     transfer_func = (autospec_out/crossspec)
     coherence = ((crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out))
-    
-    return(transfer_func,coherence)
+    print(coherence)
+    return(transfer_func,np.real(coherence))

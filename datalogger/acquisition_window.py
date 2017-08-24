@@ -57,7 +57,7 @@ TRACE_DURATION = 2  # Duration for a holding trace
 class LiveplotApp(QMainWindow):
 #-------------------------- METADATA ----------------------------------  
     # Signal for when data has finished acquired
-    dataSaved = pyqtSignal()
+    dataSaved = pyqtSignal(int)
     done = pyqtSignal()
     
 #---------------------- CONSTRUCTOR METHOD------------------------------    
@@ -613,8 +613,13 @@ class LiveplotApp(QMainWindow):
             self.live_chanset.add_channel_dataset(i,'spectrum',ft)
             ft_datas[:,i] = ft
         
+        self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        
         rec_mode = self.RecUI.get_recording_mode()
-        if rec_mode == 'TF Avg.':
+        if rec_mode == 'Normal':
+            self.save_data(0)
+        elif rec_mode == 'TF Avg.':
             chans = list(range(self.rec.channels))
             in_chan = self.RecUI.get_input_channel()
             chans.remove(in_chan)
@@ -648,15 +653,15 @@ class LiveplotApp(QMainWindow):
                 self.live_chanset.add_channel_dataset(chan,'coherence',cor)
         
             self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+            self.save_data(1)
             
         elif rec_mode == 'TF Grid':
             pass
         else:
             pass
        
-        self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
-                                                   {'sample_rate':self.rec.rate})
-        self.save_data()
+        
+        
         self.stats_UI.statusbar.clearMessage() 
         self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.switch_rec_box.setEnabled(True) 
@@ -905,11 +910,11 @@ class LiveplotApp(QMainWindow):
         
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
-    def save_data(self):
+    def save_data(self, tab_num = 0):
         if self.parent:
             print('Saving data...')
             self.parent.cs = copy.copy(self.live_chanset)
-            self.dataSaved.emit()        
+            self.dataSaved.emit(tab_num)        
             print('Data saved!')
 
 #-------------------------- STREAM METHODS ------------------------------------        

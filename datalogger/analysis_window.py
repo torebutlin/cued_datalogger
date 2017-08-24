@@ -4,6 +4,7 @@ from numpy.fft import rfft,fft
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
                              QHBoxLayout, QMainWindow, QPushButton, 
                              QVBoxLayout, QAction, QMenu)
+from PyQt5.QtCore import Qt
 
 import sys
 
@@ -96,6 +97,7 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
         self.frequency_toolbox.sig_view_type_changed.connect(self.switch_freq_plot)
         self.frequency_toolbox.sig_convert_to_TF.connect(self.compute_tf)
+        self.frequency_toolbox.sig_coherence_plot.connect(self.switch_cor_plot)
         self.frequency_toolbox.sig_convert_to_circle_fit.connect(self.circle_fitting)
 
         # # Sonogram toolbox       
@@ -211,11 +213,15 @@ class AnalysisWindow(QMainWindow):
             self.liveplot.dataSaved.connect(self.receive_data)
             self.liveplot.show()
             
-    def receive_data(self):
+    def receive_data(self,tab_num = 0):
         self.config_channelset()
         self.plot_time_series()
         self.plot_fft()
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        
+        #self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+        self.display_tabwidget.setCurrentIndex(tab_num)
+        if tab_num == 1:
+            self.switch_freq_plot('Transfer Function')
         
     def done_liveplot(self):
         self.liveplot.done.disconnect()
@@ -235,6 +241,14 @@ class AnalysisWindow(QMainWindow):
         elif dtype == 'Transfer Function':
             self.plot_tf()
     
+    def switch_cor_plot(self,state):
+        if state == Qt.Unchecked:
+            self.display_tabwidget.freqdomain_widget.coherence_plot = False
+        elif state == Qt.Checked:
+            self.display_tabwidget.freqdomain_widget.coherence_plot = True
+        
+        self.display_tabwidget.freqdomain_widget.update_plot()
+        
     def compute_fft(self):
         # If no spectrum exists, calculate one
         print("Calculating spectrum...")
@@ -296,6 +310,7 @@ class AnalysisWindow(QMainWindow):
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
         
+        # Send the first available Transfer Function
         for i in range(len(self.cs)):
             fdata = self.cs.get_channel_data(i, "TF")
             if not fdata.shape[0] == 0:
