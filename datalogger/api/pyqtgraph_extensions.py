@@ -21,6 +21,8 @@ class InteractivePlotWidget(QWidget):
     """A QWidget containing a :class:`CustomPlotWidget` with mouse tracking
     crosshairs, a :class:`LinearRegionItem`, and spinboxes 
     to display and control the values of the bounds of the linear region.
+    Any additional arguments to :method:`__init__` are passed to the 
+    CustomPlotWidget.
     
     Attributes
     ----------
@@ -42,15 +44,23 @@ class InteractivePlotWidget(QWidget):
         QSpinBox displaying upper bound of :attr:`region`.
     zoom_btn : QPushButton
         Press to zoom to the :attr:`region` with a set amount of padding.
+    show_region : bool
+        Controls whether the region is displayed.
+    show_crosshair : bool
+        Controls whether the crosshair is displayed.
     """
-    def __init__(self, parent):
+    def __init__(self, parent=None, show_region=True, show_crosshair=True, 
+                 *args, **kwargs):
         self.parent = parent
+        self.show_region = show_region
+        self.show_crosshair = show_crosshair
+        
         super().__init__(parent)
         
         layout = QVBoxLayout(self)
 
         # # Set up the PlotWidget        
-        self.PlotWidget = CustomPlotWidget(self)
+        self.PlotWidget = CustomPlotWidget(self, *args, **kwargs)
 
         self.PlotItem = self.PlotWidget.getPlotItem()
         self.PlotItem.disableAutoRange()
@@ -107,9 +117,11 @@ class InteractivePlotWidget(QWidget):
     def clear(self):
         """Clear the PlotItem and add the default items back in."""
         self.PlotItem.clear()
-        self.PlotItem.addItem(self.vline)
-        self.PlotItem.addItem(self.hline)
-        self.PlotItem.addItem(self.region)
+        if self.show_crosshair:
+            self.PlotItem.addItem(self.vline)
+            self.PlotItem.addItem(self.hline)
+        if self.show_region:
+            self.PlotItem.addItem(self.region)
         
     def updateRegionFromBox(self):
         # Get the bounds of the region as defined by the spinboxes
@@ -169,11 +181,36 @@ class InteractivePlotWidget(QWidget):
             self.PlotItem.setRange(xRange=(x.min(), x.max()),
                                    yRange=(y.min(), y.max()),
                                    padding=0.2)
+        
+    def getPlotItem(self):
+        """Return the PlotItem (reimplemented from 
+        :method:`pg.PlotWidget.getPlotItem`)."""
+        return self.PlotWidget.getPlotItem()
+    
+    def set_show_crosshair(self, show_crosshair):
+        """Set whether the crosshair is visible."""
+        self.show_crosshair = show_crosshair
+        
+        if self.show_crosshair:
+            self.PlotItem.addItem(self.vline)
+            self.PlotItem.addItem(self.hline)
+        else:
+            self.PlotItem.removeItem(self.vline)
+            self.PlotItem.removeItem(self.hline)
+        
+    def set_show_region(self, show_region):
+        """Set whether the region is visible."""
+        self.show_region = show_region
+        
+        if self.show_region:
+            self.PlotItem.addItem(self.region)
+        else:
+            self.PlotItem.removeItem(self.region)
 
 
 class CustomPlotWidget(pg.PlotWidget):
-    def __init__(self, *arg, **kwarg):
-        super().__init__(*arg, ViewBox=CustomViewBox(cparent=self), **kwarg)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, ViewBox=CustomViewBox(cparent=self), **kwargs)
         
         self.PlotItem = self.getPlotItem()
         self.ViewBox = self.PlotItem.getViewBox()

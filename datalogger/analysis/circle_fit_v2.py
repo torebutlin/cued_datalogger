@@ -14,7 +14,7 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
                              QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-                             QFileDialog)
+                             QFileDialog, QTreeWidget, QTreeWidgetItem)
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -88,74 +88,50 @@ class CircleFitWidget(QWidget):
         super().__init__()
 
         self.w = np.zeros(1)
-
         self.autofit_parameters = set(["frequency", "z", "amplitude", "phase"])
 
         self.init_ui()
 
-    # Initialisation functions ------------------------------------------------
     def init_ui(self):
         # # Transfer function plot
-        self.transfer_func_plotwidget = InteractivePlotWidget(parent=self,
-                                                          title="Transfer Function",
-                                                          labels={'bottom':
-                                                                  ("Frequency", "rad"),
-                                                                  'left':
-                                                                  ("Transfer Function",
-                                                                   "dB")})
-        self.transfer_func_plot = self.transfer_func_plotwidget.getPlotItem()
+        self.transfer_function_plotwidget = \
+            InteractivePlotWidget(parent=self,
+                                  title="Transfer Function",
+                                  labels={'bottom': ("Frequency", "rad"),
+                                          'left': ("Transfer Function", "dB")})
+    
+        self.transfer_function_plot = \
+            self.transfer_func_plotwidget.getPlotItem()
 
-        """
-        # # Region Selection plot
-        self.region_select_plot_w = pg.PlotWidget(title="Region Selection",
-                                                  labels={'bottom':
-                                                          ("Frequency", "rad"),
-                                                          'left':
-                                                          ("Transfer Function",
-                                                           "dB")})
-        self.region_select_plot = self.region_select_plot_w.getPlotItem()
-        self.region_select_plot.setMouseEnabled(x=False, y=False)
-        
-        self.region_select = pg.LinearRegionItem()
-        self.region_select.setZValue(-10)
-        self.region_select_plot.addItem(self.region_select)
-
-        self.region_select.sigRegionChangeFinished.connect(self.autorange_to_region)
-        self.region_select.sigRegionChanged.connect(self.update_zoom)
-        self.region_select.sigRegionChanged.connect(self.update_plots)
-        self.transfer_func_plot.sigXRangeChanged.connect(self.update_region)
-        self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
-        """
-        # # Circle plot
-        self.circle_plotwidget = InteractivePlotWidget(parent=self,
-                                                       show_region=False,
-                                                       show_crosshair=False,
-                                                       title="Circle fit",
-                                                       labels={'bottom': ("Re"),
-                                                               'left': ("Im")})
-        self.circle_plot = self.circle_plotwidget.getPlotItem()
-        # self.circle_plot.setMouseEnabled(x=False, y=False)
-        self.circle_plot.setAspectLocked(lock=True, ratio=1)
-        self.circle_plot.showGrid(x=True, y=True)
+        # # Nyquist plot
+        self.nyquist_plotwidget = \
+            InteractivePlotWidget(parent=self,
+                                  show_region=False,
+                                  show_crosshair=False,
+                                  title="Circle fit",
+                                  labels={'bottom': ("Re"),
+                                          'left': ("Im")})
+    
+        self.nyquist_plot = self.nyquist_plotwidget.getPlotItem()
+        self.nyquist_plot.setAspectLocked(lock=True, ratio=1)
+        self.nyquist_plot.showGrid(x=True, y=True)
 
         # # Create the items for the plots
-        self.transfer_function1 = pg.PlotDataItem(pen=defaultpen)
-        self.transfer_func_plot.addItem(self.transfer_function1)
+        # The item for the raw transfer function
+        self.transfer_function = pg.PlotDataItem(pen=defaultpen)
+        self.transfer_function_plot.addItem(self.transfer_function)
 
-        #self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
-        #self.region_select_plot.addItem(self.transfer_function2)
+        # The item for the reconstructed transfer function
+        self.constructed_transfer_function = pg.PlotDataItem(pen='b')
+        self.transfer_function_plot.addItem(self.constructed_transfer_function)
 
-        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
-        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
+        # The item for the raw circle plot
+        self.nyquist_plot_points = pg.PlotDataItem()
+        self.nyquist_plot.addItem(self.nyquist_plot_points)
 
-        #self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
-        #self.region_select_plot.addItem(self.constructed_transfer_fn2)
-
-        self.circle_plot_points = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_points)
-
-        self.circle_plot_modal_peak = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_modal_peak)
+        # The item for the current fit
+        self.nyquist_plot_current_peak = pg.PlotDataItem()
+        self.nyquist_plot.addItem(self.nyquist_plot_current_peak)
 
         # # Additional controls
         self.add_peak_btn = QPushButton(self)
@@ -518,26 +494,6 @@ class CircleFitWidget(QWidget):
             self.autofit_parameters.remove(parameter)            
 
 # Fitting functions -----------------------------------------------------------
-    def single_pole(self, w, wr, zr, cr, phi):
-        return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
-
-    def fitted_single_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + self.single_pole(w, wr, zr, cr, phi)
-
-    def fitted_double_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + sdof_modal_peak(w, wr, zr, cr, phi)
-
-    def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
-        if cr < 0:
-            cr *= -1
-            phi = (phi + np.pi/2) % np.pi
-
-        f = self.fitted_single_pole(w, wr, zr, cr, phi)
-        #return np.abs(f)
-        return np.append(f.real, f.imag)
-
     def fitted_sdof_peak(self, w, wr, zr, cr, phi):
         if self.transfer_function_type == 'displacement':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
@@ -597,7 +553,81 @@ class CircleFitWidget(QWidget):
             import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
 
 
+class CircleFitResults(QGroupBox):
+    """
+    The tree of results for the Circle Fit.
+    """
+    def __init__(self, parent=None):
+        super().__init__("Results", parent)
+        
+        self.num_channels = 4
+        self.num_peaks = 0
+                
+        self.init_ui()
+    
+    def init_ui(self):       
+        # # Tree
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["", "Frequency", "Damping ratio",
+                                   "Amplitude", "Phase", ""])
+        
+        # # Controls
+        self.add_peak_btn = QPushButton("Add new peak", self)
+        self.add_peak_btn.clicked.connect(self.add_peak)
+
+        self.delete_selected_btn = QPushButton("Delete selected", self)
+        self.delete_selected_btn.clicked.connect(self.delete_selected)
+        
+        controls = QGridLayout()
+        controls.addWidget(self.add_peak_btn, 0, 0)
+        controls.setColumnStretch(1, 1)
+        controls.addWidget(self.delete_selected_btn, 0, 2)
+        
+        # # Layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.tree)
+        layout.addLayout(controls)
+        
+        self.setLayout(layout)
+    
+    def add_peak(self):
+        peak_item = QTreeWidgetItem(self.tree, 
+                                    ["Peak ".format(self.num_peaks), 
+                                     "", "", "", "", ""])
+        for i in range(self.num_channels):
+            channel_item = QTreeWidgetItem(peak_item,
+                                           ["Channel ".format(i),
+                                            "", "", "", "", ""])
+        self.num_peaks += 1
+    
+    def delete_selected(self):
+        pass
+    
+    def update_parameter_values(self):
+        pass     
+
+
 class CircleFitToolbox(Toolbox):
+    """
+    The Toolbox for the CircleFitWidget.
+    
+    This Toolbox contains the tools for controlling the circle fit. It has
+    two tabs: 'Transfer Function', for tools relating to the construction
+    of a transfer function, and 'Autofit Controls', which contains tools 
+    for controlling how the circle is fit to the data.
+    
+    Attributes
+    ----------
+    sig_autofit_parameter_change : pyqtSignal([bool, str])
+      The signal emitted when the set of parameters to automatically adjust in
+      the circle fit routine are changed.
+      Format (automatically_fit_this_parameter, parameter_name).
+    sig_construct_transfer_fn : pyqtSignal
+      The signal emitted when a new transfer function is to be constructed.
+    sig_show_transfer_fn : pyqtSignal(bool)
+      The signal emitted when the visibility of the transfer function is 
+      changed. Format (visible).
+    """
     
     sig_autofit_parameter_change = pyqtSignal([bool, str])
     sig_construct_transfer_fn = pyqtSignal()
@@ -688,6 +718,7 @@ class CircleFitToolbox(Toolbox):
             self.sig_autofit_parameter_change.emit(index, "phase")
     
     def reset_to_auto_fit(self):
+        """Reset all parameters to 'Automatic'."""
         self.autofit_freq_combobox.setCurrentIndex(1)
         self.autofit_z_combobox.setCurrentIndex(1)
         self.autofit_amp_combobox.setCurrentIndex(1)
@@ -695,8 +726,8 @@ class CircleFitToolbox(Toolbox):
 
 
 if __name__ == '__main__':
-    defaultpen = 'k'
     CurrentWorkspace = Workspace()
+    CurrentWorkspace.configure()
     app = 0
 
     app = QApplication(sys.argv)
