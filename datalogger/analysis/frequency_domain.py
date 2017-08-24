@@ -1,17 +1,20 @@
 from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 from datalogger.api.toolbox import Toolbox
 from datalogger.api.numpy_extensions import to_dB
+from datalogger.api.channel import ChannelSet
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QComboBox,QCheckBox
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal,Qt
 
 import scipy.fftpack
 import numpy as np
+from numpy.fft import rfft
 import pyqtgraph as pg
 
 class FrequencyDomainWidget(InteractivePlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        
         self.plot_types = ['Linear Magnitude',
                            'Log Magnitude',
                            'Phase',
@@ -34,15 +37,25 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         
         self.update_plot()
     
+    def set_view_type(self,vtype):
+        self.current_plot = vtype
+        
     def set_plot_type(self, index):
         self.current_plot_type = self.plot_types[index]
+        self.update_plot()
+        
+    def switch_cor_plot(self,state):
+        if state == Qt.Unchecked:
+            self.coherence_plot = False
+        elif state == Qt.Checked:
+            self.coherence_plot = True
         self.update_plot()
     
     def update_plot(self):
         self.clear()
         print("Plotting %s." % self.current_plot_type)
         for channel in self.channels:
-            #if self.current_plot == "spectrum":
+
             data = channel.get_data(self.current_plot)
             if data.shape[0] == 0:
                 print('No %s to plot' % self.current_plot)   
@@ -85,20 +98,19 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                     self.plot(channel.get_data("frequency"),
                           cor,
                           pen=pg.mkPen('k'))
-                pass
-
             
 class FrequencyToolbox(Toolbox):
     """Toolbox containing the Frequency Domain controls"""
-    sig_convert_to_TF = pyqtSignal()
     sig_convert_to_circle_fit = pyqtSignal()
     sig_plot_type_changed = pyqtSignal(int)
     sig_view_type_changed = pyqtSignal(str)
     sig_coherence_plot = pyqtSignal(int)
+    sig_converted_TF = pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.parent = parent
+        self.cs = None
         
         self.init_ui()
     
@@ -134,7 +146,8 @@ class FrequencyToolbox(Toolbox):
         
         self.view_tf_btn = QPushButton("Convert FFT to TF")
         self.convert_tab.setLayout(convert_tab_layout)
-        self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
+        #self.view_tf_btn.clicked.connect(self.sig_convert_to_TF.emit)
+        self.view_tf_btn.clicked.connect(self.compute_tf)
         convert_tab_layout.addWidget(self.view_tf_btn)        
         
         self.circle_fit_btn = QPushButton("Convert to Circle Fit")
@@ -145,6 +158,32 @@ class FrequencyToolbox(Toolbox):
         
     def set_view_type(self,vtype):
         self.view_type_combobox.setCurrentText(vtype)
+        
+    def set_channel_set(self,cs):
+        self.cs = cs
+    
+    def compute_tf(self):
+        # If no TF exists, calculate one
+        print("Calculating TF...")
+        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),"spectrum")
+        chans = list(range(len(self.cs)))
+        in_chan = 0
+        chans.remove(in_chan)
+        input_chan_data = fdata[in_chan]
+        autospec_in = compute_autospec(input_chan_data)
+        
+        for chan in chans:
+            autospec_out = compute_autospec(fdata[chan])
+            crossspec = compute_crossspec(input_chan_data,fdata[chan])
+            tf,_ = compute_transfer_function(autospec_in,autospec_out,crossspec)
+            if not self.cs.channels[chan].is_dataset('TF'):
+                self.cs.add_channel_dataset(chan, 'TF', tf)
+            else:
+                self.cs.set_channel_data(chan, 'TF', tf)
+        print("Done.")
+        
+        self.sig_converted_TF.emit()
+
         
 def compute_autospec(fft_data):
     return(fft_data * np.conjugate(fft_data))
@@ -158,3 +197,5 @@ def compute_transfer_function(autospec_in,autospec_out,crossspec):
     coherence = ((crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out))
     print(coherence)
     return(transfer_func,np.real(coherence))
+
+

@@ -103,7 +103,6 @@ class InteractivePlotWidget(QWidget):
     def plot(self, x=None, y=None, *args, **kwargs):
         self.update_limits(x, y)
         self.canvas.plot(x, y, *args, **kwargs)
-        self.vb.autoRange()
     
     def update_limits(self, x, y):
         if x is not None and y is not None:
