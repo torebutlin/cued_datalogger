@@ -175,7 +175,7 @@ class LiveplotApp(QMainWindow):
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
+        self.timeplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.timeplot.disableAutoRange(axis=None)
@@ -389,9 +389,6 @@ class LiveplotApp(QMainWindow):
         elif offset == 'y':
             self.plot_yoffset[data_type,chan] = num
             
-    def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)
-        
     def signal_hold(self,state):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         self.sig_hold[chan] = state
@@ -597,8 +594,6 @@ class LiveplotApp(QMainWindow):
         else:
             pass
        
-        
-        
         self.stats_UI.statusbar.clearMessage() 
         self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.switch_rec_box.setEnabled(True) 
@@ -693,7 +688,6 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot set up new recorder')
-            
         
         try:
             # Open the stream, plot and update

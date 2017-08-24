@@ -101,8 +101,8 @@ class ChanToggleUI(BaseWidget):
                 
         self.search_status.showMessage('Awaiting...')
         
-        self.chan_btn_group.buttonClicked.connect(self.emit_toggleChanged)
-        self.chan_text.returnPressed.connect(self.emit_lineToggled)
+        self.chan_btn_group.buttonClicked.connect(self.toggleChanged.emit)
+        self.chan_text.returnPressed.connect(self.lineToggled.emit)
         
     def invert_checkboxes(self):
         for btn in self.channels_box.findChildren(QCheckBox):
@@ -112,12 +112,6 @@ class ChanToggleUI(BaseWidget):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
-                
-    def emit_toggleChanged(self,btn):
-        self.toggleChanged.emit(btn)
-        
-    def emit_lineToggled(self,chan_list):
-        self.lineToggled.emit(chan_list)
         
 class ChanConfigUI(BaseWidget):
     
@@ -313,7 +307,7 @@ class StatusUI(BaseWidget):
         self.sshotbtn = QPushButton('Get Snapshot',self)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         stps_layout.addWidget(self.sshotbtn)
-        
+                
 class RecUI(BaseWidget):
     startRecording = pyqtSignal()
     cancelRecording = pyqtSignal()
