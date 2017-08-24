@@ -19,7 +19,6 @@ Example:
 """
 
 from datalogger.acquisition.RecorderParent import RecorderParent
-# Add codes to install pyaudio if pyaudio is not installed
 import sys,traceback
 
 try:
@@ -44,10 +43,13 @@ class Recorder(RecorderParent):
     
      Attributes:
      ----------
-        RecorderParent Attributes
-        device_index(int) = Index of the device to be used for recording
-        device_name(str) = Name of the device to be used for recording
-        max_value(float) = Maximum value of recorded data
+        In addtion to RecorderParent Attributes,
+        device_index: Int
+            Index of the device to be used for recording
+        device_name: Str
+            Name of the device to be used for recording
+        max_value: Float
+            Maximum value of recorded data
     """
         
 #---------------- INITIALISATION METHODS -----------------------------------
@@ -102,7 +104,8 @@ class Recorder(RecorderParent):
                 
         Args:
         ----------
-            name(str): Name of the device
+            name: Str
+                Name of the device
         """
         dev_name,dev_index = self.available_devices()
         if not dev_name:
@@ -133,8 +136,10 @@ class Recorder(RecorderParent):
         
         Returns:
         ----------
-            names(list): Name of the devices
-            index(list): Index of the devices
+            names: List
+                Name of the devices
+            index: List
+                Index of the devices
         """
         names = [self.p.get_device_info_by_index(i)['name']
                   for i in range(self.p.get_device_count())
@@ -161,7 +166,8 @@ class Recorder(RecorderParent):
         
         Args:
         ----------
-            index(int): Index of the device to be set
+            index: Int
+                Index of the device to be set
         """
         self.device_index = index;
         self.device_name = self.p.get_device_info_by_index(index)['name']
@@ -202,15 +208,7 @@ class Recorder(RecorderParent):
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
         """
-        Callback function for initialising audio streaming.
-                
-        Args:
-        ----------
-            playback(bool): Whether to output the stream to a device
-            
-        Returns:
-        ----------
-            True if successful, False otherwise
+        Re-implemented from RecorderParent.
         """
         if (not self.device_index == None) and (self.audio_stream == None) :
             try:
@@ -243,7 +241,7 @@ class Recorder(RecorderParent):
     # Start the streaming
     def stream_start(self):
         """
-        Callback function for starting the audio streaming.
+        Re-implemented from RecorderParent.
         """
         if self.audio_stream:
             if self.audio_stream.is_stopped():
@@ -256,7 +254,7 @@ class Recorder(RecorderParent):
     # Stop the streaming
     def stream_stop(self):
         """
-        Callback function for stopping the audio streaming.
+        Re-implemented from RecorderParent.
         """
         if self.audio_stream: 
             if not self.audio_stream.is_stopped():
@@ -269,7 +267,7 @@ class Recorder(RecorderParent):
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         """
-        Callback function for closing the audio streaming.
+        Re-implemented from RecorderParent.
         """
         if self.audio_stream and self.audio_stream.is_active():
             self.stream_stop()
