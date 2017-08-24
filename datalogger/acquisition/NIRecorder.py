@@ -2,7 +2,7 @@
 - Essentially identical to the pyaudio version
 """
 
-from datalogger.bin.RecorderParent import RecorderParent
+from datalogger.acquisition.RecorderParent import RecorderParent
 
 import sys,traceback
 # TODO: Add codes to install pyaudio if pyaudio is not installed???
@@ -162,8 +162,11 @@ class Recorder(RecorderParent):
                 
                 self.stream_start()
                 return True
-            except Exception as e:
-                print(e)
+            except:
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
                 self.audio_stream = None
                 
                 return False

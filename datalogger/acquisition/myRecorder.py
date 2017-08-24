@@ -6,7 +6,21 @@ Functions:
 
 from datalogger.acquisition.RecorderParent import RecorderParent
 # Add codes to install pyaudio if pyaudio is not installed
-import pyaudio
+import sys,traceback
+
+try:
+    import pyaudio
+except ImportError:
+    # If pyaudio doesn't work, create mock version of it
+    from mock import Mock
+    class MockModule(Mock):
+        @classmethod
+        def __getattr__(cls, name):
+                return Mock()
+
+    sys.modules['pyaudio'] = MockModule()
+    import pyaudio
+
 import numpy as np
 import pprint as pp
 import copy as cp
@@ -96,10 +110,9 @@ class Recorder(RecorderParent):
     
     # Set the selected device by index, Private Function
     def _set_device_by_index(self,index):
-        if index:
-            self.device_index = index;
-            self.device_name = self.p.get_device_info_by_index(index)['name']
-            print("Selected device: %s" % self.device_name)
+        self.device_index = index;
+        self.device_name = self.p.get_device_info_by_index(index)['name']
+        print("Selected device: %s" % self.device_name)
         
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
@@ -142,8 +155,11 @@ class Recorder(RecorderParent):
                 print('Write Available: %i' % self.audio_stream.get_write_available())
                 return True
             
-            except Exception as e:
-                print(e)
+            except:
+                t,v,tb = sys.exc_info()
+                print(t)
+                print(v)
+                print(traceback.format_tb(tb))
                 self.audio_stream = None
                 return False
             
