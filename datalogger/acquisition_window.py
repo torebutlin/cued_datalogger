@@ -23,7 +23,7 @@ import math
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
                                                  StatusUI,RecUI)
 from datalogger.acquisition.ChanMetaWin import ChanMetaWin
-from datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph
+from datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph,LevelsLiveGraph
 
 import datalogger.acquisition.myRecorder as mR
 try:
@@ -170,19 +170,13 @@ class LiveplotApp(QMainWindow):
         
     #----------------------PLOT + STATUS WIDGETS------------------------------------ 
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-    
-        #self.plotlines = []
+        
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
         self.timeplot = TimeLiveGraph(self.mid_splitter)
-        
         # Set up FFT plot, add to splitter
         self.freqplot = FreqLiveGraph(self.mid_splitter)
-        #self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
-        #self.fftplot = self.fftplotcanvas.getPlotItem()
-        #self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
-        #self.fftplot.disableAutoRange(axis=None)
         
         self.ResetPlots()
         
@@ -221,6 +215,8 @@ class LiveplotApp(QMainWindow):
     #-----------------------CHANNEL LEVELS WIDGET------------------------------
         chanlevel_UI = QWidget(self.right_splitter)
         chanlevel_UI_layout = QVBoxLayout(chanlevel_UI)
+        #self.levelsplot = LevelsLiveGraph(self.right_splitter)
+        
         self.chanelvlcvs = pg.PlotWidget(self.right_splitter, background = 'default')
         chanlevel_UI_layout.addWidget(self.chanelvlcvs)
         
@@ -364,7 +360,6 @@ class LiveplotApp(QMainWindow):
     def display_chan_config(self, arg):
         if type(arg) == pg.PlotDataItem:
             num = self.timeplot.check_line(arg)
-            #num = self.plotlines.index(arg) // 2
             if not num == None:
                 num = self.freqplot.check_line(arg)
                 self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
@@ -738,7 +733,7 @@ class LiveplotApp(QMainWindow):
             
             fplot = self.freqplot.plot()
             fplot.sigClicked.connect(self.display_chan_config)
-        
+            
         #self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
         #self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
