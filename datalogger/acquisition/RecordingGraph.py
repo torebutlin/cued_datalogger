@@ -93,15 +93,16 @@ class FreqLiveGraph(LiveGraph):
         super().__init__(*args,**kwargs)
         self.plotItem.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
         self.plotItem.disableAutoRange(axis=None)
+        
 
 class LevelsLiveGraph(LiveGraph):
-    thresholdChanged = pyqtSignal(int)
-    def __init__(self,channels,*args,**kwargs):
+    thresholdChanged = pyqtSignal(str)
+    def __init__(self,rec,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.plotItem.setLabels(title="Channel Levels", bottom = 'Amplitude')
         self.plotItem.hideAxis('left')
         
-        self.chanlvl_pts = self.channelvlplot.plot()
+        self.chanlvl_pts = self.plotItem.plot()
         
         self.peak_plots = []
         self.peak_trace = []
@@ -109,8 +110,8 @@ class LevelsLiveGraph(LiveGraph):
         self.trace_countlimit = 30
         self.level_colourmap = None
         
-        self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(channels),
-                                            y =np.arange(channels)*0.1,
+        self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(rec.channels),
+                                            y =np.arange(rec.channels)*0.1,
                                             beam = CHANLVL_FACTOR/2,
                                             pen = pg.mkPen(width = 3))
         
@@ -122,6 +123,13 @@ class LevelsLiveGraph(LiveGraph):
         self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True,bounds = [0,1])
         self.threshold_line.sigPositionChanged.connect(self.change_threshold)
         self.plotItem.addItem(self.threshold_line)
+        
+        self.reset_channel_peaks(rec)
+        
+        val = [0.0,0.1,0.2]
+        colour = np.array([[0,255,0,255],[0,255,0,255],[255,0,0,255]], dtype = np.ubyte)
+        self.level_colourmap = pg.ColorMap(val,colour)
+     
         
     def set_plot_colour(self,num,col,drawnow = False):
         self.plot_colours[num] = col
@@ -139,27 +147,30 @@ class LevelsLiveGraph(LiveGraph):
             self.trace_counter[num] = 0
             
         self.peak_plots[num].setData(x = [self.peak_trace[num],self.peak_trace[num]],
-                       y = [(num-0.3)*CHANLVL_FACTOR, (num+0.3)*CHANLVL_FACTOR])
+                       y = [(num-0.3), (num+0.3)])
         
         self.peak_plots[num].setPen(self.level_colourmap.map(self.peak_trace[num]))
         
     def set_channel_levels(self,value,maximum):
-        self.chanlvl_bars.setData(x = value,y = np.arange(len(self.peak_plots))*CHANLVL_FACTOR, right = maximum-value,left = value)
-        self.chanlvl_pts.setData(x = value,y = np.arange(len(self.peak_plots))*CHANLVL_FACTOR)
+        self.chanlvl_bars.setData(x = value,y = np.arange(len(self.peak_plots)), right = maximum-value,left = value)
+        self.chanlvl_pts.setData(x = value,y = np.arange(len(self.peak_plots)))
         
     def change_threshold(self,arg):
         if type(arg) == str:
             self.threshold_line.setValue(float(arg))
         else:
-            self.RecUI.rec_boxes[4].setText('%.2f' % arg.value())
+            self.thresholdChanged.emit('%.2f' % arg.value())
     
-    def reset_level_plots(self,rec):
+    def reset_colour(self):
+        self.plot_colours = [None] * len(self.peak_plots)
+        
+    def reset_channel_levels(self):
         self.chanlvl_pts.clear()
-        self.chanlvl_pts = self.channelvlplot.plot(pen = None,symbol='o',
+        self.chanlvl_pts = self.plotItem.plot(pen = None,symbol='o',
                                                   symbolBrush = self.plot_colours,
-                                                  #symbolBrush = self.def_colours,
                                                   symbolPen = None)
         
+    def reset_channel_peaks(self,rec):
         for _ in range(len(self.peak_plots)):
             line = self.peak_plots.pop()
             line.clear()
@@ -172,6 +183,10 @@ class LevelsLiveGraph(LiveGraph):
         
         self.threshold_line.setBounds((0,rec.max_value))
         
-        for i in range(self.rec.channels):
-            self.peak_plots.append(self.channelvlplot.plot(x = [self.peak_trace[i],self.peak_trace[i]],
-                                                          y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 
+        for i in range(rec.channels):
+            self.peak_plots.append(self.plotItem.plot(x = [self.peak_trace[i],self.peak_trace[i]],
+                                                          y = [(i-0.3), (i+0.3)])) 
+        
+        
+        self.plotItem.setRange(xRange = (0,rec.max_value+0.1),yRange = (-0.5, (rec.channels+5-0.5)))
+        self.plotItem.setLimits(xMin = -0.1,xMax = rec.max_value+0.1,yMin = -0.5,yMax = (rec.channels+5-0.5))
