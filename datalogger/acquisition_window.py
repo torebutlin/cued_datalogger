@@ -23,6 +23,7 @@ import math
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
                                                  StatusUI,RecUI)
 from datalogger.acquisition.ChanMetaWin import ChanMetaWin
+from datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph
 
 import datalogger.acquisition.myRecorder as mR
 try:
@@ -150,7 +151,6 @@ class LiveplotApp(QMainWindow):
         for cbox,ax in zip(self.chanconfig_UI.fft_offset_config,['x','y']):
             cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'DFT'))
         
-        self.ResetChanConfigs()
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
         self.devconfig_UI.set_recorder(self.rec)
@@ -171,13 +171,13 @@ class LiveplotApp(QMainWindow):
     #----------------------PLOT + STATUS WIDGETS------------------------------------ 
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
     
-        self.plotlines = []
+        #self.plotlines = []
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
-        self.timeplot = self.timeplotcanvas.getPlotItem()
-        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
+        self.timeplot = TimeLiveGraph(self.mid_splitter)#pg.PlotWidget(self.mid_splitter, background = 'default')
+        #self.timeplot = self.timeplotcanvas.getPlotItem()
+        #self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.timeplot.disableAutoRange(axis=None)
         #self.timeplot.setMouseEnabled(x=True,y = True)
         
@@ -196,11 +196,12 @@ class LiveplotApp(QMainWindow):
         self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
         self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
         
-        self.mid_splitter.addWidget(self.timeplotcanvas)
+        self.mid_splitter.addWidget(self.timeplot)
         self.mid_splitter.addWidget(self.fftplotcanvas)
         self.mid_splitter.addWidget(self.stats_UI)
         self.mid_splitter.setCollapsible (2, False)
         
+        self.ResetChanConfigs()
     #---------------------------RECORDING WIDGET-------------------------------
         self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         self.recording_tools = Toolbox('right',self.main_widget)
@@ -328,11 +329,13 @@ class LiveplotApp(QMainWindow):
     def display_channel_plots(self, btn):
         chan_num = self.chantoggle_UI.chan_btn_group.id(btn)
         if btn.isChecked():
-            self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
-            self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
+            self.timeplot.toggle_plotline(chan_num,True)
+            #self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
+            #self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
         else:
-            self.plotlines[2*chan_num].setPen(None)
-            self.plotlines[2*chan_num+1].setPen(None)
+            self.timeplot.toggle_plotline(chan_num,False)
+            #self.plotlines[2*chan_num].setPen(None)
+            #self.plotlines[2*chan_num+1].setPen(None)
 
     def chan_line_toggle(self,chan_list):
         all_selected_chan = []
@@ -365,33 +368,40 @@ class LiveplotApp(QMainWindow):
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
         if type(arg) == pg.PlotDataItem:
-            num = self.plotlines.index(arg) // 2
-            self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
+            num = self.timeplot.check_line(arg)
+            #num = self.plotlines.index(arg) // 2
+            if not num == None:
+                self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
         else:
             num = arg
         
-        self.chanconfig_UI.colbox.setColor(self.plot_colours[num])
-        self.chanconfig_UI.time_offset_config[0].setValue(self.plot_xoffset[0,num])
-        self.chanconfig_UI.time_offset_config[1].setValue(self.plot_yoffset[0,num])
-        self.chanconfig_UI.fft_offset_config[0].setValue(self.plot_xoffset[1,num])
-        self.chanconfig_UI.fft_offset_config[1].setValue(self.plot_yoffset[1,num])
-        self.chanconfig_UI.hold_tickbox.setCheckState(self.sig_hold[num])
+        self.chanconfig_UI.colbox.setColor(self.timeplot.plot_colours[num])
+        self.chanconfig_UI.time_offset_config[0].setValue(self.timeplot.plot_xoffset[num])
+        self.chanconfig_UI.time_offset_config[1].setValue(self.timeplot.plot_yoffset[num])
+        #self.chanconfig_UI.fft_offset_config[0].setValue(self.plot_xoffset[1,num])
+        #self.chanconfig_UI.fft_offset_config[1].setValue(self.plot_yoffset[1,num])
+        self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
         
     def set_plot_offset(self, offset,set_type, sp,num):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         if set_type == 'Time':
-            data_type = 0
-        elif set_type == 'DFT':
-            data_type = 1
+            #data_type = 0
+            if offset == 'x':
+                self.timeplot.set_offset(chan,x_off = num)
+            elif offset == 'y':
+                self.timeplot.set_offset(chan,y_off = num)
             
-        if offset == 'x':
-            self.plot_xoffset[data_type,chan] = num
-        elif offset == 'y':
-            self.plot_yoffset[data_type,chan] = num
+        #elif set_type == 'DFT':
+        #    data_type = 1
+            
+        #if offset == 'x':
+        #    self.plot_xoffset[data_type,chan] = num
+        #elif offset == 'y':
+        #    self.plot_yoffset[data_type,chan] = num
             
     def signal_hold(self,state):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        self.sig_hold[chan] = state
+        self.timeplot.set_sig_hold(chan,state)
     
     def set_plot_colour(self,reset = False):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
@@ -403,11 +413,16 @@ class LiveplotApp(QMainWindow):
         else:
             col = self.chanconfig_UI.colbox.color()
         
-        self.plot_colours[chan] = col;
+        #self.plot_colours[chan] = col;
+        drawnow = False
         if chan_btn.isChecked():
-            self.plotlines[2*chan].setPen(col)
-            self.plotlines[2*chan+1].setPen(col)
-        self.chanlvl_pts.scatter.setBrush(self.plot_colours)
+            drawnow = True
+        self.timeplot.set_plot_colour(chan,col,drawnow = drawnow)
+        #if chan_btn.isChecked():
+        #    self.plotlines[2*chan].setPen(col)
+            #self.plotlines[2*chan+1].setPen(col)
+        #self.chanlvl_pts.scatter.setBrush(self.plot_colours)
+        self.chanlvl_pts.scatter.setBrush(self.def_colours)
     
     def open_meta_window(self):
         if not self.meta_window:
@@ -443,18 +458,19 @@ class LiveplotApp(QMainWindow):
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),))
             zc = 0
-            if self.sig_hold[i] == Qt.Checked:
+            if self.timeplot.sig_hold[i] == Qt.Checked:
                 avg = np.mean(plotdata);
                 zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
                 if zero_crossings.shape[0]:
                     zc = zero_crossings[0]+1
-                
-            self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
-            self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
+            
+            self.timeplot.update_line(i,x = self.timedata[:len(plotdata)-zc] ,y = plotdata[zc:])
+            #self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
+            #self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
 
-            fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data)** 0.5
-            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
+            #fft_data = np.fft.rfft(plotdata* window * weightage)
+            #psd_data = abs(fft_data)** 0.5
+            #self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
 
             if self.trace_counter[i]>self.trace_countlimit:
                 self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
@@ -693,8 +709,8 @@ class LiveplotApp(QMainWindow):
             # Open the stream, plot and update
             self.init_and_check_stream()
             # Reset channel configs
-            self.ResetChanConfigs()
             self.ResetPlots()
+            self.ResetChanConfigs()
             self.ResetChanLvls()
         except:
             t,v,tb = sys.exc_info()
@@ -723,27 +739,29 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
     def ResetPlots(self):
-        n_plotlines = len(self.plotlines)
+        #n_plotlines = len(self.plotlines)
         self.ResetXdata()
         
-        for _ in range(n_plotlines):
-            line = self.plotlines.pop()
-            line.clear()
-            del line
-            
-        for i in range(self.rec.channels):
-            tplot = self.timeplot.plot(pen = self.plot_colours[i])
-            tplot.curve.setClickable(True,width = 4)
-            tplot.sigClicked.connect(self.display_chan_config)
-            self.plotlines.append(tplot)
-            
-            fplot = self.fftplot.plot(pen = self.plot_colours[i])
-            fplot.curve.setClickable(True,width = 4)
-            fplot.sigClicked.connect(self.display_chan_config)
-            self.plotlines.append(fplot)
+        #for _ in range(n_plotlines):
+        #    line = self.plotlines.pop()
+        #    line.clear()
+        #    del line
+        self.timeplot.reset_plotlines()
         
-        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
-        self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
+        for i in range(self.rec.channels):
+            #tplot = self.timeplot.plot(pen = self.plot_colours[i])
+            tplot = self.timeplot.plot()
+            #tplot.curve.setClickable(True,width = 4)
+            tplot.sigClicked.connect(self.display_chan_config)
+            #self.plotlines.append(tplot)
+            
+            #fplot = self.fftplot.plot(pen = self.plot_colours[i])
+            #fplot.curve.setClickable(True,width = 4)
+            #fplot.sigClicked.connect(self.display_chan_config)
+            #self.plotlines.append(fplot)
+        
+        #self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
+        #self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
@@ -753,7 +771,8 @@ class LiveplotApp(QMainWindow):
     def ResetChanLvls(self): 
         self.chanlvl_pts.clear()
         self.chanlvl_pts = self.channelvlplot.plot(pen = None,symbol='o',
-                                                  symbolBrush = self.plot_colours,
+                                                  #symbolBrush = self.plot_colours,
+                                                  symbolBrush = self.def_colours,
                                                   symbolPen = None)
         
         for _ in range(len(self.peak_plots)):
@@ -806,15 +825,19 @@ class LiveplotApp(QMainWindow):
         self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
-        self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
-        self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
-        self.sig_hold = [Qt.Unchecked]* self.rec.channels
+        self.timeplot.reset_offsets()
+        self.timeplot.reset_colour()
+        self.timeplot.reset_sig_hold()
+        #self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
+        #self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
+        #self.sig_hold = [Qt.Unchecked]* self.rec.channels
         c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
-        self.plot_colours = []
+        #self.plot_colours = []
         self.def_colours = []
         for i in range(self.rec.channels):
             r,g,b = c_list[i]
-            self.plot_colours.append(QColor(r,g,b))
+            self.timeplot.set_plot_colour(i,QColor(r,g,b),True)
+            #self.plot_colours.append(QColor(r,g,b))
             self.def_colours.append(QColor(r,g,b))
 
         self.chanconfig_UI.chans_num_box.clear()
