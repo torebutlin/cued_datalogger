@@ -175,17 +175,14 @@ class LiveplotApp(QMainWindow):
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
-        self.timeplot = TimeLiveGraph(self.mid_splitter)#pg.PlotWidget(self.mid_splitter, background = 'default')
-        #self.timeplot = self.timeplotcanvas.getPlotItem()
-        #self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        #self.timeplot.disableAutoRange(axis=None)
-        #self.timeplot.setMouseEnabled(x=True,y = True)
+        self.timeplot = TimeLiveGraph(self.mid_splitter)
         
         # Set up FFT plot, add to splitter
-        self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
-        self.fftplot = self.fftplotcanvas.getPlotItem()
-        self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
-        self.fftplot.disableAutoRange(axis=None)
+        self.freqplot = FreqLiveGraph(self.mid_splitter)
+        #self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
+        #self.fftplot = self.fftplotcanvas.getPlotItem()
+        #self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
+        #self.fftplot.disableAutoRange(axis=None)
         
         self.ResetPlots()
         
@@ -197,7 +194,7 @@ class LiveplotApp(QMainWindow):
         self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
         
         self.mid_splitter.addWidget(self.timeplot)
-        self.mid_splitter.addWidget(self.fftplotcanvas)
+        self.mid_splitter.addWidget(self.freqplot)
         self.mid_splitter.addWidget(self.stats_UI)
         self.mid_splitter.setCollapsible (2, False)
         
@@ -330,12 +327,10 @@ class LiveplotApp(QMainWindow):
         chan_num = self.chantoggle_UI.chan_btn_group.id(btn)
         if btn.isChecked():
             self.timeplot.toggle_plotline(chan_num,True)
-            #self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
-            #self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
+            self.freqplot.toggle_plotline(chan_num,True)
         else:
             self.timeplot.toggle_plotline(chan_num,False)
-            #self.plotlines[2*chan_num].setPen(None)
-            #self.plotlines[2*chan_num+1].setPen(None)
+            self.freqplot.toggle_plotline(chan_num,False)
 
     def chan_line_toggle(self,chan_list):
         all_selected_chan = []
@@ -371,6 +366,7 @@ class LiveplotApp(QMainWindow):
             num = self.timeplot.check_line(arg)
             #num = self.plotlines.index(arg) // 2
             if not num == None:
+                num = self.freqplot.check_line(arg)
                 self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
         else:
             num = arg
@@ -378,26 +374,23 @@ class LiveplotApp(QMainWindow):
         self.chanconfig_UI.colbox.setColor(self.timeplot.plot_colours[num])
         self.chanconfig_UI.time_offset_config[0].setValue(self.timeplot.plot_xoffset[num])
         self.chanconfig_UI.time_offset_config[1].setValue(self.timeplot.plot_yoffset[num])
-        #self.chanconfig_UI.fft_offset_config[0].setValue(self.plot_xoffset[1,num])
-        #self.chanconfig_UI.fft_offset_config[1].setValue(self.plot_yoffset[1,num])
         self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
+        self.chanconfig_UI.fft_offset_config[0].setValue(self.freqplot.plot_xoffset[num])
+        self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_xoffset[num])
         
     def set_plot_offset(self, offset,set_type, sp,num):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         if set_type == 'Time':
-            #data_type = 0
             if offset == 'x':
                 self.timeplot.set_offset(chan,x_off = num)
             elif offset == 'y':
                 self.timeplot.set_offset(chan,y_off = num)
             
-        #elif set_type == 'DFT':
-        #    data_type = 1
-            
-        #if offset == 'x':
-        #    self.plot_xoffset[data_type,chan] = num
-        #elif offset == 'y':
-        #    self.plot_yoffset[data_type,chan] = num
+        elif set_type == 'DFT':
+            if offset == 'x':
+                self.freqplot.set_offset(chan,x_off = num)
+            elif offset == 'y':
+                self.freqplot.set_offset(chan,y_off = num)
             
     def signal_hold(self,state):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
@@ -412,15 +405,12 @@ class LiveplotApp(QMainWindow):
             self.chanconfig_UI.colbox.setColor(col)
         else:
             col = self.chanconfig_UI.colbox.color()
-        
-        #self.plot_colours[chan] = col;
+
         drawnow = False
         if chan_btn.isChecked():
             drawnow = True
         self.timeplot.set_plot_colour(chan,col,drawnow = drawnow)
-        #if chan_btn.isChecked():
-        #    self.plotlines[2*chan].setPen(col)
-            #self.plotlines[2*chan+1].setPen(col)
+        self.freqplot.set_plot_colour(chan,col,drawnow = drawnow)
         #self.chanlvl_pts.scatter.setBrush(self.plot_colours)
         self.chanlvl_pts.scatter.setBrush(self.def_colours)
     
@@ -465,12 +455,10 @@ class LiveplotApp(QMainWindow):
                     zc = zero_crossings[0]+1
             
             self.timeplot.update_line(i,x = self.timedata[:len(plotdata)-zc] ,y = plotdata[zc:])
-            #self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
-            #self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
 
-            #fft_data = np.fft.rfft(plotdata* window * weightage)
-            #psd_data = abs(fft_data)** 0.5
-            #self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
+            fft_data = np.fft.rfft(plotdata* window * weightage)
+            psd_data = abs(fft_data)** 0.5
+            self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
 
             if self.trace_counter[i]>self.trace_countlimit:
                 self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
@@ -739,26 +727,17 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
     def ResetPlots(self):
-        #n_plotlines = len(self.plotlines)
         self.ResetXdata()
         
-        #for _ in range(n_plotlines):
-        #    line = self.plotlines.pop()
-        #    line.clear()
-        #    del line
         self.timeplot.reset_plotlines()
+        self.freqplot.reset_plotlines()
         
         for i in range(self.rec.channels):
-            #tplot = self.timeplot.plot(pen = self.plot_colours[i])
             tplot = self.timeplot.plot()
-            #tplot.curve.setClickable(True,width = 4)
             tplot.sigClicked.connect(self.display_chan_config)
-            #self.plotlines.append(tplot)
             
-            #fplot = self.fftplot.plot(pen = self.plot_colours[i])
-            #fplot.curve.setClickable(True,width = 4)
-            #fplot.sigClicked.connect(self.display_chan_config)
-            #self.plotlines.append(fplot)
+            fplot = self.freqplot.plot()
+            fplot.sigClicked.connect(self.display_chan_config)
         
         #self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
         #self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
@@ -828,16 +807,15 @@ class LiveplotApp(QMainWindow):
         self.timeplot.reset_offsets()
         self.timeplot.reset_colour()
         self.timeplot.reset_sig_hold()
-        #self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
-        #self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
-        #self.sig_hold = [Qt.Unchecked]* self.rec.channels
+        self.freqplot.reset_offsets()
+        self.freqplot.reset_colour()
+        
         c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
-        #self.plot_colours = []
         self.def_colours = []
         for i in range(self.rec.channels):
             r,g,b = c_list[i]
             self.timeplot.set_plot_colour(i,QColor(r,g,b),True)
-            #self.plot_colours.append(QColor(r,g,b))
+            self.freqplot.set_plot_colour(i,QColor(r,g,b),True)
             self.def_colours.append(QColor(r,g,b))
 
         self.chanconfig_UI.chans_num_box.clear()
