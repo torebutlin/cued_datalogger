@@ -30,7 +30,8 @@ except ImportError:
 
 MAX_SAMPLE = 1e9 
 
-#----------------------WIDGET CLASSES------------------------------------            
+#==========================WIDGET CLASSES================================
+#---------------------------BASE WIDGET------------------------------------            
 class BaseWidget(QWidget):
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
@@ -47,7 +48,8 @@ class BaseWidget(QWidget):
     
     def initUI(self):
         pass
-            
+    
+#-------------------------CHANNEL TOGGLE WIDGET-------------------------------          
 class ChanToggleUI(BaseWidget):
     toggleChanged = pyqtSignal(QPushButton)
     
@@ -167,7 +169,8 @@ class ChanToggleUI(BaseWidget):
             for chan in set(all_selected_chan):
                 if chan < n_btns:
                     self.chan_btn_group.button(chan).click()
-        
+
+#-----------------------CHANNEL CONFIGURATION WIDGET-------------------------         
 class ChanConfigUI(BaseWidget):
     timeOffsetChanged = pyqtSignal(int,float,float)
     freqOffsetChanged = pyqtSignal(int,float,float)
@@ -259,7 +262,8 @@ class ChanConfigUI(BaseWidget):
         else:
             col = self.colbox.color()   
             self.colourChanged.emit(chan,col)
-        
+
+#-----------------------DEVICE CONFIGURATION WIDGET-------------------------        
 class DevConfigUI(BaseWidget):
     recorderSelected = pyqtSignal()
     configRecorder = pyqtSignal()
@@ -371,7 +375,8 @@ class DevConfigUI(BaseWidget):
                     
         print(recType,configs)
         return(recType, configs)
-        
+
+#-----------------------------STATUS WIDGET-------------------------------        
 class StatusUI(BaseWidget):
     def initUI(self):
         stps_layout = QHBoxLayout(self)
@@ -394,7 +399,8 @@ class StatusUI(BaseWidget):
         
     def trigger_message(self):
         self.statusbar.showMessage('Triggered! Recording...')
-                
+
+#-----------------------------RECORDING WIDGET-------------------------------                
 class RecUI(BaseWidget):
     startRecording = pyqtSignal()
     cancelRecording = pyqtSignal()
@@ -580,7 +586,8 @@ class RecUI(BaseWidget):
         else:
             self.rec_boxes[3].setEnabled(True)
             self.rec_boxes[4].setEnabled(True)
-        
+            
+#-----------------------------????????------------------------------        
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)
     
@@ -604,5 +611,4 @@ class ChanLineText(QLineEdit):
             
 def set_input_limits(linebox,low,high,in_type):
     val = in_type(linebox.text())
-    print(val)
     linebox.setText( str(min(max(val,low),high)) )
