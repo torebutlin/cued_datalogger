@@ -101,7 +101,7 @@ class CircleFitWidget(QWidget):
                                           'left': ("Transfer Function", "dB")})
     
         self.transfer_function_plot = \
-            self.transfer_func_plotwidget.getPlotItem()
+            self.transfer_function_plotwidget.getPlotItem()
 
         # # Nyquist plot
         self.nyquist_plotwidget = \
@@ -133,138 +133,26 @@ class CircleFitWidget(QWidget):
         self.nyquist_plot_current_peak = pg.PlotDataItem()
         self.nyquist_plot.addItem(self.nyquist_plot_current_peak)
 
-        # # Additional controls
-        self.add_peak_btn = QPushButton(self)
-        self.add_peak_btn.setText("Add new peak")
-        self.add_peak_btn.clicked.connect(self.add_peak)
-
-        self.delete_selected_btn = QPushButton(self)
-        self.delete_selected_btn.setText("Delete selected")
-        self.delete_selected_btn.clicked.connect(self.delete_selected)
-
-        controls = QGridLayout()
-        spacer_hbox = QHBoxLayout()
-        spacer_hbox.addStretch(1)
-        controls.addWidget(self.delete_selected_btn, 0, 0)
-        controls.addLayout(spacer_hbox, 0, 1)
-        controls.addWidget(self.add_peak_btn, 0, 2)
-
         # # Table of results
-        self.init_table()
-
-        results_groupbox = QGroupBox(self)
-        results_groupbox.setTitle("Results")
-
-        results_groupbox_vbox = QVBoxLayout()
-        results_groupbox_vbox.addWidget(self.tableWidget)
-        results_groupbox_vbox.addLayout(controls)
-
-        results_groupbox.setLayout(results_groupbox_vbox)
+        self.results = CircleFitResults(self)
 
         # # Widget layout
         layout = QGridLayout()
-        layout.addWidget(self.transfer_func_plotwidget, 0, 0)
-        #layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addWidget(results_groupbox, 2, 0)
-        layout.addWidget(self.circle_plotwidget, 2, 1)
+        layout.addWidget(self.transfer_function_plotwidget, 0, 0, 2, 1)
+        layout.addWidget(self.results, 2, 0)
+        layout.addWidget(self.nyquist_plotwidget, 2, 1)
         self.setLayout(layout)
 
         self.setWindowTitle('Circle fit')
         self.show()
 
-    def init_table(self):
-        self.tableWidget = QTableWidget(self)
-
-        self.tableWidget.setColumnCount(6)
-        self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
-                                                    "Damping ratio",
-                                                    "Amplitude", "Phase (rad)",
-                                                    "\N{LOCK}"])
-        header = self.tableWidget.horizontalHeader()
-        header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-        header.setResizeMode(1, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(2, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(3, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(4, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(5, QtGui.QHeaderView.ResizeToContents)
-
-        self.row_list = []
-        self.modal_peaks = []
-
     # Interaction functions ---------------------------------------------------
     def add_peak(self):
-        # Add the new row at the end
-        self.tableWidget.insertRow(self.tableWidget.rowCount())
-        # Go to the new row
-        self.tableWidget.setCurrentCell(self.tableWidget.rowCount()-1, 0)
-
-        # Create a new dict in the list of rows to store the
-        # widgets for this row in
-        self.row_list.append({})
-
-        # Create a new dict in the list of modal peaks to store the
-        # values for this peak in
-        self.modal_peaks.append({})
-
-        # Create the plot item for this peak
-        self.modal_peaks[-1]["plot1"] = pg.PlotDataItem()
-        self.modal_peaks[-1]["plot2"] = pg.PlotDataItem()
-        self.transfer_func_plot.addItem(self.modal_peaks[-1]["plot1"])
-        #self.region_select_plot.addItem(self.modal_peaks[-1]["plot2"])
-
-        # Create a load of widgets to fill the row - store them in the new dict
-        self.row_list[-1]["selectbox"] = QCheckBox()
-        self.row_list[-1]["selectbox"].toggle()
-        self.row_list[-1]["selectbox"].stateChanged.connect(self.update_peak_selection)
-        self.row_list[-1]["freqbox"] = QDoubleSpinBox()
-        self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["freqbox"].setSingleStep(0.01)
-        self.row_list[-1]["freqbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["zbox"] = QDoubleSpinBox()
-        self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
-        #self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
-        self.row_list[-1]["zbox"].setSingleStep(0.0001)
-        self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["zbox"].setDecimals(4)
-        self.row_list[-1]["ampbox"] = QDoubleSpinBox()
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_spinbox_step)
-        self.row_list[-1]["ampbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["phasebox"] = QDoubleSpinBox()
-        self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["phasebox"].setSingleStep(0.01)
-        self.row_list[-1]["phasebox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["lockbtn"] = QPushButton()
-        self.row_list[-1]["lockbtn"].setText("<")
-        self.row_list[-1]["lockbtn"].setCheckable(True)
-        self.row_list[-1]["lockbtn"].clicked.connect(self.set_active_row)
-
-        # Fill the row with widgets
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 0,
-                                       self.row_list[-1]["selectbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 1,
-                                       self.row_list[-1]["freqbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 2,
-                                       self.row_list[-1]["zbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 3,
-                                       self.row_list[-1]["ampbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 4,
-                                       self.row_list[-1]["phasebox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
-                                       self.row_list[-1]["lockbtn"])
-
-        # With pyqtgraph's addItem, all the other items are set back to being visible
-        # so need to undo this for those that are unchecked
-        self.update_peak_selection()
-        self.show_transfer_fn()
-
-        self.set_active_row(new_row=True)
-        self.update_plots()
+        pass
 
     def show_transfer_fn(self, visible=True):
         print("Setting transfer function visible to " + str(visible))
-        self.constructed_transfer_fn1.setVisible(visible)
-        #self.constructed_transfer_fn2.setVisible(visible)
+        self.constructed_transfer_fn.setVisible(visible)
 
     def update_spinbox_step(self, value):
         if np.abs(value) > 1:
@@ -343,7 +231,7 @@ class CircleFitWidget(QWidget):
             pass
 
         # Plot the transfer function
-        self.transfer_function1.setData(x=self.w,
+        self.transfer_function.setData(x=self.w,
                                         y=to_dB(np.abs(self.a)))
 
         #self.transfer_function2.setData(x=self.w,
@@ -363,37 +251,22 @@ class CircleFitWidget(QWidget):
         self.add_peak()
 
     def construct_transfer_fn(self):
-        #self.show_transfer_fn_checkbox.setChecked(True)
         self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["data"])
         for i, peak in enumerate(self.modal_peaks):
             if self.row_list[i]["selectbox"].isChecked():
                 self.constructed_transfer_fn += peak["data"]
 
-        self.constructed_transfer_fn1.setData(x=self.w_fit,
+        self.constructed_transfer_fn.setData(x=self.w_fit,
                                               y=to_dB(np.abs(self.constructed_transfer_fn)))
-        #self.constructed_transfer_fn2.setData(x=self.w_fit,
-        #                                      y=to_dB(np.abs(self.constructed_transfer_fn)))
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
         pass
-        """
-        self.transfer_func_plot.setXRange(*self.region_select.getRegion(),
-                                          padding=0)
-        """
 
     def autorange_to_region(self, checked):
         pass
-        """
-        if self.autorange_to_region_checkbox.isChecked():
-            self.region_select_plot.setXRange(*self.region_select.getRegion(),
-                                              padding=1)
-        else:
-            self.region_select_plot.setXRange(self.w.min(), self.w.max())
-        """
         
     def update_region(self):
-        #self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
         pass
 
     def get_viewed_region(self):
@@ -453,7 +326,7 @@ class CircleFitWidget(QWidget):
                                                                              pen='r')
 
             # Update the constructed transfer function
-            if self.constructed_transfer_fn1.isVisible():
+            if self.constructed_transfer_fn.isVisible():
                 self.construct_transfer_fn()
 
     def update_from_plot(self):
@@ -556,10 +429,19 @@ class CircleFitWidget(QWidget):
 class CircleFitResults(QGroupBox):
     """
     The tree of results for the Circle Fit.
+    
+    Attributes
+    ----------
+    sig_selected_peak_changed : pyqtSignal(int)
+        The signal emitted when the selected peak is changed.
     """
+    
+    sig_selected_peak_changed = pyqtSignal(int)
+    
     def __init__(self, parent=None):
         super().__init__("Results", parent)
         
+        # TODO
         self.num_channels = 4
         self.num_peaks = 0
                 
@@ -568,8 +450,8 @@ class CircleFitResults(QGroupBox):
     def init_ui(self):       
         # # Tree
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["", "Frequency", "Damping ratio",
-                                   "Amplitude", "Phase", ""])
+        self.tree.setHeaderLabels(["Name", "Frequency", "Damping ratio",
+                                   "Amplitude", "Phase", "Select"])
         
         # # Controls
         self.add_peak_btn = QPushButton("Add new peak", self)
@@ -591,20 +473,158 @@ class CircleFitResults(QGroupBox):
         self.setLayout(layout)
     
     def add_peak(self):
+        """Add a top-level item for a new peak to the tree, with children for
+        each channel."""
+        # Create the parent item for the peak
         peak_item = QTreeWidgetItem(self.tree, 
-                                    ["Peak ".format(self.num_peaks), 
+                                    ["Peak {}".format(self.num_peaks), 
                                      "", "", "", "", ""])
-        for i in range(self.num_channels):
-            channel_item = QTreeWidgetItem(peak_item,
-                                           ["Channel ".format(i),
-                                            "", "", "", "", ""])
+        # Put a radio button in column 5
+        radio_btn = QRadioButton()
+        radio_btn.toggled.connect(self.on_selected_peak_changed)
+        self.tree.setItemWidget(peak_item, 5, radio_btn)
+        
+        # Put spinboxes in columns 1-4
+        for col in [1,2,3,4]:
+            spinbox = QDoubleSpinBox()
+            self.tree.setItemWidget(peak_item, col, spinbox)
+        
+        # Create the child items for each channel for this peak if there's
+        # more than one channel
+        if self.num_channels > 1:
+            for i in range(self.num_channels):
+                channel_item = QTreeWidgetItem(peak_item,
+                                               ["Channel {}".format(i),
+                                                "", "", "", "", ""])
+                # Put spinboxes in cols 1-4
+                for col in [1,2,3,4]:
+                    spinbox = QDoubleSpinBox()
+                    spinbox.valueChanged.connect(self.update_peak_average)
+                    self.tree.setItemWidget(channel_item, col, spinbox)
+        
+        # Register that we've added another peak
         self.num_peaks += 1
     
     def delete_selected(self):
+        """Delete the item that is currently selected."""
+        for i in range(self.tree.topLevelItemCount()):
+            # If the radio button is checked
+            peak_item = self.tree.topLevelItem(i)
+            if peak_item is not None:
+                if self.tree.itemWidget(peak_item, 5).isChecked():
+                    # Delete this item
+                    self.tree.takeTopLevelItem(i)
+                    #self.num_peaks -= 1
+    
+    def on_selected_peak_changed(self, checked):
+        for i in range(self.tree.topLevelItemCount()):
+            # If the radio button in this row is the sender
+            peak_item = self.tree.topLevelItem(i)
+            if peak_item is not None:
+                if self.tree.itemWidget(peak_item, 5) == self.sender():
+                    if checked:
+                        print("Selected: " + str(i))
+                        self.sig_selected_peak_changed.emit(i)
+                    else:
+                        pass
+
+    def update_parameter_values(self):
         pass
     
-    def update_parameter_values(self):
-        pass     
+    def update_peak_average(self):
+        """Set the parameter values displayed for the peak to the average of 
+        all the channel values for each parameter."""
+        for peak_number in range(self.num_peaks):
+            # Get the peak item
+            peak_item = self.tree.topLevelItem(peak_number)
+            
+            if peak_item is not None:
+                # Find the average values of all the channels
+                avg_frequency = 0
+                avg_damping = 0
+                avg_amplitude = 0
+                avg_phase = 0
+                
+                for channel_number in range(self.num_channels):
+                    avg_frequency += self.get_frequency(peak_number, channel_number)
+                    avg_damping += self.get_damping(peak_number, channel_number)
+                    avg_amplitude += self.get_amplitude(peak_number, channel_number)
+                    avg_phase += self.get_phase(peak_number, channel_number)
+                
+                avg_frequency /= self.num_channels
+                avg_damping /= self.num_channels
+                avg_amplitude /= self.num_channels
+                avg_phase /= self.num_channels
+                
+                # Set the peak item to display the averages
+                self.tree.itemWidget(peak_item, 1).setValue(avg_frequency)
+                self.tree.itemWidget(peak_item, 2).setValue(avg_damping)
+                self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude)
+                self.tree.itemWidget(peak_item, 4).setValue(avg_phase)
+    
+    def get_frequency(self, peak_number, channel_number=None):
+        """Return the resonant frequency of the peak given by 
+        *peak_number*. If *channel_number* is given, return the resonant  
+        frequency of the given peak in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 1)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 1)
+                return spinbox.value()
+        else:
+            return 0
+       
+    def get_damping(self, peak_number, channel_number=None):
+        """Return the damping ratio of the peak given by *peak_number*. If 
+        *channel_number* is given, return the damping ratio of the given peak
+        in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 2)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 2)
+                return spinbox.value()
+        else:
+            return 0     
+       
+    def get_amplitude(self, peak_number, channel_number=None):
+        """Return the amplitude of the peak given by *peak_number*. If 
+        *channel_number* is given, return the amplitude of the given peak in 
+        the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 3)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 3)
+                return spinbox.value()
+        else:
+            return 0
+       
+    def get_phase(self, peak_number, channel_number=None):
+        """Return the phase of the peak given by *peak_number*. If 
+        *channel_number* is given, return the phase of the given peak in the
+        given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 4)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 4)
+                return spinbox.value()
+        else:
+            return 0
 
 
 class CircleFitToolbox(Toolbox):
