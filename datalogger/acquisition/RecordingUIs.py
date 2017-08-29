@@ -103,7 +103,8 @@ class ChanToggleUI(BaseWidget):
         self.search_status.showMessage('Awaiting...')
         
         self.chan_btn_group.buttonClicked.connect(self.toggleChanged.emit)
-        self.chan_text.returnPressed.connect(self.lineToggled.emit)
+        #self.chan_text.returnPressed.connect(self.lineToggled.emit)
+        self.chan_text.returnPressed.connect(self.chan_line_toggle)
         
     def invert_checkboxes(self):
         for btn in self.channels_box.findChildren(QCheckBox):
@@ -113,10 +114,41 @@ class ChanToggleUI(BaseWidget):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
+                
+    def chan_line_toggle(self,chan_list):
+        all_selected_chan = []
+        for str_in in chan_list:
+            r_in = str_in.split(':')
+            if len(r_in) == 1:
+                if r_in[0]:
+                    all_selected_chan.append(int(r_in[0]))
+            elif len(r_in) >1: 
+                if not r_in[0]:
+                    r_in[0] = 0
+                if not r_in[1]:
+                    r_in[1] = self.rec.channels
+                    
+                if len(r_in) == 2:
+                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])+1))
+                else:
+                    if not r_in[2]:
+                        r_in[2] = 1
+                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])+1,int(r_in[2])))
+
+        print(all_selected_chan)
+        n_btns = self.chantoggle_UI.checkbox_layout.count()
+        if all_selected_chan:
+            self.toggle_all_checkboxes(Qt.Unchecked)
+            for chan in set(all_selected_chan):
+                if chan < n_btns:
+                    self.chan_btn_group.button(chan).click()
         
 class ChanConfigUI(BaseWidget):
     timeOffsetChanged = pyqtSignal(int,float,float)
     freqOffsetChanged = pyqtSignal(int,float,float)
+    sigHoldChanged = pyqtSignal(int,int)
+    colourReset = pyqtSignal(int)
+    colourChanged = pyqtSignal(int,object)
     
     def initUI(self):
         chans_prop_layout = QVBoxLayout(self)
@@ -173,6 +205,10 @@ class ChanConfigUI(BaseWidget):
             cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'Time'))
         for cbox in self.fft_offset_config:
             cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'DFT'))
+        
+        self.hold_tickbox.stateChanged.connect(self.signal_hold)
+        self.colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
+        self.defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
            
     def set_offset_step(self,cbox,num):
         cbox.setSingleStep(num)
@@ -183,7 +219,22 @@ class ChanConfigUI(BaseWidget):
             self.timeOffsetChanged.emit(chan,self.time_offset_config[0].value(),self.time_offset_config[1].value())
         elif dtype == 'DFT':
             self.freqOffsetChanged.emit(chan,self.fft_offset_config[0].value(),self.fft_offset_config[1].value())
-            
+       
+    def signal_hold(self,state):
+        chan = self.chans_num_box.currentIndex()
+        self.sigHoldChanged.emit(chan,state)
+        
+    def set_colour_btn(self,col):
+        self.colbox.setColor(col)
+        
+    def set_plot_colour(self,reset = False):
+        chan = self.chans_num_box.currentIndex()
+        if reset:
+            self.colourReset.emit(chan)
+        else:
+            col = self.colbox.color()   
+            self.colourChanged.emit(chan,col)
+        
 class DevConfigUI(BaseWidget):
     recorderSelected = pyqtSignal()
     configRecorder = pyqtSignal()

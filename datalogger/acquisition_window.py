@@ -118,18 +118,14 @@ class LiveplotApp(QMainWindow):
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
         self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
-        self.chantoggle_UI.lineToggled.connect(self.chan_line_toggle)
         
         chan_toggle_layout.addWidget(self.chantoggle_UI)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
         self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
-        self.chanconfig_UI.hold_tickbox.stateChanged.connect(self.signal_hold)
-        self.chanconfig_UI.colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
-        self.chanconfig_UI.defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
+
         self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-        
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
         self.devconfig_UI.set_recorder(self.rec)
@@ -155,10 +151,7 @@ class LiveplotApp(QMainWindow):
         self.timeplot = TimeLiveGraph(self.mid_splitter)
         # Set up FFT plot, add to splitter
         self.freqplot = FreqLiveGraph(self.mid_splitter)
-        
-        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
-        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
-        
+
         self.ResetPlots()
     #---------------------------STATUS WIDGETS------------------------------------    
         self.stats_UI = StatusUI(self.mid_splitter)
@@ -200,6 +193,19 @@ class LiveplotApp(QMainWindow):
         
         self.ResetChanConfigs()
         self.levelsplot.reset_channel_levels()
+        
+        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
+        self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
+        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
+        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
+        self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.levelsplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
     #------------------------FINALISE THE LAYOUT-----------------------------
         main_layout.addWidget(self.stream_toolbox)
         main_layout.addWidget(self.mid_splitter)
@@ -273,34 +279,6 @@ class LiveplotApp(QMainWindow):
         else:
             self.timeplot.toggle_plotline(chan_num,False)
             self.freqplot.toggle_plotline(chan_num,False)
-
-    def chan_line_toggle(self,chan_list):
-        all_selected_chan = []
-        for str_in in chan_list:
-            r_in = str_in.split(':')
-            if len(r_in) == 1:
-                if r_in[0]:
-                    all_selected_chan.append(int(r_in[0]))
-            elif len(r_in) >1: 
-                if not r_in[0]:
-                    r_in[0] = 0
-                if not r_in[1]:
-                    r_in[1] = self.rec.channels
-                    
-                if len(r_in) == 2:
-                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])))
-                else:
-                    if not r_in[2]:
-                        r_in[2] = 1
-                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1]),int(r_in[2])))
-
-        print(all_selected_chan)
-        
-        if all_selected_chan:
-            self.toggle_all_checkboxes(Qt.Unchecked)
-            for chan in set(all_selected_chan):
-                if chan < self.rec.channels:
-                    self.chantoggle_UI.chan_btn_group.button(chan).click()
          
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
@@ -318,30 +296,7 @@ class LiveplotApp(QMainWindow):
         self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
         self.chanconfig_UI.fft_offset_config[0].setValue(self.freqplot.plot_xoffset[num])
         self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_yoffset[num])
-     
-    def signal_hold(self,state):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        self.timeplot.set_sig_hold(chan,state)
-    
-    def set_plot_colour(self,reset = False):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        chan_btn = self.chantoggle_UI.chan_btn_group.button(chan)
-        
-        drawnow = False
-        if chan_btn.isChecked():
-            drawnow = True
-            
-        if reset:
-            col = self.timeplot.reset_default_colour(chan,drawnow)
-            self.freqplot.reset_default_colour(chan,drawnow)
-            self.levelsplot.reset_default_colour(chan,drawnow)
-            self.chanconfig_UI.colbox.setColor(col)
-        else:
-            col = self.chanconfig_UI.colbox.color()        
-            self.timeplot.set_plot_colour(chan,col,drawnow = drawnow)
-            self.freqplot.set_plot_colour(chan,col,drawnow = drawnow)
-            self.levelsplot.set_plot_colour(chan,col)
-    
+   
     def open_meta_window(self):
         if not self.meta_window:
             try:
@@ -685,9 +640,11 @@ class LiveplotApp(QMainWindow):
                 
     def ResetChanConfigs(self):
         self.timeplot.reset_offsets()
+        self.timeplot.reset_plot_visible()
         self.timeplot.reset_colour()
         self.timeplot.reset_sig_hold()
         self.freqplot.reset_offsets()
+        self.freqplot.reset_plot_visible()
         self.freqplot.reset_colour()
         self.levelsplot.reset_colour()
 

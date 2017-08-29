@@ -19,12 +19,14 @@ TRACE_DURATION = 2  # Duration for a holding trace
 
 class LiveGraph(pg.PlotWidget):
     plotLineClicked = pyqtSignal()
+    plotColourChanged = pyqtSignal(object)
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.plotlines = []
         self.plot_xoffset = []
         self.plot_yoffset = []
         self.plot_colours = []
+        self.plot_visible = []
         self.plotItem = self.getPlotItem()
         self.gen_default_colour()
         
@@ -39,16 +41,17 @@ class LiveGraph(pg.PlotWidget):
             return self.plotlines.index(line)
         else:
             return None
-        
+    
     def toggle_plotline(self,num,visible):
+        self.plot_visible[num] = visible
         if visible:
             self.plotlines[num].setPen(self.plot_colours[num])
         else:
             self.plotlines[num].setPen(None)
             
-    def set_plot_colour(self,num,col,drawnow = False):
+    def set_plot_colour(self,num,col):
         self.plot_colours[num] = col
-        if drawnow:
+        if self.plot_visible[num]:
             self.plotlines[num].setPen(col)
         
     def set_offset(self,num,x_off = None, y_off =None):
@@ -72,14 +75,18 @@ class LiveGraph(pg.PlotWidget):
         self.plot_xoffset = np.zeros(shape = (n,), dtype = np.float)
         self.plot_yoffset = np.arange(n, dtype = np.float)
         
+    def reset_plot_visible(self):
+        self.plot_visible = [True]*len(self.plotlines)
+            
     def reset_colour(self):
         self.plot_colours = [None] * len(self.plotlines)
         self.gen_default_colour()
         
-    def reset_default_colour(self,chan,drawnow):
+    def reset_default_colour(self,chan):
         col = self.def_colours[chan]
-        self.set_plot_colour(chan,col,drawnow = drawnow)
-        return col
+        self.set_plot_colour(chan,col)
+        self.plotColourChanged.emit(col)
+        #return col
     
     def gen_default_colour(self):
         val = [0.0,0.5,1.0]
@@ -90,13 +97,14 @@ class LiveGraph(pg.PlotWidget):
         self.def_colours = []
         for i in range(len(self.plotlines)):
             r,g,b = c_list[i]
-            self.set_plot_colour(i,QColor(r,g,b),True)
+            self.set_plot_colour(i,QColor(r,g,b))
             self.def_colours.append(QColor(r,g,b))
     
 class TimeLiveGraph(LiveGraph):
     def __init__(self, *args,**kwargs):
         super().__init__(*args,**kwargs)
         self.sig_hold = []
+        self.plot_visible = []
         self.plotItem.setLabels(title="Time Plot", bottom = 'Time(s)') 
         
     def set_sig_hold(self, num, state):
@@ -104,7 +112,6 @@ class TimeLiveGraph(LiveGraph):
     
     def reset_sig_hold(self):
         self.sig_hold = [Qt.Unchecked] * len(self.plotlines)
-        
 
 class FreqLiveGraph(LiveGraph):
     def __init__(self,*args,**kwargs):
@@ -151,7 +158,7 @@ class LevelsLiveGraph(LiveGraph):
         self.level_colourmap = pg.ColorMap(val,colour)
      
         
-    def set_plot_colour(self,num,col,drawnow = False):
+    def set_plot_colour(self,num,col):
         self.plot_colours[num] = col
         self.chanlvl_pts.scatter.setBrush(col)
         
@@ -185,7 +192,7 @@ class LevelsLiveGraph(LiveGraph):
         self.plot_colours = [None] * len(self.peak_plots)
         self.gen_default_colour()
         
-    def reset_default_colour(self,chan,drawnow):
+    def reset_default_colour(self,chan):
         col = self.def_colours[chan]
         self.set_plot_colour(chan,col)
         return col
