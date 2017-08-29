@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
     QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
     QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
     QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
-from PyQt5.QtGui import (QColor)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
 import pyqtgraph as pg
@@ -21,8 +20,8 @@ import functools as fct
 
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
                                                  StatusUI,RecUI)
-from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 from datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph,LevelsLiveGraph
+from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 
 import datalogger.acquisition.myRecorder as mR
 try:
@@ -37,18 +36,13 @@ except ImportError:
 from datalogger.analysis.frequency_domain import (compute_transfer_function,
                                                    compute_autospec,compute_crossspec)
 
-from datalogger.api import channel as ch
-from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
+from datalogger.api.channel import ChannelSet
 from datalogger.api.toolbox import Toolbox, MasterToolbox
 
 # GLOBAL CONSTANTS
 PLAYBACK = False    # Whether to playback the stream
-MAX_SAMPLE = 1e9    # Recording Sample max size limit
 WIDTH = 900         # Window width
 HEIGHT = 600        # Window height
-CHANLVL_FACTOR = 0.1# The gap between each channel level (seems useless)
-TRACE_DECAY = 0.005 # Increment size for decaying trace
-TRACE_DURATION = 2  # Duration for a holding trace
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
@@ -65,7 +59,6 @@ class LiveplotApp(QMainWindow):
         # Set window parameter
         self.setGeometry(400,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
-        self.center()
         
         self.meta_window = None
         
@@ -82,7 +75,6 @@ class LiveplotApp(QMainWindow):
         self.timedata = None 
         self.freqdata = None
         
-        self.gen_plot_col()
         self.ResetMetaData()
            
         self.autospec_in_tally = []
@@ -92,9 +84,7 @@ class LiveplotApp(QMainWindow):
         try:
             # Construct UI        
             self.initUI()
-            #self.config_setup()
-        except Exception as e:
-            print(e)
+        except Exception:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
@@ -106,7 +96,7 @@ class LiveplotApp(QMainWindow):
         self.init_and_check_stream()
             
         # Center and show window
-        
+        self.center()
         self.setFocus()
         self.show()
 
@@ -156,7 +146,6 @@ class LiveplotApp(QMainWindow):
         if not NI_drivers:
             NI_btn.setDisabled(True)
         
-        #self.devconfig_UI.recorderSelected.connect(self.display_sources)
         self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         
         self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
@@ -164,7 +153,7 @@ class LiveplotApp(QMainWindow):
         self.stream_tools.addTab(self.devconfig_UI,'Device Config')
         self.stream_toolbox.add_toolbox(self.stream_tools)
         
-    #----------------------PLOT + STATUS WIDGETS------------------------------------ 
+    #---------------------------PLOT WIDGETS------------------------------------ 
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         
         pg.setConfigOption('foreground', 'w')
@@ -175,7 +164,7 @@ class LiveplotApp(QMainWindow):
         self.freqplot = FreqLiveGraph(self.mid_splitter)
         
         self.ResetPlots()
-        
+    #---------------------------STATUS WIDGETS------------------------------------    
         self.stats_UI = StatusUI(self.mid_splitter)
         
         self.stats_UI.statusbar.messageChanged.connect(self.default_status)
@@ -194,10 +183,6 @@ class LiveplotApp(QMainWindow):
         
         self.RecUI = RecUI(self.main_widget)
         self.RecUI.set_recorder(self.rec)
-        
-        # Connect the sample and time input check
-        self.RecUI.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.RecUI.rec_boxes[2],-1,self.rec.chunk_size,int))
-        self.RecUI.rec_boxes[2].textEdited.connect(self.toggle_trigger)
 
         self.RecUI.startRecording.connect(self.start_recording)
         self.RecUI.cancelRecording.connect(self.cancel_recording)
@@ -277,9 +262,6 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
         self.show()
-        
-        #h = 600 - chans_settings_layout.geometry().height()
-        #self.main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
      
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -340,7 +322,7 @@ class LiveplotApp(QMainWindow):
         self.chanconfig_UI.time_offset_config[1].setValue(self.timeplot.plot_yoffset[num])
         self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
         self.chanconfig_UI.fft_offset_config[0].setValue(self.freqplot.plot_xoffset[num])
-        self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_xoffset[num])
+        self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_yoffset[num])
         
     def set_plot_offset(self, offset,set_type, sp,num):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
@@ -363,21 +345,21 @@ class LiveplotApp(QMainWindow):
     def set_plot_colour(self,reset = False):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         chan_btn = self.chantoggle_UI.chan_btn_group.button(chan)
-            
-        if reset:
-            col = self.def_colours[chan]
-            self.chanconfig_UI.colbox.setColor(col)
-        else:
-            col = self.chanconfig_UI.colbox.color()
-
+        
         drawnow = False
         if chan_btn.isChecked():
             drawnow = True
-        self.timeplot.set_plot_colour(chan,col,drawnow = drawnow)
-        self.freqplot.set_plot_colour(chan,col,drawnow = drawnow)
-        self.levelsplot.set_plot_colour(chan,col)
-        #self.chanlvl_pts.scatter.setBrush(self.plot_colours)
-        #self.chanlvl_pts.scatter.setBrush(self.def_colours)
+            
+        if reset:
+            col = self.timeplot.reset_default_colour(chan,drawnow)
+            self.freqplot.reset_default_colour(chan,drawnow)
+            self.levelsplot.reset_default_colour(chan,drawnow)
+            self.chanconfig_UI.colbox.setColor(col)
+        else:
+            col = self.chanconfig_UI.colbox.color()        
+            self.timeplot.set_plot_colour(chan,col,drawnow = drawnow)
+            self.freqplot.set_plot_colour(chan,col,drawnow = drawnow)
+            self.levelsplot.set_plot_colour(chan,col)
     
     def open_meta_window(self):
         if not self.meta_window:
@@ -400,15 +382,15 @@ class LiveplotApp(QMainWindow):
     def update_line(self):
         # TODO: can this be merge with update channel levels plot
         data = self.rec.get_buffer()
-        window = np.hanning(data.shape[0])
-        weightage = np.exp(2* self.timedata / self.timedata[-1])
+        
         currentdata = data[len(data)-self.rec.chunk_size:,:]
         currentdata -= np.mean(currentdata)
         rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
         maxs = np.amax(abs(currentdata),axis = 0)
-        
         self.levelsplot.set_channel_levels(rms,maxs)
-
+        
+        window = np.hanning(data.shape[0])
+        weightage = np.exp(2* self.timedata / self.timedata[-1])
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),))
             zc = 0
@@ -420,7 +402,7 @@ class LiveplotApp(QMainWindow):
             
             self.timeplot.update_line(i,x = self.timedata[:len(plotdata)-zc] ,y = plotdata[zc:])
 
-            fft_data = np.fft.rfft(plotdata* window * weightage)
+            fft_data = rfft(plotdata* window * weightage)
             psd_data = abs(fft_data)** 0.5
             self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
             
@@ -728,15 +710,6 @@ class LiveplotApp(QMainWindow):
         self.freqplot.reset_offsets()
         self.freqplot.reset_colour()
         self.levelsplot.reset_colour()
-        
-        c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
-        self.def_colours = []
-        for i in range(self.rec.channels):
-            r,g,b = c_list[i]
-            self.timeplot.set_plot_colour(i,QColor(r,g,b),True)
-            self.freqplot.set_plot_colour(i,QColor(r,g,b),True)
-            self.levelsplot.set_plot_colour(i,QColor(r,g,b))
-            self.def_colours.append(QColor(r,g,b))
 
         self.chanconfig_UI.chans_num_box.clear()
         self.chanconfig_UI.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
@@ -745,9 +718,8 @@ class LiveplotApp(QMainWindow):
         self.display_chan_config(0)
     
     def ResetMetaData(self):
-        self.live_chanset = ch.ChannelSet(self.rec.channels)
+        self.live_chanset = ChannelSet(self.rec.channels)
         self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'time_series')
-        
         
     def ResetSplitterSizes(self):
         #self.left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
@@ -789,29 +761,6 @@ class LiveplotApp(QMainWindow):
             
     def trigger_message(self):
         self.stats_UI.statusbar.showMessage('Triggered! Recording...')
- #-------------------------- COLOUR METHODS ------------------------------------       
-    def gen_plot_col(self):
-        val = [0.0,0.5,1.0]
-        colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
-        self.plot_colourmap =  pg.ColorMap(val,colour)
-        
-    def set_input_limits(self,linebox,low,high,in_type):
-        val = in_type(linebox.text())
-        print(val)
-        linebox.setText( str(min(max(val,low),high)) )
-    
-    def toggle_trigger(self,string):
-        try:
-            val = int(string)
-        except:
-            val = -1
-        
-        if val == -1:
-            self.RecUI.rec_boxes[3].setEnabled(False)
-            self.RecUI.rec_boxes[4].setEnabled(False)
-        else:
-            self.RecUI.rec_boxes[3].setEnabled(True)
-            self.RecUI.rec_boxes[4].setEnabled(True)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
     def resizeEvent(self, event):

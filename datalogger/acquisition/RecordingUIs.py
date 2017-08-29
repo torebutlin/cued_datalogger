@@ -354,8 +354,11 @@ class RecUI(BaseWidget):
             global_settings_layout.addRow(QLabel(c,self),cbox)
             self.rec_boxes.append(cbox) 
             
+        # Connect the sample and time input check
         self.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
         self.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
+        self.rec_boxes[2].editingFinished.connect(lambda: set_input_limits(self.rec_boxes[2],-1,self.rec.chunk_size,int))
+        self.rec_boxes[2].textEdited.connect(self.toggle_trigger)
         
         self.normal_rec = QWidget(self)
         normal_rec_layout = QVBoxLayout(self.normal_rec)
@@ -478,6 +481,19 @@ class RecUI(BaseWidget):
     def update_TFavg_count(self,val):
         self.avg_count_box.setText('Count: %i' % val)
         
+    def toggle_trigger(self,string):
+        try:
+            val = int(string)
+        except:
+            val = -1
+        
+        if val == -1:
+            self.RecUI.rec_boxes[3].setEnabled(False)
+            self.RecUI.rec_boxes[4].setEnabled(False)
+        else:
+            self.RecUI.rec_boxes[3].setEnabled(True)
+            self.RecUI.rec_boxes[4].setEnabled(True)
+        
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)
     
@@ -498,3 +514,8 @@ class ChanLineText(QLineEdit):
             
         else:
             QLineEdit.keyPressEvent(self,  event)
+            
+def set_input_limits(linebox,low,high,in_type):
+    val = in_type(linebox.text())
+    print(val)
+    linebox.setText( str(min(max(val,low),high)) )

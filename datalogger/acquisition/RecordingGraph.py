@@ -4,12 +4,11 @@ Created on Thu Aug 24 17:35:00 2017
 
 @author: eyt21
 """
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt, pyqtSignal 
 
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint 
+from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
+
 import pyqtgraph as pg
 import numpy as np
 import math
@@ -27,6 +26,7 @@ class LiveGraph(pg.PlotWidget):
         self.plot_yoffset = []
         self.plot_colours = []
         self.plotItem = self.getPlotItem()
+        self.gen_default_colour()
         
     def plot(self, *arg, **kwargs):
         line = self.plotItem.plot(*arg, **kwargs)
@@ -74,6 +74,24 @@ class LiveGraph(pg.PlotWidget):
         
     def reset_colour(self):
         self.plot_colours = [None] * len(self.plotlines)
+        self.gen_default_colour()
+        
+    def reset_default_colour(self,chan,drawnow):
+        col = self.def_colours[chan]
+        self.set_plot_colour(chan,col,drawnow = drawnow)
+        return col
+    
+    def gen_default_colour(self):
+        val = [0.0,0.5,1.0]
+        colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
+        self.plot_colourmap =  pg.ColorMap(val,colour)
+        c_list = self.plot_colourmap.getLookupTable(nPts = len(self.plotlines))
+        
+        self.def_colours = []
+        for i in range(len(self.plotlines)):
+            r,g,b = c_list[i]
+            self.set_plot_colour(i,QColor(r,g,b),True)
+            self.def_colours.append(QColor(r,g,b))
     
 class TimeLiveGraph(LiveGraph):
     def __init__(self, *args,**kwargs):
@@ -98,17 +116,19 @@ class FreqLiveGraph(LiveGraph):
 class LevelsLiveGraph(LiveGraph):
     thresholdChanged = pyqtSignal(str)
     def __init__(self,rec,*args,**kwargs):
+        self.peak_plots = []
+        self.peak_trace = []
+        self.trace_counter = []
+        self.trace_countlimit = 30
+        self.level_colourmap = None
+        
         super().__init__(*args,**kwargs)
         self.plotItem.setLabels(title="Channel Levels", bottom = 'Amplitude')
         self.plotItem.hideAxis('left')
         
         self.chanlvl_pts = self.plotItem.plot()
         
-        self.peak_plots = []
-        self.peak_trace = []
-        self.trace_counter = []
-        self.trace_countlimit = 30
-        self.level_colourmap = None
+        
         
         self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(rec.channels),
                                             y =np.arange(rec.channels)*0.1,
@@ -163,6 +183,25 @@ class LevelsLiveGraph(LiveGraph):
     
     def reset_colour(self):
         self.plot_colours = [None] * len(self.peak_plots)
+        self.gen_default_colour()
+        
+    def reset_default_colour(self,chan,drawnow):
+        col = self.def_colours[chan]
+        self.set_plot_colour(chan,col)
+        return col
+        
+    def gen_default_colour(self):
+        val = [0.0,0.5,1.0]
+        colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
+        plot_colourmap =  pg.ColorMap(val,colour)
+        c_list = plot_colourmap.getLookupTable(nPts = len(self.peak_plots))
+        
+        self.def_colours = []
+        for i in range(len(self.peak_plots)):
+            r,g,b = c_list[i]
+            #self.plotlines.set_plot_colour(i,QColor(r,g,b),True)
+            self.plot_colours[i] = QColor(r,g,b)
+            self.def_colours.append(QColor(r,g,b))
         
     def reset_channel_levels(self):
         self.chanlvl_pts.clear()
