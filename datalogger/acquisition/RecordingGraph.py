@@ -21,7 +21,7 @@ class LiveGraph(pg.PlotWidget):
     plotLineClicked = pyqtSignal()
     plotColourChanged = pyqtSignal(object)
     def __init__(self,*args,**kwargs):
-        super().__init__(*args,**kwargs)
+        super().__init__(*args,background = 'k',**kwargs)
         self.plotlines = []
         self.plot_xoffset = []
         self.plot_yoffset = []
@@ -29,6 +29,9 @@ class LiveGraph(pg.PlotWidget):
         self.plot_visible = []
         self.plotItem = self.getPlotItem()
         self.gen_default_colour()
+        
+        self.plotItem.getAxis('bottom').setPen('w') 
+        self.plotItem.getAxis('left').setPen('w')
         
     def plot(self, *arg, **kwargs):
         line = self.plotItem.plot(*arg, **kwargs)
@@ -105,7 +108,8 @@ class TimeLiveGraph(LiveGraph):
         super().__init__(*args,**kwargs)
         self.sig_hold = []
         self.plot_visible = []
-        self.plotItem.setLabels(title="Time Plot", bottom = 'Time(s)') 
+        self.plotItem.setTitle(title="Time Plot", color = 'FFFFFF')
+        self.plotItem.setLabel('bottom','Time(s)')
         
     def set_sig_hold(self, num, state):
         self.sig_hold[num] = state
@@ -116,7 +120,8 @@ class TimeLiveGraph(LiveGraph):
 class FreqLiveGraph(LiveGraph):
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        self.plotItem.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
+        self.plotItem.setTitle(title="FFT Plot", color = 'FFFFFF')
+        self.plotItem.setLabel('bottom','Freq(Hz)')
         self.plotItem.disableAutoRange(axis=None)
         
 
@@ -130,7 +135,8 @@ class LevelsLiveGraph(LiveGraph):
         self.level_colourmap = None
         
         super().__init__(*args,**kwargs)
-        self.plotItem.setLabels(title="Channel Levels", bottom = 'Amplitude')
+        self.plotItem.setTitle(title="Channel Levels", color = 'FFFFFF')
+        self.plotItem.setLabel('bottom','Amplitude')
         self.plotItem.hideAxis('left')
         
         self.chanlvl_pts = self.plotItem.plot()

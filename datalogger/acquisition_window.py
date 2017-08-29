@@ -120,8 +120,6 @@ class LiveplotApp(QMainWindow):
         
     #---------------------------PLOT + STATUS WIDGETS-----------------------------
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-        pg.setConfigOption('foreground', 'w')
-        pg.setConfigOption('background', 'k')
         self.timeplot = TimeLiveGraph(self.mid_splitter)
         self.freqplot = FreqLiveGraph(self.mid_splitter)  
         self.stats_UI = StatusUI(self.mid_splitter)

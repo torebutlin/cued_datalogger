@@ -575,11 +575,11 @@ class RecUI(BaseWidget):
             val = -1
         
         if val == -1:
-            self.RecUI.rec_boxes[3].setEnabled(False)
-            self.RecUI.rec_boxes[4].setEnabled(False)
+            self.rec_boxes[3].setEnabled(False)
+            self.rec_boxes[4].setEnabled(False)
         else:
-            self.RecUI.rec_boxes[3].setEnabled(True)
-            self.RecUI.rec_boxes[4].setEnabled(True)
+            self.rec_boxes[3].setEnabled(True)
+            self.rec_boxes[4].setEnabled(True)
         
 class ChanLineText(QLineEdit):
     returnPressed = pyqtSignal(list)

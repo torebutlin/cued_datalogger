@@ -50,7 +50,7 @@ class InteractivePlotWidget(QWidget):
         layout = QVBoxLayout(self)
 
         # # Set up the PlotWidget        
-        self.PlotWidget = CustomPlotWidget(self,background = 'k')
+        self.PlotWidget = CustomPlotWidget(self)
 
         self.PlotItem = self.PlotWidget.getPlotItem()
         self.PlotItem.disableAutoRange()
@@ -97,7 +97,7 @@ class InteractivePlotWidget(QWidget):
             # Convert it to the coordinate system
             mousePoint = self.ViewBox.mapSceneToView(mouse_position)
             # Update the label
-            self.label.setText((("<span style='font-size: 12pt;color: white'>"
+            self.label.setText((("<span style='font-size: 12pt;color: black'>"
                                  "x=%0.4f,"
                                  "<span style='color: red'>y1=%0.4f</span>" )
                                 % (mousePoint.x(), mousePoint.y()) ))
