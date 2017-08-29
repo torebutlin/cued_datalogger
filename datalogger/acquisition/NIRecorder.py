@@ -3,36 +3,45 @@ This module contains the class to record data from a National Instrument.
 It uses PyDAQmx to do so, but requires NIDAQmx drivers to function.
 Please check the PyDAQMx and NIDAQmx C API reference for more information.
 
-Example:
-    import myRecorder as NIR
-    
-    recorder = NIR.Recorder()
-    recorder.stream_init()
-    recorder.record_init()
-    recorder.record_start()
-    
-    #Wait for it to finish recording
-    #Output: Recording Done! Please flush the data with flush_record_data()
-    
-    data = recorder.flush_record_data()
-    recorder.close()
+Typical example of using the module:
+>>>import myRecorder as NIR
+>>>recorder = NIR.Recorder()
+Channels: 1
+Rate: 30000
+Chunk size: 1000
+Number of chunks: 4
+You are using National Instrument for recording
+Input device name not found, using the first device
+Selected devices: Dev3
+>>>recorder.stream_init()
+Channels Name: Dev3/ai0
+True
+>>>recorder.record_init()
+Recording function is ready! Use record_start() to start
+True
+>>>recorder.record_start()
+Stream already started
+Recording Start!
+True    
+>>>Recording Done! Please flush the data with flush_record_data().
+data = recorder.flush_record_data()
+Data flushed
+>>>recorder.close()
 """
 from datalogger.acquisition.RecorderParent import RecorderParent
 
 import sys,traceback
-# TODO: Add codes to install pyaudio if pyaudio is not installed???
 import PyDAQmx as pdaq
 from PyDAQmx import Task
 
 import numpy as np
 import pprint as pp
-import copy as cp
 
 class Recorder(RecorderParent):
     """
      Sets up the recording stream through a National Instrument
     
-     Attributes:
+     Attributes
      ----------
         In addtion to RecorderParent Attributes,
         device_name: Str
@@ -64,16 +73,12 @@ class Recorder(RecorderParent):
         """
          Set the recording audio device by name.
          Uses the first device found if no such device found.
-         
-         Returns:
-         ----------
-             None if no National Instrument is found
         """
         devices = self.available_devices()[0]
         selected_device = None
         if not devices:
             print('No NI devices found')
-            return selected_device
+            return
         
         if not name in devices:
             print('Input device name not found, using the first device')
@@ -87,15 +92,14 @@ class Recorder(RecorderParent):
      # Get audio device names 
     def available_devices(self):
         """
-         Get all the available input National Instrument devices
+        Get all the available input National Instrument devices
          
-         Returns:
-         ----------
-             devices_name: List of str
-                 Name of the device, e.g. Dev0
-             device_type: List of str
-                 Type of device, e.g. USB-6003 
-                 
+        Returns
+        ----------
+            devices_name: List of str
+                Name of the device, e.g. Dev0
+            device_type: List of str
+                Type of device, e.g. USB-6003 
         """
         numBytesneeded = pdaq.DAQmxGetSysDevNames(None,0)
         databuffer = pdaq.create_string_buffer(numBytesneeded)
@@ -119,7 +123,7 @@ class Recorder(RecorderParent):
     # Display the current selected device info      
     def current_device_info(self):
         """
-         Prints information about the current device set
+        Prints information about the current device set
         """
         device_info = {}
         info = ('Category', 'Type','Product', 'Number',
@@ -166,11 +170,11 @@ class Recorder(RecorderParent):
         """
         Create the string to initiate the channels when assigning a Task 
         
-         Return:
-         ----------
-             channelname: str
-                 The channel names to be used when assigning Task 
-                 e.g. Dev0/ai0:Dev0/ai1
+        Returns
+        ----------
+            channelname: str
+                The channel names to be used when assigning Task 
+                e.g. Dev0/ai0:Dev0/ai1
         """
         if self.channels >1:
             channelname =  '%s/ai0:%s/ai%i' % (self.device_name, self.device_name,self.channels-1)
@@ -197,7 +201,7 @@ class Recorder(RecorderParent):
         finally check for any trigger.
         
         Return 0 as part of the callback format.
-        More info on them can be found in PyDAQmx documentation on Task class
+        More info can be found in PyDAQmx documentation on Task class
         """
         in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)
         read = pdaq.int32()

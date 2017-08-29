@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
+#Created on Sat Jul 15 20:01:58 2017
+#@author: En Yi
 """
-Created on Sat Jul 15 20:01:58 2017
-@author: En Yi
-
 This module contains the abstract class to implement a proper    
 Recorder Class. To do so, subclass RecorderParent when creating
 a new Recorder class.
@@ -16,7 +15,8 @@ Example:
         
 If you have PyQt, it will import RecEmitter for emitting Signals.
 
-Attributes:
+Attributes
+----------
     QT_EMITTER : Indicates whether you can use qt Signals
 
 """
@@ -37,7 +37,7 @@ class RecorderParent(object):
     """
      Recorder abstract class. Sets up the buffer and skeleton for audio streaming
     
-     Attributes:
+     Attributes
      ----------
         channels: Int
                 Number of Channels
@@ -132,7 +132,8 @@ class RecorderParent(object):
         """
         Convert audio data obtained into a proper array
         
-        Args:
+        Paramters
+        ----------
             data: Numpy Array
                 Audio data 
         """
@@ -143,7 +144,7 @@ class RecorderParent(object):
         """
         Write the data obtained into buffer and move to the next chunk
         
-        Args:
+        Paramters
         ----------
             data: Numpy Array
                 Audio data 
@@ -155,7 +156,8 @@ class RecorderParent(object):
         """
         Convert the buffer data as a 2D array by stitching the chunks together
         
-        Returns:
+        Returns
+        ----------
             Buffer data: Numpy Array
                 with dimension of(chunk_size * num_chunk) x channels
                 The newest data on the most right 
@@ -182,7 +184,7 @@ class RecorderParent(object):
         It will record more samples than necessary, then slice down to the
         amount of samples required + putting in pretrigger data
         
-        Args:
+        Parameters
         ----------
             samples: Int
                 Number of samples to record
@@ -198,9 +200,11 @@ class RecorderParent(object):
         if samples:
             self.actual_rec_samples = samples
             self.total_rec_chunk = (samples // self.chunk_size)+1
-            self.rec_samples = self.total_rec_chunk * self.chunk_size
+            self.rec_samples = self.total_rec_chunk * self.chunk_size 
         else:
-            self.total_rec_chunk = (duration * self.rate // self.chunk_size)
+            self.total_rec_chunk = int(duration * self.rate // self.chunk_size)
+            self.rec_samples = self.total_rec_chunk * self.chunk_size 
+            self.actual_rec_samples = self.rec_samples
             
         self.next_rec_chunk = 0
         
@@ -214,7 +218,7 @@ class RecorderParent(object):
         """
         Check if it is possible to start a recording
         
-        Returns:
+        Returns
         ----------
             True if possible, False otherwise
         
@@ -235,7 +239,7 @@ class RecorderParent(object):
         """
         Start recording if it is possible
         
-        Returns:
+        Returns
         ----------
             True if possible, False otherwise
         
@@ -291,9 +295,10 @@ class RecorderParent(object):
         Slice the recorded data into the requested amount of samples
         Add in any pretrigger data
         
-        Returns:
+        Returns
         ----------
-            flushed_data(numpy array): 2D numpy array (similar to get_buffer) 
+            flushed_data: numpy array
+                2D numpy array (similar to get_buffer) 
         """
         if self.recorded_data:
             data =  np.array(self.recorded_data);
@@ -317,12 +322,12 @@ class RecorderParent(object):
         """
         Callback function for initialising audio streaming.
                 
-        Args:
+        Parameters
         ----------
             playback: Bool
                 Whether to output the stream to a device
             
-        Returns:
+        Returns
         ----------
             True if successful, False otherwise
         """
@@ -364,7 +369,7 @@ class RecorderParent(object):
         """
         Start the trigger if possible
         
-        Returns:
+        Returns
         ----------
             True if successful, False otherwise
         """
@@ -392,7 +397,7 @@ class RecorderParent(object):
         Check if the trigger is set off
         Start recording if so and emit a signal if possible
         
-        Args:
+        Parameters
         ----------
             data: Numpy Array
                 data to be analysed
@@ -421,9 +426,10 @@ class RecorderParent(object):
     @property
     def num_chunk(self):
         """
-        Int: Number of chunks to store in circular buffer
-        The setter method will calculate the maximum possible number of chunks
-        based on an arbitrary number of sample limit (2^25 in here)
+        Int: 
+            Number of chunks to store in circular buffer
+            The setter method will calculate the maximum possible number of chunks
+            based on an arbitrary number of sample limit (2^25 in here)
         """
         return self._num_chunk
 
@@ -435,7 +441,7 @@ class RecorderParent(object):
                 n = 2**16 // self.chunk_size
             self._num_chunk = n
             self.allocate_buffer()
-            print(self._num_chunk)
+            #print(self._num_chunk)
         except Exception as e:
             #print(e)
             self._num_chunks = n
@@ -444,9 +450,10 @@ class RecorderParent(object):
     @property
     def chunk_size(self):
         """
-        Int: Number of samples to get from each channel in one chunk
-        The setter method will calculate the maximum possible size
-        based on an arbitrary number of sample limit (2^25 in here)
+        Int: 
+            Number of samples to get from each channel in one chunk
+            The setter method will calculate the maximum possible size
+            based on an arbitrary number of sample limit (2^25 in here)
         """
         return self._chunk_size
 
@@ -457,7 +464,7 @@ class RecorderParent(object):
             if n * self.num_chunk > 2**25:
                 n = 2**16 // self.num_chunk
             self._chunk_size = n
-            print(self._chunk_size)
+            #print(self._chunk_size)
             self.allocate_buffer()
         except Exception as e:
             #print(e)

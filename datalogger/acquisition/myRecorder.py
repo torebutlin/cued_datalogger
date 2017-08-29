@@ -3,19 +3,33 @@ This module contains the class to record data from a soundcard.
 It uses PyAudio to do so.
 Please check the PyAudio Documentation for more information.
 
-Example:
-    import myRecorder as mR
-    
-    recorder = mR.Recorder()
-    recorder.stream_init()
-    recorder.record_init()
-    recorder.record_start()
-    
-    #Wait for it to finish recording
-    #Output: Recording Done! Please flush the data with flush_record_data()
-    
-    data = recorder.flush_record_data()
-    recorder.close()
+Typical example of using the module:
+>>>import myRecorder as mR
+>>>recorder = mR.Recorder()
+Channels: 1
+Rate: 44100
+Chunk size: 1024
+Number of chunks: 4
+You are using pyAudio for recording
+Device not found, reverting to default
+Selected device: Line (3- U24XL with SPDIF I/O)
+>>>recorder.stream_init()
+Stream already started
+Input latency: 2.322e-02
+Output latency: 0.000e+00
+Read Available: -9977
+Write Available: -9976
+True
+>>>recorder.record_init()
+Recording function is ready! Use record_start() to start
+True
+>>>recorder.record_start()
+Stream already started
+Recording Start!
+True
+>>>Recording Done! Please flush the data with flush_record_data().
+data = recorder.flush_record_data()
+>>>recorder.close()
 """
 
 from datalogger.acquisition.RecorderParent import RecorderParent
@@ -41,7 +55,7 @@ class Recorder(RecorderParent):
     """
      Sets up the recording stream through a SoundCard
     
-     Attributes:
+     Attributes
      ----------
         In addtion to RecorderParent Attributes,
         device_index: Int
@@ -102,7 +116,7 @@ class Recorder(RecorderParent):
         Set the recording audio device by name. 
         Revert to default if no such device found
                 
-        Args:
+        Parameters
         ----------
             name: Str
                 Name of the device
@@ -110,7 +124,7 @@ class Recorder(RecorderParent):
         dev_name,dev_index = self.available_devices()
         if not dev_name:
             print("Seems like you don't have any input devices")
-            return None
+            return
         
         try:
             self._set_device_by_index(dev_index[dev_name.index(name)])
@@ -125,16 +139,14 @@ class Recorder(RecorderParent):
                     self._set_device_by_index(dev_index[0])
                 except IOError:
                     print('No Device can be set')
-                    #return None
         except IOError:
             print('Device chosen cannot be found!')
-            #return None
                     
     def available_devices(self):
         """
         Searches for any available input devices
         
-        Returns:
+        Returns
         ----------
             names: List
                 Name of the devices
@@ -164,7 +176,7 @@ class Recorder(RecorderParent):
         """
         Set the selected device by index
         
-        Args:
+        Parameters
         ----------
             index: Int
                 Index of the device to be set
@@ -190,7 +202,7 @@ class Recorder(RecorderParent):
         finally check for any trigger.
         
         Inputs and Outputs are part of the callback format.
-        More info on them can be found in PyAudio documentation
+        More info can be found in PyAudio documentation
         """
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
