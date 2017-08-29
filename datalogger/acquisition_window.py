@@ -5,10 +5,9 @@ Created on Wed Jul  5 13:12:34 2017
 @author: eyt21
 """
 import sys,traceback
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
+from PyQt5.QtWidgets import (QWidget,QHBoxLayout,QMainWindow,QPushButton,
+                             QDesktopWidget,QRadioButton,QSplitter,QCheckBox,
+                             QApplication)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
 import pyqtgraph as pg
@@ -16,7 +15,6 @@ import pyqtgraph as pg
 import copy
 import numpy as np
 from numpy.fft import rfft
-import functools as fct
 
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
                                                  StatusUI,RecUI)
@@ -67,15 +65,9 @@ class LiveplotApp(QMainWindow):
         self.rec = mR.Recorder(channels = 2,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
-        # Connect the recorder Signals
-        self.connect_rec_signals()
-        
-        self.plottimer = QTimer(self)
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
-        
-        self.ResetMetaData()
            
         self.autospec_in_tally = []
         self.autospec_out_tally = []
@@ -92,6 +84,8 @@ class LiveplotApp(QMainWindow):
             self.show()
             return
         
+        # Connect the recorder Signals
+        self.connect_rec_signals()
         # Attempt to start streaming
         self.init_and_check_stream()
             
@@ -106,115 +100,51 @@ class LiveplotApp(QMainWindow):
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QHBoxLayout(self.main_widget)
-    #-------------------- ALL TOOLBOXES ------------------------------
+    #-------------------- STREAM TOOLBOX ------------------------------
         self.stream_toolbox = MasterToolbox()
-        self.recording_toolbox = MasterToolbox()
-        
-    #---------------------CHANNEL TOGGLE UI----------------------------------
         self.stream_tools = Toolbox('left',self.main_widget)
-       
-        self.chan_toggles = QWidget(self.main_widget)
-        chan_toggle_layout = QVBoxLayout(self.chan_toggles)
+        self.stream_toolbox.add_toolbox(self.stream_tools)
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
-        self.ResetChanBtns()
-        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
-        
-        chan_toggle_layout.addWidget(self.chantoggle_UI)
-        
-    #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
-        self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
-
-        self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-    #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
         self.devconfig_UI.set_recorder(self.rec)
         self.devconfig_UI.config_setup()
-        
         NI_btn = self.devconfig_UI.typegroup.findChildren(QRadioButton)[1]
         if not NI_drivers:
             NI_btn.setDisabled(True)
-        
-        self.devconfig_UI.configRecorder.connect(self.ResetRecording)
-        
-        self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
+        self.stream_tools.addTab(self.chantoggle_UI,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
         self.stream_tools.addTab(self.devconfig_UI,'Device Config')
-        self.stream_toolbox.add_toolbox(self.stream_tools)
+        main_layout.addWidget(self.stream_toolbox)
+        main_layout.setStretchFactor(self.stream_toolbox, 0)
         
-    #---------------------------PLOT WIDGETS------------------------------------ 
+    #---------------------------PLOT + STATUS WIDGETS-----------------------------
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-        
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
-        # Set up time domain plot, add to splitter
         self.timeplot = TimeLiveGraph(self.mid_splitter)
-        # Set up FFT plot, add to splitter
-        self.freqplot = FreqLiveGraph(self.mid_splitter)
-
-        self.ResetPlots()
-    #---------------------------STATUS WIDGETS------------------------------------    
+        self.freqplot = FreqLiveGraph(self.mid_splitter)  
         self.stats_UI = StatusUI(self.mid_splitter)
-        
-        self.stats_UI.statusbar.messageChanged.connect(self.default_status)
-        self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
-        self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
-        self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
-        
         self.mid_splitter.addWidget(self.timeplot)
         self.mid_splitter.addWidget(self.freqplot)
         self.mid_splitter.addWidget(self.stats_UI)
         self.mid_splitter.setCollapsible (2, False)
+        main_layout.addWidget(self.mid_splitter)
+        main_layout.setStretchFactor(self.mid_splitter, 1)
         
-    #---------------------------RECORDING WIDGET-------------------------------
-        self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
+    #---------------------------RECORDING TOOLBOX-------------------------------
+        self.recording_toolbox = MasterToolbox()
         self.recording_tools = Toolbox('right',self.main_widget)
-        
+        self.recording_toolbox.add_toolbox(self.recording_tools)
+        self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
         self.RecUI = RecUI(self.main_widget)
         self.RecUI.set_recorder(self.rec)
-
-        self.RecUI.startRecording.connect(self.start_recording)
-        self.RecUI.cancelRecording.connect(self.cancel_recording)
-        self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
-        self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
-       
         self.right_splitter.addWidget(self.RecUI)
-        
-    #-----------------------CHANNEL LEVELS WIDGET------------------------------
-        self.levelsplot = LevelsLiveGraph(self.rec,self.right_splitter)
-        self.levelsplot.thresholdChanged.connect(self.RecUI.rec_boxes[4].setText)
-        
-        self.RecUI.rec_boxes[4].textEdited.connect(self.levelsplot.change_threshold)
-
+        self.levelsplot = LevelsLiveGraph(self.rec,self.right_splitter)        
         self.right_splitter.addWidget(self.levelsplot)
-        
         self.recording_tools.addTab(self.right_splitter,'Record Time Series')
-        self.recording_toolbox.add_toolbox(self.recording_tools)
-        
-        self.ResetChanConfigs()
-        self.levelsplot.reset_channel_levels()
-        
-        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
-        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
-        self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
-        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
-        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
-        self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
-        self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
-        self.levelsplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
-    #------------------------FINALISE THE LAYOUT-----------------------------
-        main_layout.addWidget(self.stream_toolbox)
-        main_layout.addWidget(self.mid_splitter)
         main_layout.addWidget(self.recording_toolbox)
-        main_layout.setStretchFactor(self.stream_toolbox, 0)
-        main_layout.setStretchFactor(self.mid_splitter, 1)
         main_layout.setStretchFactor(self.recording_toolbox, 0)
-        
-        self.ResetSplitterSizes()
         
     #-----------------------EXPERIMENTAL STYLING---------------------------- 
         #self.main_splitter.setFrameShape(QFrame.Panel)
@@ -252,12 +182,47 @@ class LiveplotApp(QMainWindow):
             }                   
         ''')
         
+    #----------------------SIGNAL CONNECTIONS---------------------------
+        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
+        self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
+        self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
+        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
+        self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
+        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
+        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
+        self.devconfig_UI.configRecorder.connect(self.ResetRecording)
+        self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.levelsplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.levelsplot.thresholdChanged.connect(self.RecUI.rec_boxes[4].setText)
+        self.stats_UI.statusbar.messageChanged.connect(self.default_status)
+        self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
+        self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
+        self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
+        self.RecUI.rec_boxes[4].textEdited.connect(self.levelsplot.change_threshold)
+        self.RecUI.startRecording.connect(self.start_recording)
+        self.RecUI.cancelRecording.connect(self.cancel_recording)
+        self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
+        self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
+    #---------------------------RESETTING---------------------------
+        self.ResetMetaData()   
+        self.ResetChanBtns()
+        self.ResetPlots()
+        self.ResetChanConfigs()
+        self.levelsplot.reset_channel_levels()
+        self.ResetSplitterSizes()
     #-----------------------FINALISE THE MAIN WIDGET------------------------- 
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
+        self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
         #self.plottimer.timeout.connect(self.update_chanlvls)
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
@@ -609,33 +574,7 @@ class LiveplotApp(QMainWindow):
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
   
     def ResetChanBtns(self):
-        for btn in self.chantoggle_UI.chan_btn_group.buttons():
-            btn.setCheckState(Qt.Checked)
-        
-        n_buttons = self.chantoggle_UI.checkbox_layout.count()
-        extra_btns = abs(self.rec.channels - n_buttons)
-        if extra_btns:
-            if self.rec.channels > n_buttons:
-                columns_limit = 4
-                current_y = (n_buttons-1)//columns_limit
-                current_x = (n_buttons-1)%columns_limit
-                for n in range(n_buttons,self.rec.channels):
-                    current_x +=1
-                    if current_x%columns_limit == 0:
-                        current_y +=1
-                    current_x = current_x%columns_limit
-                    
-                    chan_btn = QCheckBox('Channel %i' % n,self.chantoggle_UI.channels_box)
-                    chan_btn.setCheckState(Qt.Checked)
-                    self.chantoggle_UI.checkbox_layout.addWidget(chan_btn,current_y,current_x)
-                    self.chantoggle_UI.chan_btn_group.addButton(chan_btn,n)
-            else:
-                for n in range(n_buttons-1,self.rec.channels-1,-1):
-                    chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
-                    self.chantoggle_UI.checkbox_layout.removeWidget(chan_btn)
-                    self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
-                    chan_btn.deleteLater()
-            
+        self.chantoggle_UI.adjust_channel_buttons(self.rec.channels)            
         self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
@@ -659,8 +598,6 @@ class LiveplotApp(QMainWindow):
         self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'time_series')
         
     def ResetSplitterSizes(self):
-        #self.left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
-        #self.main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2]) 
         self.mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
         self.right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
         
@@ -692,21 +629,11 @@ class LiveplotApp(QMainWindow):
             
     def connect_rec_signals(self):
             self.rec.rEmitter.recorddone.connect(self.stop_recording)
-            self.rec.rEmitter.triggered.connect(self.trigger_message)
+            self.rec.rEmitter.triggered.connect(self.stats_UI.trigger_message)
             #self.rec.rEmitter.newdata.connect(self.update_line)
             #self.rec.rEmitter.newdata.connect(self.update_chanlvls)
-            
-    def trigger_message(self):
-        self.stats_UI.statusbar.showMessage('Triggered! Recording...')
         
 #----------------------OVERRIDDEN METHODS------------------------------------
-    def resizeEvent(self, event):
-        try:
-            if self.chan_toggle_ext.isVisible():
-                self.toggle_ext_toggling(toggle = True)
-        except:
-            pass
-
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
         if self.plottimer.isActive():
@@ -717,7 +644,6 @@ class LiveplotApp(QMainWindow):
         self.dataSaved.disconnect()
         event.accept()
         self.deleteLater()
-            
 
 if __name__ == '__main__':
     app = 0 

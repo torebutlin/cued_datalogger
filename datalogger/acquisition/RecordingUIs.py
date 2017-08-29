@@ -4,13 +4,13 @@ Created on Tue Aug 22 11:19:29 2017
 
 @author: eyt21
 """
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedWidget)
-from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor,
-QPalette,QPainter)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout, QPushButton, 
+                             QStatusBar,QLabel,QLineEdit, QFormLayout,
+                             QGroupBox,QRadioButton, QComboBox,QScrollArea,
+                             QGridLayout,QCheckBox,QButtonGroup,QTextEdit,
+                             QStackedWidget)
+from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QPainter
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.Qt import QStyleOption,QStyle
 
 import re
@@ -50,7 +50,6 @@ class BaseWidget(QWidget):
             
 class ChanToggleUI(BaseWidget):
     toggleChanged = pyqtSignal(QPushButton)
-    lineToggled = pyqtSignal(list)
     
     def initUI(self):
         # Set up the channel tickboxes widget
@@ -103,7 +102,6 @@ class ChanToggleUI(BaseWidget):
         self.search_status.showMessage('Awaiting...')
         
         self.chan_btn_group.buttonClicked.connect(self.toggleChanged.emit)
-        #self.chan_text.returnPressed.connect(self.lineToggled.emit)
         self.chan_text.returnPressed.connect(self.chan_line_toggle)
         
     def invert_checkboxes(self):
@@ -114,6 +112,33 @@ class ChanToggleUI(BaseWidget):
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
+                
+    def adjust_channel_buttons(self, new_n_btns):
+        for btn in self.chan_btn_group.buttons():
+            btn.setCheckState(Qt.Checked)
+        old_n_buttons = self.checkbox_layout.count()
+        extra_btns = abs(new_n_btns - old_n_buttons)
+        if extra_btns:
+            if new_n_btns > old_n_buttons:
+                columns_limit = 4
+                current_y = (old_n_buttons-1)//columns_limit
+                current_x = (old_n_buttons-1)%columns_limit
+                for n in range(old_n_buttons,new_n_btns):
+                    current_x +=1
+                    if current_x%columns_limit == 0:
+                        current_y +=1
+                    current_x = current_x%columns_limit
+                    
+                    chan_btn = QCheckBox('Channel %i' % n,self.channels_box)
+                    chan_btn.setCheckState(Qt.Checked)
+                    self.checkbox_layout.addWidget(chan_btn,current_y,current_x)
+                    self.chan_btn_group.addButton(chan_btn,n)
+            else:
+                for n in range(old_n_buttons-1,self.rec.new_n_btns-1,-1):
+                    chan_btn = self.chan_btn_group.button(n)
+                    self.checkbox_layout.removeWidget(chan_btn)
+                    self.chan_btn_group.removeButton(chan_btn)
+                    chan_btn.deleteLater()
                 
     def chan_line_toggle(self,chan_list):
         all_selected_chan = []
@@ -136,7 +161,7 @@ class ChanToggleUI(BaseWidget):
                     all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])+1,int(r_in[2])))
 
         print(all_selected_chan)
-        n_btns = self.chantoggle_UI.checkbox_layout.count()
+        n_btns = self.checkbox_layout.count()
         if all_selected_chan:
             self.toggle_all_checkboxes(Qt.Unchecked)
             for chan in set(all_selected_chan):
@@ -305,17 +330,12 @@ class DevConfigUI(BaseWidget):
         
     def display_sources(self):
         rb = self.typegroup.findChildren(QRadioButton)
-        if not NI_drivers and rb[1].isChecked():
-            print("You don't seem to have National Instrument drivers/modules")
-            rb[0].setChecked(True)
-            return 0
-        
         if rb[0].isChecked():
             selR = mR.Recorder()
         elif rb[1].isChecked():
             selR = NIR.Recorder()
         else:
-            return 0
+            return
         
         source_box = self.configboxes[0]
         source_box.clear()
@@ -336,7 +356,6 @@ class DevConfigUI(BaseWidget):
             
         if self.rec.device_name:
             source_box.setCurrentText(self.rec.device_name)
-            
         del selR
         
     def read_device_config(self, *arg):
@@ -372,6 +391,9 @@ class StatusUI(BaseWidget):
         self.sshotbtn = QPushButton('Get Snapshot',self)
         self.sshotbtn.resize(self.sshotbtn.sizeHint())
         stps_layout.addWidget(self.sshotbtn)
+        
+    def trigger_message(self):
+        self.statusbar.showMessage('Triggered! Recording...')
                 
 class RecUI(BaseWidget):
     startRecording = pyqtSignal()
