@@ -135,6 +135,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.timedomain_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
+        self.channel_select_widget.sig_channel_selection_changed.connect(self.sonogram_toolbox.set_selected_channels)
         #self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circlefit_widget.set_selected_channels)
 
         self.global_tools.addTab(self.channel_select_widget, 'Channel Selection')
@@ -174,13 +175,13 @@ class AnalysisWindow(QMainWindow):
         
         # Create the analysis tools tab widget
         self.display_tabwidget = AnalysisDisplayTabWidget(self)
-        
-        # Create the global toolbox
-        self.init_global_toolbox()
-        
+
         # Create the toolbox
         self.init_toolbox()
         self.display_tabwidget.currentChanged.connect(self.toolbox.set_toolbox)
+        
+        # Create the global toolbox
+        self.init_global_toolbox()
 
         self.tfplots = []
         self.config_channelset()
