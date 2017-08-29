@@ -51,6 +51,7 @@ class BaseWidget(QWidget):
 class ChanToggleUI(BaseWidget):
     toggleChanged = pyqtSignal(QPushButton)
     lineToggled = pyqtSignal(list)
+    
     def initUI(self):
         # Set up the channel tickboxes widget
         chans_toggle_layout = QVBoxLayout(self)
@@ -114,12 +115,13 @@ class ChanToggleUI(BaseWidget):
                 btn.click()
         
 class ChanConfigUI(BaseWidget):
+    timeOffsetChanged = pyqtSignal(int,float,float)
+    freqOffsetChanged = pyqtSignal(int,float,float)
     
     def initUI(self):
         chans_prop_layout = QVBoxLayout(self)
         chans_prop_layout.setContentsMargins(5,5,5,5)
         #chans_prop_layout.setSpacing(10)
-        
         chan_num_col_layout = QGridLayout()
         
         self.chans_num_box = QComboBox(self)        
@@ -165,11 +167,23 @@ class ChanConfigUI(BaseWidget):
             settings_gbox.setLayout(gbox_layout)
             chan_settings_layout.addWidget(settings_gbox)
              
-        chans_prop_layout.addLayout(chan_settings_layout) 
+        chans_prop_layout.addLayout(chan_settings_layout)
+        
+        for cbox in self.time_offset_config:
+            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'Time'))
+        for cbox in self.fft_offset_config:
+            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,'DFT'))
            
     def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)    
-
+        cbox.setSingleStep(num)
+        
+    def set_plot_offset(self,dtype):
+        chan = self.chans_num_box.currentIndex()
+        if dtype == 'Time':
+            self.timeOffsetChanged.emit(chan,self.time_offset_config[0].value(),self.time_offset_config[1].value())
+        elif dtype == 'DFT':
+            self.freqOffsetChanged.emit(chan,self.fft_offset_config[0].value(),self.fft_offset_config[1].value())
+            
 class DevConfigUI(BaseWidget):
     recorderSelected = pyqtSignal()
     configRecorder = pyqtSignal()

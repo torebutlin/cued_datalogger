@@ -112,10 +112,9 @@ class LiveplotApp(QMainWindow):
         
     #---------------------CHANNEL TOGGLE UI----------------------------------
         self.stream_tools = Toolbox('left',self.main_widget)
-        
+       
         self.chan_toggles = QWidget(self.main_widget)
         chan_toggle_layout = QVBoxLayout(self.chan_toggles)
-        
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
         self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
@@ -125,17 +124,11 @@ class LiveplotApp(QMainWindow):
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
-        
         self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
         self.chanconfig_UI.hold_tickbox.stateChanged.connect(self.signal_hold)
         self.chanconfig_UI.colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
         self.chanconfig_UI.defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
         self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-        
-        for cbox,ax in zip(self.chanconfig_UI.time_offset_config,['x','y']):
-            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'Time'))
-        for cbox,ax in zip(self.chanconfig_UI.fft_offset_config,['x','y']):
-            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'DFT'))
         
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
@@ -162,6 +155,9 @@ class LiveplotApp(QMainWindow):
         self.timeplot = TimeLiveGraph(self.mid_splitter)
         # Set up FFT plot, add to splitter
         self.freqplot = FreqLiveGraph(self.mid_splitter)
+        
+        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
         
         self.ResetPlots()
     #---------------------------STATUS WIDGETS------------------------------------    
@@ -201,7 +197,6 @@ class LiveplotApp(QMainWindow):
         
         self.recording_tools.addTab(self.right_splitter,'Record Time Series')
         self.recording_toolbox.add_toolbox(self.recording_tools)
-        
         
         self.ResetChanConfigs()
         self.levelsplot.reset_channel_levels()
@@ -323,21 +318,7 @@ class LiveplotApp(QMainWindow):
         self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
         self.chanconfig_UI.fft_offset_config[0].setValue(self.freqplot.plot_xoffset[num])
         self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_yoffset[num])
-        
-    def set_plot_offset(self, offset,set_type, sp,num):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        if set_type == 'Time':
-            if offset == 'x':
-                self.timeplot.set_offset(chan,x_off = num)
-            elif offset == 'y':
-                self.timeplot.set_offset(chan,y_off = num)
-            
-        elif set_type == 'DFT':
-            if offset == 'x':
-                self.freqplot.set_offset(chan,x_off = num)
-            elif offset == 'y':
-                self.freqplot.set_offset(chan,y_off = num)
-            
+     
     def signal_hold(self,state):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         self.timeplot.set_sig_hold(chan,state)
@@ -380,7 +361,6 @@ class LiveplotApp(QMainWindow):
 #----------------------PLOT WIDGETS-----------------------------------              
     # Updates the plots    
     def update_line(self):
-        # TODO: can this be merge with update channel levels plot
         data = self.rec.get_buffer()
         
         currentdata = data[len(data)-self.rec.chunk_size:,:]
