@@ -16,11 +16,12 @@ import pyqtgraph as pg
 
 import copy
 import numpy as np
+from numpy.fft import rfft
 import functools as fct
 import math
 
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
-                                                 StatusUI,RecUI,AdvToggleUI)
+                                                 StatusUI,RecUI)
 from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 
 import datalogger.acquisition.myRecorder as mR
@@ -33,6 +34,8 @@ except NotImplementedError:
 except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
+from datalogger.analysis.frequency_domain import (compute_transfer_function,
+                                                   compute_autospec,compute_crossspec)
 
 from datalogger.api import channel as ch
 from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
@@ -54,7 +57,7 @@ TRACE_DURATION = 2  # Duration for a holding trace
 class LiveplotApp(QMainWindow):
 #-------------------------- METADATA ----------------------------------  
     # Signal for when data has finished acquired
-    dataSaved = pyqtSignal()
+    dataSaved = pyqtSignal(int)
     done = pyqtSignal()
     
 #---------------------- CONSTRUCTOR METHOD------------------------------    
@@ -68,7 +71,6 @@ class LiveplotApp(QMainWindow):
         self.center()
         
         self.meta_window = None
-        
         
         # Set recorder object
         self.playing = False
@@ -86,17 +88,20 @@ class LiveplotApp(QMainWindow):
         self.gen_plot_col()
         self.ResetMetaData()
            
+        self.autospec_in_tally = []
+        self.autospec_out_tally = []
+        self.crossspec_tally = []
+        
         try:
             # Construct UI        
             self.initUI()
-            self.config_setup()
+            #self.config_setup()
         except Exception as e:
             print(e)
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            #self.close()
             self.show()
             return
         
@@ -126,17 +131,10 @@ class LiveplotApp(QMainWindow):
         
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
         self.ResetChanBtns()
-        self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
-        self.chantoggle_UI.chan_text.returnPressed.connect(self.chan_line_toggle)
-        #self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
+        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
+        self.chantoggle_UI.lineToggled.connect(self.chan_line_toggle)
         
         chan_toggle_layout.addWidget(self.chantoggle_UI)
-        
-    #---------------------------ADDITIONAL UIs----------------------------
-        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
-        self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
-        #self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
-        chan_toggle_layout.addWidget(self.chan_toggle_ext)
         
     #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
@@ -155,9 +153,15 @@ class LiveplotApp(QMainWindow):
         self.ResetChanConfigs()
     #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
+        self.devconfig_UI.set_recorder(self.rec)
+        self.devconfig_UI.config_setup()
         
-        self.devconfig_UI.typebtngroup.buttonReleased.connect(self.display_sources)
-        self.devconfig_UI.config_button.clicked.connect(self.ResetRecording)
+        NI_btn = self.devconfig_UI.typegroup.findChildren(QRadioButton)[1]
+        if not NI_drivers:
+            NI_btn.setDisabled(True)
+        
+        #self.devconfig_UI.recorderSelected.connect(self.display_sources)
+        self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         
         self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
@@ -171,7 +175,7 @@ class LiveplotApp(QMainWindow):
         pg.setConfigOption('foreground', 'w')
         pg.setConfigOption('background', 'k')
         # Set up time domain plot, add to splitter
-        self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
+        self.timeplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
         self.timeplot = self.timeplotcanvas.getPlotItem()
         self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
         #self.timeplot.disableAutoRange(axis=None)
@@ -202,19 +206,18 @@ class LiveplotApp(QMainWindow):
         self.recording_tools = Toolbox('right',self.main_widget)
         
         self.RecUI = RecUI(self.main_widget)
+        self.RecUI.set_recorder(self.rec)
         
         # Connect the sample and time input check
-        self.RecUI.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
-        self.RecUI.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
         self.RecUI.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.RecUI.rec_boxes[2],-1,self.rec.chunk_size,int))
         self.RecUI.rec_boxes[2].textEdited.connect(self.toggle_trigger)
         self.RecUI.rec_boxes[4].textEdited.connect(self.change_threshold)
 
-        self.RecUI.recordbtn.pressed.connect(self.start_recording)
-        self.RecUI.cancelbtn.pressed.connect(self.cancel_recording)
+        self.RecUI.startRecording.connect(self.start_recording)
+        self.RecUI.cancelRecording.connect(self.cancel_recording)
+        self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
+        self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
        
-        self.ResetRecConfigs()
-        self.autoset_record_config('Time')
         self.right_splitter.addWidget(self.RecUI)
         
     #-----------------------CHANNEL LEVELS WIDGET------------------------------
@@ -330,30 +333,8 @@ class LiveplotApp(QMainWindow):
         else:
             self.plotlines[2*chan_num].setPen(None)
             self.plotlines[2*chan_num+1].setPen(None)
-    '''
-    def toggle_ext_toggling(self,toggle):
-        if toggle:
-            tlpoint = self.chantoggle_UI.chan_text.mapTo(self,QPoint(0,0))
-            self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
-            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),
-                                             self.chantoggle_UI.chan_text.width()*3,
-                                             self.chantoggle_UI.chan_text.height()*15)
-            if not self.chan_toggle_ext.isVisible():
-                self.chan_toggle_ext.show()
-        else:
-            self.chan_toggle_ext.hide()
-    ''' 
+
     def chan_line_toggle(self,chan_list):
-        '''
-        try:
-            expression = eval(string)
-        except:
-            t,v,_ = sys.exc_info()
-            print(t)
-            print(v)
-            print('Invalid expression')
-            return False
-        '''
         all_selected_chan = []
         for str_in in chan_list:
             r_in = str_in.split(':')
@@ -372,18 +353,7 @@ class LiveplotApp(QMainWindow):
                     if not r_in[2]:
                         r_in[2] = 1
                     all_selected_chan.extend(range(int(r_in[0]),int(r_in[1]),int(r_in[2])))
-                    
-                    
-        '''
-        if isinstance(expression,Sequence) and not isinstance(expression,str) :
-            for n in expression:
-                if isinstance(n,Sequence) and not isinstance(n,str):
-                    all_selected_chan.extend(n)
-                elif isinstance(expression,int):
-                    all_selected_chan.append(n)
-        elif isinstance(expression,int):
-            all_selected_chan.append(expression)
-        '''    
+
         print(all_selected_chan)
         
         if all_selected_chan:
@@ -419,9 +389,6 @@ class LiveplotApp(QMainWindow):
         elif offset == 'y':
             self.plot_yoffset[data_type,chan] = num
             
-    def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)
-        
     def signal_hold(self,state):
         chan = self.chanconfig_UI.chans_num_box.currentIndex()
         self.sig_hold[chan] = state
@@ -458,30 +425,6 @@ class LiveplotApp(QMainWindow):
         self.meta_window = None
         self.update_chan_names()
 
-#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
-    # Pause/Resume the stream, unless explicitly specified to stop or not       
-    def toggle_rec(self,stop = None):
-        if not stop == None:
-            self.playing = stop
-            
-        if self.playing:
-            self.rec.stream_stop()
-            self.stats_UI.togglebtn.setText('Resume')
-            self.RecUI.recordbtn.setDisabled(True)
-        else:
-            self.rec.stream_start()
-            self.stats_UI.togglebtn.setText('Pause')
-            self.RecUI.recordbtn.setEnabled(True)
-        self.playing = not self.playing
-        # Clear the status, allow it to auto update itself
-        self.stats_UI.statusbar.clearMessage()
-        
-    # Get the current instantaneous plot and transfer to main window     
-    def get_snapshot(self):
-        snapshot = self.rec.get_buffer()
-        self.save_data(data = snapshot[:,0])
-        self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
-        
 #----------------------PLOT WIDGETS-----------------------------------              
     # Updates the plots    
     def update_line(self):
@@ -528,77 +471,40 @@ class LiveplotApp(QMainWindow):
             
             self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
 
-#----------------DEVICE CONFIGURATION WIDGET---------------------------    
-    def config_setup(self):
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if type(self.rec) == mR.Recorder:
-            rb[0].setChecked(True)
-        elif type(self.rec) == NIR.Recorder:
-            rb[1].setChecked(True)
+#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+    # Pause/Resume the stream, unless explicitly specified to stop or not       
+    def toggle_rec(self,stop = None):
+        if not stop == None:
+            self.playing = stop
             
-        self.display_sources()
-        
-        info = [self.rec.rate,self.rec.channels,
-                self.rec.chunk_size,self.rec.num_chunk]
-        for cbox,i in zip(self.devconfig_UI.configboxes[1:],info):
-            cbox.setText(str(i))
-    
-    def display_sources(self):
-        # TODO: make use of the button input in callback?
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if not NI_drivers and rb[1].isChecked():
-            print("You don't seem to have National Instrument drivers/modules")
-            rb[0].setChecked(True)
-            return 0
-        
-        if rb[0].isChecked():
-            selR = mR.Recorder()
-        elif rb[1].isChecked():
-            selR = NIR.Recorder()
+        if self.playing:
+            self.rec.stream_stop()
+            self.stats_UI.togglebtn.setText('Resume')
+            self.RecUI.recordbtn.setDisabled(True)
         else:
-            return 0
+            self.rec.stream_start()
+            self.stats_UI.togglebtn.setText('Pause')
+            self.RecUI.recordbtn.setEnabled(True)
+        self.playing = not self.playing
+        # Clear the status, allow it to auto update itself
+        self.stats_UI.statusbar.clearMessage()
         
-        source_box = self.devconfig_UI.configboxes[0]
-        source_box.clear()
-        
-        try:
-            full_device_name = []
-            s,b =  selR.available_devices()
-            for a,b in zip(s,b):
-                if type(b) == str:
-                    full_device_name.append(a + ' - ' + b)
-                else:
-                    full_device_name.append(a)
-                    
-            source_box.addItems(full_device_name)
-        except Exception as e:
-            print(e)
-            source_box.addItems(selR.available_devices()[0])
-            
-        if self.rec.device_name:
-            source_box.setCurrentText(self.rec.device_name)
-            
-        del selR
+    # Get the current instantaneous plot and transfer to main window     
+    def get_snapshot(self):
+        snapshot = self.rec.get_buffer()
+        for i in range(snapshot.shape[1]):
+            self.live_chanset.set_channel_data(i,'time_series',snapshot[:,i])
                 
-    def read_device_config(self, *arg):
-        recType =  [rb.isChecked() for rb in self.devconfig_UI.typegroup.findChildren(QRadioButton)]
-        configs = []
-        for cbox in self.devconfig_UI.configboxes:
-            if type(cbox) == QComboBox:
-                #configs.append(cbox.currentText())
-                configs.append(cbox.currentIndex())
-            else:
-                #notnumRegex = re.compile(r'(\D)+')
-                config_input = cbox.text().strip(' ')
-                configs.append(int(float(config_input)))
-                    
-        print(recType,configs)
-        return(recType, configs)
+        self.live_chanset.set_channel_metadata( tuple(range(snapshot.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        self.save_data()
+        self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
+        
     
 #---------------------------RECORDING WIDGET-------------------------------    
     # Start the data recording        
     def start_recording(self):
-        rec_configs = self.read_record_config()
+        rec_configs = self.RecUI.get_record_config()
         print(type(self.rec))
         if rec_configs[2]>=0:
             # Set up the trigger
@@ -618,7 +524,10 @@ class LiveplotApp(QMainWindow):
                 # Disable buttons
                 for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
                     btn.setDisabled(True)
-                
+        
+
+        self.RecUI.switch_rec_box.setDisabled(True)
+        self.RecUI.spec_settings_widget.setDisabled(True)
         self.RecUI.cancelbtn.setEnabled(True)
     
     # Stop the data recording and transfer the recorded data to main window    
@@ -626,60 +535,94 @@ class LiveplotApp(QMainWindow):
         #self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+            
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
-        self.save_data(data)
-        self.stats_UI.statusbar.clearMessage()
+        ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
+        for i in range(data.shape[1]):
+            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
+            ft = rfft(data[:,i])
+            self.live_chanset.add_channel_dataset(i,'spectrum',ft)
+            ft_datas[:,i] = ft
+        
+        self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        
+        rec_mode = self.RecUI.get_recording_mode()
+        if rec_mode == 'Normal':
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'TF',[])
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
+            self.save_data(0)
+        elif rec_mode == 'TF Avg.':
+            chans = list(range(self.rec.channels))
+            in_chan = self.RecUI.get_input_channel()
+            chans.remove(in_chan)
+            input_chan_data = ft_datas[:,in_chan]
+            
+            if not len(self.autospec_in_tally)==0: 
+                if not input_chan_data.shape[0] == self.autospec_in_tally[-1].shape[0]:
+                    print('Data shape does not match, you may have fiddle the settings')
+                    print('Please either clear the past data, or revert the settings')
+                    self.stats_UI.statusbar.clearMessage() 
+                    self.RecUI.spec_settings_widget.setEnabled(True)
+                    self.RecUI.switch_rec_box.setEnabled(True) 
+                    return
+                
+            self.autospec_in_tally.append(compute_autospec(input_chan_data))
+            
+            autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
+            crossspec = np.zeros(autospec_out.shape,dtype = np.complex)
+            for i,chan in enumerate(chans):
+                autospec_out[:,i] = compute_autospec(ft_datas[:,chan])
+                crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,chan])
+             
+            self.autospec_out_tally.append(autospec_out)
+            self.crossspec_tally.append(crossspec)     
+            auto_in_sum = np.array(self.autospec_in_tally).sum(axis = 0)
+            auto_out_sum = np.array(self.autospec_out_tally).sum(axis = 0)
+            cross_sum = np.array(self.crossspec_tally).sum(axis = 0)     
+            for i,chan in enumerate(chans):
+                tf_avg,cor = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
+                self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
+                self.live_chanset.add_channel_dataset(chan,'coherence',cor)
+        
+            self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+            self.save_data(1)
+            
+        elif rec_mode == 'TF Grid':
+            pass
+        else:
+            pass
+       
+        self.stats_UI.statusbar.clearMessage() 
+        self.RecUI.spec_settings_widget.setEnabled(True)
+        self.RecUI.switch_rec_box.setEnabled(True) 
+            
+    def undo_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally.pop()
+            self.autospec_out_tally.pop()
+            self.crossspec_tally.pop()
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+        
+    def remove_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally = []
+            self.autospec_out_tally = []
+            self.crossspec_tally = []
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
     
     # Cancel the data recording
     def cancel_recording(self):
         self.rec.record_cancel()
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+            
+        self.RecUI.switch_rec_box.setEnabled(True) 
+        self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
         
-    # Read the recording setting inputs
-    def read_record_config(self, *arg):
-        try:
-            rec_configs = []
-            data_type = [int,float,int,int,float]
-            for cbox,dt in zip(self.RecUI.rec_boxes,data_type):
-                if type(cbox) == QComboBox:
-                    #configs.append(cbox.currentText())
-                    rec_configs.append(cbox.currentIndex())
-                else:
-                    config_input = cbox.text().strip(' ')
-                    rec_configs.append(dt(float(config_input)))
-            print(rec_configs)
-            return(rec_configs)
-        
-        except Exception as e:
-            print(e)
-            return False
-    
-    # Auto set the time and samples based on recording limitations    
-    def autoset_record_config(self, setting):
-        sample_validator = self.RecUI.rec_boxes[0].validator()
-        time_validator = self.RecUI.rec_boxes[1].validator()
-        
-        if setting == "Time":
-            valid = time_validator.validate(self.RecUI.rec_boxes[1].text(),0)[0]
-            if not valid == QValidator.Acceptable:
-                self.RecUI.rec_boxes[1].setText(str(time_validator.bottom()))
-                
-            samples = int(float(self.RecUI.rec_boxes[1].text())*self.rec.rate)
-            valid = sample_validator.validate(str(samples),0)[0]
-            if not valid == QValidator.Acceptable:
-                samples = sample_validator.top()
-        elif setting == 'Samples':
-            samples = int(self.RecUI.rec_boxes[0].text())        
-        
-        #samples = samples//self.rec.chunk_size  *self.rec.chunk_size
-        duration = samples/self.rec.rate
-        self.RecUI.rec_boxes[0].setText(str(samples))
-        self.RecUI.rec_boxes[1].setText(str(duration))
-
 #-------------------------CHANNEL LEVELS WIDGET--------------------------------       
     def change_threshold(self,arg):
         if type(arg) == str:
@@ -724,7 +667,7 @@ class LiveplotApp(QMainWindow):
                 
         try:    
             # Get Input from the Acquisition settings UI
-            Rtype, settings = self.read_device_config()
+            Rtype, settings = self.devconfig_UI.read_device_config()
             # Delete and reinitialise the recording object
             if Rtype[0]:
                 self.rec = mR.Recorder()
@@ -745,7 +688,6 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot set up new recorder')
-            
         
         try:
             # Open the stream, plot and update
@@ -763,8 +705,9 @@ class LiveplotApp(QMainWindow):
         
         try:
             # Reset recording configuration Validators and inputs checks
-            self.ResetRecConfigs()
-            self.autoset_record_config('Samples')
+            self.RecUI.set_recorder(self.rec)
+            self.devconfig_UI.set_recorder(self.rec)
+            self.remove_tf_tally()
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -860,16 +803,7 @@ class LiveplotApp(QMainWindow):
                     self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
             
-        self.update_chan_names()
-                    
-    def ResetRecConfigs(self):
-        self.RecUI.rec_boxes[3].clear()
-        self.RecUI.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
-    
-        validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                     QIntValidator(-1,self.rec.chunk_size)]
-        for cbox,vd in zip(self.RecUI.rec_boxes[1:-2],validators):
-            cbox.setValidator(vd)    
+        self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
         self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
@@ -908,15 +842,12 @@ class LiveplotApp(QMainWindow):
         
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
-    def save_data(self,data = None):
-        print('Saving data...')
-        for i in range(data.shape[1]):
-            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
-        self.live_chanset.set_channel_metadata(tuple(range(data.shape[1]))
-                                                ,{'sample_rate':self.rec.rate})
-        self.parent.cs = copy.copy(self.live_chanset)
-        self.dataSaved.emit()        
-        print('Data saved!')
+    def save_data(self, tab_num = 0):
+        if self.parent:
+            print('Saving data...')
+            self.parent.cs = copy.copy(self.live_chanset)
+            self.dataSaved.emit(tab_num)        
+            print('Data saved!')
 
 #-------------------------- STREAM METHODS ------------------------------------        
     def init_and_check_stream(self):

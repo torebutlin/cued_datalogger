@@ -160,6 +160,7 @@ class InteractivePlotWidget(QWidget):
         the data on the plotWidget."""
         self.update_limits(x, y)
         self.PlotWidget.plot(x, y, *args, **kwargs)
+        self.ViewBox.autoRange()
     
     def update_limits(self, x, y):
         """Set the increment of the spinboxes, the limits of zooming and 

@@ -1,7 +1,22 @@
 """
-- Essentially identical to the pyaudio version
-"""
+This module contains the class to record data from a National Instrument.
+It uses PyDAQmx to do so, but requires NIDAQmx drivers to function.
+Please check the PyDAQMx and NIDAQmx C API reference for more information.
 
+Example:
+    import myRecorder as NIR
+    
+    recorder = NIR.Recorder()
+    recorder.stream_init()
+    recorder.record_init()
+    recorder.record_start()
+    
+    #Wait for it to finish recording
+    #Output: Recording Done! Please flush the data with flush_record_data()
+    
+    data = recorder.flush_record_data()
+    recorder.close()
+"""
 from datalogger.acquisition.RecorderParent import RecorderParent
 
 import sys,traceback
@@ -14,9 +29,23 @@ import pprint as pp
 import copy as cp
 
 class Recorder(RecorderParent):
+    """
+     Sets up the recording stream through a National Instrument
+    
+     Attributes:
+     ----------
+        In addtion to RecorderParent Attributes,
+        device_name: Str
+            Name of the device to be used for recording
+        max_value: Float
+            Maximum value of recorded data
+    """
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 30000.0, chunk_size = 1000,
                  num_chunk = 4,device_name = None):
+        """
+         Re-implemented from RecorderParent
+        """
 
         super().__init__(channels = channels,rate = rate, 
              chunk_size = chunk_size,num_chunk = num_chunk)
@@ -32,6 +61,14 @@ class Recorder(RecorderParent):
             
 #---------------- DEVICE SETTING METHODS -----------------------------------
     def set_device_by_name(self, name):
+        """
+         Set the recording audio device by name.
+         Uses the first device found if no such device found.
+         
+         Returns:
+         ----------
+             None if no National Instrument is found
+        """
         devices = self.available_devices()[0]
         selected_device = None
         if not devices:
@@ -49,6 +86,17 @@ class Recorder(RecorderParent):
     
      # Get audio device names 
     def available_devices(self):
+        """
+         Get all the available input National Instrument devices
+         
+         Returns:
+         ----------
+             devices_name: List of str
+                 Name of the device, e.g. Dev0
+             device_type: List of str
+                 Type of device, e.g. USB-6003 
+                 
+        """
         numBytesneeded = pdaq.DAQmxGetSysDevNames(None,0)
         databuffer = pdaq.create_string_buffer(numBytesneeded)
         pdaq.DAQmxGetSysDevNames(databuffer,numBytesneeded)
@@ -70,6 +118,9 @@ class Recorder(RecorderParent):
     
     # Display the current selected device info      
     def current_device_info(self):
+        """
+         Prints information about the current device set
+        """
         device_info = {}
         info = ('Category', 'Type','Product', 'Number',
                 'Analog Trigger Support','Analog Input Trigger Types','Analog Input Channels (ai)', 'Analog Output Channels (ao)', 
@@ -111,8 +162,16 @@ class Recorder(RecorderParent):
                            
         pp.pprint(device_info)
         
-    # Return the channel names to be used when assigning task     
     def set_channels(self):
+        """
+        Create the string to initiate the channels when assigning a Task 
+        
+         Return:
+         ----------
+             channelname: str
+                 The channel names to be used when assigning Task 
+                 e.g. Dev0/ai0:Dev0/ai1
+        """
         if self.channels >1:
             channelname =  '%s/ai0:%s/ai%i' % (self.device_name, self.device_name,self.channels-1)
         elif self.channels == 1:
@@ -124,10 +183,22 @@ class Recorder(RecorderParent):
 #---------------- STREAMING METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
+        """
+        Re-implemented from RecorderParent
+        """
         return data.reshape((-1,self.channels))/(2**15) *10.0
     
     # Callback function for audio streaming
     def stream_audio_callback(self):
+        """
+        Callback function for audio streaming.
+        First, it writes data to the circular buffer, 
+        then record data if it is recording,
+        finally check for any trigger.
+        
+        Return 0 as part of the callback format.
+        More info on them can be found in PyDAQmx documentation on Task class
+        """
         in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)
         read = pdaq.int32()
         self.audio_stream.ReadBinaryI16(self.chunk_size,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
@@ -145,8 +216,10 @@ class Recorder(RecorderParent):
         
         return 0
     
-    # TODO: Check for valid device, channels and all that before initialisation #DAQmx_Val_Cfg_Default
     def stream_init(self, playback = False):
+        """
+        Re-implemented from RecorderParent.
+        """
         if self.audio_stream == None:
             try:
                 self.audio_stream = Task()
@@ -173,6 +246,9 @@ class Recorder(RecorderParent):
         
     # Start the streaming
     def stream_start(self):
+        """
+        Re-implemented from RecorderParent.
+        """
         if self.audio_stream: 
             task_done = pdaq.bool32()
             self.audio_stream.GetTaskComplete(task_done)
@@ -184,6 +260,9 @@ class Recorder(RecorderParent):
             print('No audio stream is set up')
     # Stop the streaming
     def stream_stop(self):
+        """
+        Re-implemented from RecorderParent.
+        """
         if self.audio_stream: 
             task_done = pdaq.bool32()
             self.audio_stream.GetTaskComplete(task_done)
@@ -196,106 +275,10 @@ class Recorder(RecorderParent):
         
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
+        """
+        Re-implemented from RecorderParent.
+        """
         if self.audio_stream:
             self.audio_stream.StopTask()
             self.audio_stream.ClearTask()
             self.audio_stream = None
-            
-    #---------------- RECORD TRIGGER METHODS ----------------------------------
-    
-    ''' I don't know anymore...'''
-    
-    '''def trigger_init(self):
-        self.trigger = False
-        self.pretrig_samples = self.chunk_size;
-        self.posttrig_samples = 0;
-        
-    def trigger_done_callback(self):
-        read = pdaq.int32()
-        
-        pretrig_data = np.zeros(self.pretrig_samples*self.channels,dtype = np.int16)
-        try:
-            self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_FirstPretrigSamp)
-            self.audio_stream.ReadBinaryI16(self.pretrig_samples,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
-                               pretrig_data,self.pretrig_samples*self.channels,pdaq.byref(read),None)
-        except Exception as e:
-            print(e)
-        #finally:
-            #self.recorded_data.append(pretrig_data)
-                
-        posttrig_data = np.zeros(self.posttrig_samples*self.channels,dtype = np.int16)
-        try:
-            self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_RefTrig)
-            self.audio_stream.ReadBinaryI16(self.posttrig_samples,10.0,pdaq.DAQmx_Val_GroupByScanNumber,
-                               posttrig_data,self.posttrig_samples*self.channels,pdaq.byref(read),None)
-        except Exception as e:
-            print(e)
-        #finally:
-            #self.recorded_data.append(posttrig_data)
-        
-        
-        try:
-            self.recorded_data = np.vstack((pretrig_data,posttrig_data))
-            #self.recorded_data.reshape((self.buffer.shape[0], self.buffer.shape[1],
-             #              self.buffer.shape[2]))
-        except Exception as e:
-                print(e)
-            
-        try:                                         
-            self.audio_stream.SetSampQuantSampMode(pdaq.DAQmx_Val_ContSamps);
-            self.audio_stream.SetSampQuantSampPerChan(self.chunk_size);
-       
-            self.audio_stream.DisableRefTrig()
-            self.audio_stream.AutoRegisterDoneEvent(0)
-            self.trigger = False
-            self.stream_start()
-        except Exception as e:
-            print(e)
-        
-        self._record_stop()
-        print('Triggering done!')
-        return 0
-    
-    def trigger_start(self,duration = 3, threshold = 2.0, channel = 0):
-        if self.audio_stream:
-            self.stream_stop()
-        else:
-            print('Please initialise a stream.')
-            return False
-        
-        if not self.trigger:
-            try:
-                self.posttrig_samples = int(duration * self.rate // self.chunk_size *self.chunk_size)
-                
-                self.audio_stream.trigger_done_callback = self.trigger_done_callback
-                
-                self.audio_stream.SetSampQuantSampMode(pdaq.DAQmx_Val_FiniteSamps);
-                self.audio_stream.SetSampQuantSampPerChan(pdaq.uInt64(self.posttrig_samples));
-               
-                trigger_channelname = '%s/ai%i' % (self.device_name, channel)
-                self.audio_stream.CfgDigEdgeRefTrig(trigger_channelname,
-                                                     pdaq.DAQmx_Val_RisingSlope,
-                                                     threshold,
-                                                     self.pretrig_samples)
-                
-                self.audio_stream.AutoRegisterDoneEvent(0, name = 'trigger_done_callback')
-                
-                self.audio_stream.SetReadRelativeTo(pdaq.DAQmx_Val_CurrReadPos);
-                                                   
-                self.trigger = True
-            except Exception as e:
-                print(e)
-                t,v,tb = sys.exc_info()
-                print(t)
-                print(v)
-                print(traceback.format_tb(tb))
-                self.stream_close()
-                print('Stream Closed!')
-                return False
-            
-            self.stream_start()
-            return True
-        else:
-            print('You have already started a trigger')
-            return False'''
-        

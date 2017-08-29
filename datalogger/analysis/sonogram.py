@@ -16,14 +16,19 @@ import scipy.signal
 class MatplotlibSonogramContourWidget(MatplotlibCanvas):
     """A MatplotlibCanvas widget displaying the Sonogram contour plot"""
 
-    def __init__(self, sonogram_toolbox, sonogram_master_plot):
+    def __init__(self, sonogram_toolbox=None,
+                 channel=None,
+                 contour_spacing_dB=None,
+                 num_contours=None):
         self.sonogram_toolbox = sonogram_toolbox
-        self.sonogram_master_plot = sonogram_master_plot
+        self.channel = channel
+        self.contour_spacing_dB = contour_spacing_dB
+        self.num_contours = num_contours
 
-        self.sonogram_toolbox.num_contours_slider.valueChanged.connect(self.update_plot)
-        self.sonogram_toolbox.num_contours_spinbox.valueChanged.connect(self.update_plot)
-        self.sonogram_toolbox.contour_spacing_slider.valueChanged.connect(self.update_plot)
-        self.sonogram_toolbox.contour_spacing_spinbox.valueChanged.connect(self.update_plot)
+        #self.sonogram_toolbox.num_contours_slider.valueChanged.connect(self.update_plot)
+        #self.sonogram_toolbox.num_contours_spinbox.valueChanged.connect(self.update_plot)
+        #self.sonogram_toolbox.contour_spacing_slider.valueChanged.connect(self.update_plot)
+        #self.sonogram_toolbox.contour_spacing_spinbox.valueChanged.connect(self.update_plot)
 
         MatplotlibCanvas.__init__(self, "Sonogram: Contour Plot")
 
@@ -59,9 +64,19 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
             # Create a vector with the right spacing from min to max value
             self.contour_sequence = np.arange(to_dB(np.abs(self.channel.get_data("sonogram"))).min(),
                                               to_dB(np.abs(self.channel.get_data("sonogram"))).max(),
-                                              self.sonogram_master_plot.contour_spacing_dB)
+                                              self.contour_spacing_dB)
             # Take the appropriate number of contours
-            self.contour_sequence = self.contour_sequence[-self.sonogram_master_plot.num_contours:]
+            self.contour_sequence = self.contour_sequence[-self.num_contours:]
+       
+    def update_contour_spacing(self, value):
+        """Slot for updating the plot when the contour spacing is changed"""
+        self.contour_spacing_dB = value
+        self.update_plot()
+        
+    def update_num_contours(self, value):
+        """Slot for updating the plot when the number of contours is changed"""
+        self.num_contours = value
+        self.update_plot()
     
     def set_selected_channels(self, selected_channels):
         """Update which channel is being plotted"""
@@ -247,7 +262,7 @@ class SonogramToolbox(Toolbox):
 
         #------------Matplotlib window controls---------
         # Create button
-        self.convert_to_contour_btn = QPushButton("Convert to contour plot", self)
+        self.convert_to_contour_btn = QPushButton("Show as contour plot", self)
         self.convert_to_contour_btn.resize(self.convert_to_contour_btn.sizeHint())
         self.convert_to_contour_btn.clicked.connect(self.open_contour_plot)
 
@@ -292,10 +307,25 @@ class SonogramToolbox(Toolbox):
     def open_contour_plot(self):
         if hasattr(self, 'contour_plot'):
             self.contour_plot.close()
-
-        self.contour_plot = MatplotlibSonogramContourWidget(self)
-        self.contour_plot.show()
-
+            delattr(self, 'contour_plot')
+        else:
+            self.contour_plot = MatplotlibSonogramContourWidget(channel=self.channel,
+                                                                contour_spacing_dB=self.contour_spacing_dB,
+                                                                num_contours=self.num_contours)
+            self.sig_contour_spacing_changed.connect(self.contour_plot.update_contour_spacing)
+            self.sig_num_contours_changed.connect(self.contour_plot.update_num_contours)
+            self.contour_plot.show()
+    
+    def set_selected_channels(self, selected_channels):
+        """Update which channel is being plotted"""
+        # If no channel list is given
+        if not selected_channels:
+            self.channel = None
+        else:
+            self.channel = selected_channels[0]
+        
+        if hasattr(self, 'contour_plot'):
+            self.contour_plot.set_selected_channels(selected_channels)
 
 def func_1(t, w, x, A=4e3):
     """A simple decaying sine wave function."""
