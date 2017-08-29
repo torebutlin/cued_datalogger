@@ -11,7 +11,7 @@ class TimeDomainWidget(InteractivePlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.channels = []
-    
+
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted"""
         # If no channel list is given
@@ -20,29 +20,29 @@ class TimeDomainWidget(InteractivePlotWidget):
         else:
             self.channels = selected_channels
         self.update_plot()
-    
+
     def update_plot(self):
         self.clear()
         for channel in self.channels:
             self.plot(channel.get_data("time"),
                       channel.get_data("time_series"),
-                      pen=pg.mkPen(channel.colour))
+                      pen=channel.colour)
 
 
 class TimeToolbox(Toolbox):
     """Toolbox containing the Time Domain controls"""
-    
+
     sig_convert_to_sonogram = pyqtSignal()
     sig_convert_to_fft = pyqtSignal()
     sig_converted_FFT = pyqtSignal()
-    
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.parent = parent
         self.cs = None
-        
+
         self.init_ui()
-    
+
     def init_ui(self):
         self.convert_tab = QWidget(self)
         convert_tab_layout = QVBoxLayout()
@@ -50,18 +50,18 @@ class TimeToolbox(Toolbox):
         self.fft_btn = QPushButton("Convert to FFT")
         self.fft_btn.clicked.connect(self.compute_fft)
         convert_tab_layout.addWidget(self.fft_btn)
-      
+
         self.sonogram_btn = QPushButton("Convert to Sonogram")
         self.sonogram_btn.clicked.connect(self.sig_convert_to_sonogram.emit)
         convert_tab_layout.addWidget(self.sonogram_btn)
-        
+
         self.convert_tab.setLayout(convert_tab_layout)
-        
+
         self.addTab(self.convert_tab, "Conversion")
-        
+
     def set_channel_set(self,cs):
         self.cs = cs
-        
+
     def compute_fft(self):
         # If no spectrum exists, calculate one
         print("Calculating spectrum...")
@@ -75,7 +75,7 @@ class TimeToolbox(Toolbox):
                     self.cs.set_channel_data(i, "spectrum", spectrum)
             else:
                 print('No Time Signal')
-            
+
         print("Done.")
         self.sig_converted_FFT.emit()
-     
+
