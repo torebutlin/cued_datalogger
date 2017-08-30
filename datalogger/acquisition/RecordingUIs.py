@@ -468,11 +468,7 @@ class DevConfigUI(BaseWidget):
     """
      A Channel Plots Configuration widget.
      Contains: 
-     - ComboBox to switch channel plot info,
-     - Spinboxes to set the offsets
-     - Buttons to change the colour of a plot
-     - Checkbox to hold a signal
-     - Button to open a window to edit metadata
+     - Widgets to setup the recorder
      
      Attributes
      ----------
@@ -637,7 +633,29 @@ class DevConfigUI(BaseWidget):
 
 #-----------------------------STATUS WIDGET-------------------------------        
 class StatusUI(BaseWidget):
+    """
+     A Status Bar widget.
+     Contains: 
+     - QStatusBar to display the stream status
+     - Button to reset the splitters
+     - Button to resume/pause the stream
+     - Button to grab a snapshot of the stream
+     
+     Attributes
+     ----------
+     statusbar: QStatusBar
+         Displays the status of the stream
+     resetView: QPushButton
+         Reset the splitter view
+     togglebtn: Recorder object
+         Resume/pause the stream
+     sshotbtn: List of widgets
+         Grab a snapshot of the stream
+    """
     def initUI(self):
+        """
+        Reimplemented from BaseWidget.
+        """
         stps_layout = QHBoxLayout(self)
     
         # Set up the status bar
@@ -657,6 +675,9 @@ class StatusUI(BaseWidget):
         stps_layout.addWidget(self.sshotbtn)
         
     def trigger_message(self):
+        """
+        Display a message when the recording trigger is set off
+        """
         self.statusbar.showMessage('Triggered! Recording...')
 
 #-----------------------------RECORDING WIDGET-------------------------------                

@@ -390,7 +390,7 @@ class LiveplotApp(QMainWindow):
             self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
             self.levelsplot.set_peaks(i,maxs[i])
             
-#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
+#-------------------------STATUS BAR WIDGET--------------------------------
     def toggle_rec(self,stop = None):
         """
         Callback to pause/resume the stream, unless explicitly specified to stop or not
@@ -428,7 +428,19 @@ class LiveplotApp(QMainWindow):
                                                    {'sample_rate':self.rec.rate})
         self.save_data()
         self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
-        
+
+    def default_status(self,msg):
+        """
+        Callback to set the status message to the default messages 
+        if it is empty (ie when cleared)
+        """
+        # Placed here because it accesses self.playing (might change it soon?)
+        if not msg:
+            if self.playing:
+                self.stats_UI.statusbar.showMessage('Streaming')
+            else:
+                self.stats_UI.statusbar.showMessage('Stream Paused')
+                
     
 #---------------------------RECORDING WIDGET-------------------------------           
     def start_recording(self):
@@ -579,19 +591,6 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
 
-#-------------------------STATUS BAR WIDGET--------------------------------
-    def default_status(self,*arg):
-        """
-        Callback to set the status message to the default messages 
-        if it is empty (ie when cleared)
-        """
-        # Placed here because it accesses self.playing (might change it soon?)
-        if not arg[0]:
-            if self.playing:
-                self.stats_UI.statusbar.showMessage('Streaming')
-            else:
-                self.stats_UI.statusbar.showMessage('Stream Paused')
-        
 #--------------------------- RESET METHODS-------------------------------------    
     def ResetRecording(self):
         """
