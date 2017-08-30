@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Aug  9 11:00:36 2017
+if __name__ == '__main__':
+    sys.path.append('../../')
 
-@author: eyt21
-"""
 import weakref
 import sys
 import numpy as np
@@ -15,7 +12,6 @@ from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGr
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer, pyqtSignal
-
 
 class InteractivePlotWidget(QWidget):
     """A QWidget containing a :class:`CustomPlotWidget` with mouse tracking
@@ -54,11 +50,13 @@ class InteractivePlotWidget(QWidget):
 
     sig_region_changed = pyqtSignal([float, float])
 
-    def __init__(self, parent=None, show_region=True, show_crosshair=True,
+    def __init__(self, parent=None,
+                 show_region=True, show_crosshair=True, show_label=True,
                  *args, **kwargs):
         self.parent = parent
         self.show_region = show_region
         self.show_crosshair = show_crosshair
+        self.show_label = show_label
 
         super().__init__(parent)
 
@@ -85,6 +83,10 @@ class InteractivePlotWidget(QWidget):
         #ViewBox.addItem(self.label)
 
         self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+
+        self.ViewBox.menu.sig_show_region.connect(self.set_show_region)
+        self.ViewBox.menu.sig_show_crosshair.connect(self.set_show_crosshair)
+        self.ViewBox.menu.sig_show_label.connect(self.set_show_label)
 
         # # Set up the controls
         control_layout = QHBoxLayout()
@@ -226,10 +228,19 @@ class InteractivePlotWidget(QWidget):
         else:
             self.PlotItem.removeItem(self.region)
 
+    def set_show_label(self, show_label):
+        """Set whether the label is visible."""
+        self.show_label = show_label
+
+        if self.show_label:
+            self.label.show()
+        else:
+            self.label.hide()
+
 
 class CustomPlotWidget(pg.PlotWidget):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, ViewBox=CustomViewBox(cparent=self), **kwargs)
+        super().__init__(*args, viewBox=CustomViewBox(cparent=self), **kwargs)
 
         self.PlotItem = self.getPlotItem()
         self.ViewBox = self.PlotItem.getViewBox()
@@ -241,6 +252,9 @@ class CustomPlotWidget(pg.PlotWidget):
         ext_menu.removeAction(ext_submenus[2].menuAction())
         ext_menu.removeAction(ext_submenus[3].menuAction())
         ext_menu.removeAction(ext_submenus[5].menuAction())
+
+    def getViewBox(self):
+        return self.ViewBox
 
     def getViewedDataRegion(self, data_for_slice, axis='bottom'):
         """Return the indices of data_for_slice that are currently in the
@@ -255,6 +269,7 @@ class CustomPlotWidget(pg.PlotWidget):
         indices_of_data_in_display = np.where(data_in_display)[0]
         return indices_of_data_in_display[0], indices_of_data_in_display[-1]
 
+
 class CustomViewBox(pg.ViewBox):
     def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
@@ -263,6 +278,7 @@ class CustomViewBox(pg.ViewBox):
 
     def raiseContextMenu(self, ev):
         menu = self.getMenu(ev)
+        print(menu)
         menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint())
 
@@ -271,7 +287,12 @@ class CustomViewBox(pg.ViewBox):
         r = self.viewRect()
         self.setLimits(xMin = r.left(), xMax = r.right())
 
+
 class CustomViewMenu(QMenu):
+    sig_show_crosshair = pyqtSignal(bool)
+    sig_show_region = pyqtSignal(bool)
+    sig_show_label = pyqtSignal(bool)
+
     def __init__(self, view):
         QMenu.__init__(self)
 
@@ -280,9 +301,32 @@ class CustomViewMenu(QMenu):
         self.viewMap = weakref.WeakValueDictionary()  ## weakrefs to all views listed in the link combos
 
         self.setTitle("ViewBox options")
-        self.viewAll = QAction("View All", self)
-        self.viewAll.triggered.connect(self.autoRange)
-        self.addAction(self.viewAll)
+        self.autorange_action = QAction("Autorange", self)
+        self.autorange_action.triggered.connect(self.autoRange)
+        self.addAction(self.autorange_action)
+
+        # Display menu
+        self.display_menu = QMenu("Display options")
+
+        show_crosshair_action = QAction("Show crosshair", self.display_menu)
+        show_crosshair_action.setCheckable(True)
+        show_crosshair_action.setChecked(True)
+        show_crosshair_action.triggered.connect(self.sig_show_crosshair.emit)
+        self.display_menu.addAction(show_crosshair_action)
+
+        show_region_action = QAction("Show region", self.display_menu)
+        show_region_action.setCheckable(True)
+        show_region_action.setChecked(True)
+        show_region_action.triggered.connect(self.sig_show_region.emit)
+        self.display_menu.addAction(show_region_action)
+
+        show_label_action = QAction("Show Label", self.display_menu)
+        show_label_action.setCheckable(True)
+        show_label_action.setChecked(True)
+        show_label_action.triggered.connect(self.sig_show_label.emit)
+        self.display_menu.addAction(show_label_action)
+
+        self.addMenu(self.display_menu)
 
         self.axes = []
         self.ctrl = []
@@ -660,17 +704,11 @@ if __name__ == '__main__':
 
     app = 0
     app = QApplication(sys.argv)
-    w = CustomPlotWidget()
+    w = InteractivePlotWidget()
     x = np.linspace(0, 20*np.pi, 1e4)
     y = np.sin(x)
     w.PlotItem.plot(x, y, pen=defaultpen)
     w.PlotItem.autoRange()
     w.show()
-
-    def print_region(*args, **kwargs):
-        x_lower, x_upper = w.getViewedDataRegion(x)
-        print("Index {}: {}, Index {}: {}".format(x_lower, x[x_lower], x_upper, x[x_upper]))
-
-    w.sigRangeChanged.connect(print_region)
 
     sys.exit(app.exec_())
