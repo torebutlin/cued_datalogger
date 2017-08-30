@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QFileDialog, QTreeWidget, QTreeWidgetItem, QRadioButton)
 
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import leastsq
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -98,11 +98,13 @@ class CircleFitWidget(QWidget):
         self.transfer_function_plotwidget = \
             InteractivePlotWidget(parent=self,
                                   title="Transfer Function",
-                                  labels={'bottom': ("Frequency", "rad"),
+                                  labels={'bottom': ("Frequency", "Hz"),
                                           'left': ("Transfer Function", "dB")})
 
         self.transfer_function_plot = \
             self.transfer_function_plotwidget.getPlotItem()
+
+        self.transfer_function_plotwidget.sig_region_changed.connect(self.update_from_region)
 
         # # Nyquist plot
         self.nyquist_plotwidget = \
@@ -119,26 +121,27 @@ class CircleFitWidget(QWidget):
 
         # # Create the items for the plots
         # The item for the raw transfer function
-        self.transfer_function = pg.PlotDataItem(pen=defaultpen)
-        self.transfer_function_plot.addItem(self.transfer_function)
+        self.transfer_function_list = []
 
         # The item for the reconstructed transfer function
-        self.constructed_transfer_function = pg.PlotDataItem(pen='b')
+        self.constructed_transfer_function = \
+            pg.PlotDataItem(pen=pg.mkPen(width=3, style=Qt.DashLine))
         self.transfer_function_plot.addItem(self.constructed_transfer_function)
 
-        # The item for the raw circle plot
-        self.nyquist_plot_points = pg.PlotDataItem()
-        self.nyquist_plot.addItem(self.nyquist_plot_points)
-
-        # The item for the current fit
-        self.nyquist_plot_current_peak = pg.PlotDataItem()
-        self.nyquist_plot.addItem(self.nyquist_plot_current_peak)
-
+        # The item for the fitted peaks
         self.peaks = []
 
+        # The item for the raw circle plot
+        self.nyquist_plot_list = []
+
+        # The item for the fitted circles
+        self.nyquist_plot_peaks_list = []
+
         # # Table of results
-        self.results = CircleFitTree(self)
+        self.results = CircleFitResults(self)
         self.results.sig_selected_peak_changed.connect(self.set_current_peak)
+        self.results.sig_recalculate_fit.connect(self.update_from_region)
+        self.results.sig_add_new_peak.connect(self.add_new_peak)
 
         # # Widget layout
         layout = QGridLayout()
@@ -150,6 +153,9 @@ class CircleFitWidget(QWidget):
         self.setWindowTitle('Circle fit')
         self.show()
 
+    def test_slot(*args, **kwargs):
+        print("Test slot: {}, {}".format(args, kwargs))
+
     def show_transfer_fn(self, visible=True):
         print("Setting transfer function visible to " + str(visible))
         self.constructed_transfer_fn.setVisible(visible)
@@ -157,46 +163,75 @@ class CircleFitWidget(QWidget):
     def construct_transfer_fn(self):
         pass
 
-    def update_values_from_region(self):
+    def add_new_peak(self):
+        print("Adding new peak...")
+        lower, upper = self.transfer_function_plotwidget.getRegionBounds()
+        self.update_from_region(lower, upper)
+
+    def update_from_region(self, region_lower_bound, region_upper_bound):
         for i, channel in enumerate(self.channels):
+            self.freq = channel.get_data("frequency")
             self.w = channel.get_data("omega")
             self.tf = channel.get_data("spectrum")
 
-            lower, upper = self.transfer_function_plotwidget.getRegionBounds()
+            f_in_region = (self.freq >= region_lower_bound) \
+                              & (self.freq <= region_upper_bound)
 
-            w_in_region = (self.w >= lower) & (self.w <= upper)
-
-            self.w_reg = np.extract(w_in_region, self.w)
-            self.tf_reg = np.extract(w_in_region, self.tf)
+            self.w_reg = np.extract(f_in_region, self.w)
+            self.tf_reg = np.extract(f_in_region, self.tf)
 
             # Recalculate the geometric circle fit
-            self.x0, self.y0, self.R0 = fit_circle_to_data(channel.get_data("spectrum").real,
-                                                           channel.get_data("spectrum").tf_reg.imag)
+            self.x0, self.y0, self.R0 = fit_circle_to_data(self.tf_reg.real,
+                                                           self.tf_reg.imag)
 
             # Recalculate the parameters
             wr, zr, cr, phi = self.sdof_get_parameters()
 
             # Update the results table
-            self.results.set_frequency(self.current_peak, i, wr)
-            self.results.set_damping(self.current_peak, i, zr)
-            self.results.set_amplitude(self.current_peak, i, cr)
-            self.results.set_phase(self.current_peak, i, phi)
+            self.results.set_parameter_values(self.current_peak,
+                                              i,
+                                              {"frequency": wr,
+                                               "damping": zr,
+                                               "amplitude": cr,
+                                               "phase": phi})
 
-    def update_values_from_table(self):
+            # Update what is displayed on the nyquist plot
+            self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
+            self.nyquist_plot.autoRange()
+
+        # Update the peak
+        #peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+        #self.peaks[i].setData(self.w, peak)
+        #self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
+
+    def update_from_table(self):
         pass
 
-    def update_plot(self):
+    def refresh_nyquist_plot(self):
+        """Clear the nyquist plot and add the items back in."""
+        self.nyquist_plotwidget.clear()
+
+        for item in self.nyquist_plot_list:
+            self.nyquist_plot.addItem(item)
+
+        self.nyquist_plot.autoRange()
+
+    def refresh_transfer_function_plot(self):
+        """Clear the transfer function plot and add the items back in."""
         self.transfer_function_plotwidget.clear()
 
-        if self.transfer_function.isVisible():
-            self.transfer_function_plot.addItem(self.transfer_function)
+        self.transfer_function_plot.addItem(self.constructed_transfer_function)
 
-        for channel in self.channels:
-            self.transfer_function_plotwidget.plot(channel.get_data("frequency"),
-                                                   to_dB(np.abs(channel.get_data("spectrum"))),
-                                                   pen=channel.colour)
+        for item in self.transfer_function_list:
+            self.transfer_function_plot.addItem(item)
+
+        for item in self.peaks:
+            self.transfer_function_plot.addItem(item)
+
+        self.transfer_function_plot.autoRange()
 
     def fitted_sdof_peak(self, w, wr, zr, cr, phi):
+        """An SDOF modal peak fitted to the data using the geometric circle."""
         if self.transfer_function_type == 'displacement':
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
                 + sdof_modal_peak(w, wr, zr, cr, phi)
@@ -209,14 +244,21 @@ class CircleFitWidget(QWidget):
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
                 -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
 
-    def optimise_sdof_peak_fit(self, w, wr, zr, cr, phi):
+    def residuals(self, parameters, w, tf):
+        """The error function for least squares fitting."""
+        wr = parameters[0]
+        zr = parameters[1]
+        cr = parameters[2]
+        phi = parameters[3]
         if cr < 0:
             cr *= -1
             phi = (phi + np.pi) % np.pi
         f = self.fitted_sdof_peak(w, wr, zr, cr, phi)
-        return np.append(f.real, f.imag)
+        return np.append(tf.real, tf.imag) - np.append(f.real, f.imag)
 
     def sdof_get_parameters(self):
+        """Fit a SDOF peak to the data with a least squares fit, using values
+        from the current peak as a first guess."""
         # # Find initial parameters for curve fitting
         # Find where the peak is - the maximum magnitude of the amplitude
         # within the region
@@ -230,14 +272,10 @@ class CircleFitWidget(QWidget):
         # First guess of damping factor of 1% (Q of 100)
         zr0 = 0.01
 
-        # # Find the parameter values that give a minimum of
-        # the optimisation function
-        wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_fit,
-                                    self.w_reg,
-                                    np.append(self.tf_reg.real, self.tf_reg.imag),
-                                    [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_reg.min(), 0, 0, -np.pi],
-                                            [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
+        # # Least squares fit
+        parameters0 = [wr0, zr0, cr0, phi0]
+        wr, zr, cr, phi = leastsq(self.residuals, parameters0,
+                                  args=(self.w_reg, self.tf_reg))[0]
 
         return wr, zr, cr, phi
 
@@ -249,13 +287,33 @@ class CircleFitWidget(QWidget):
         else:
             self.channels = selected_channels
             self.results.channels = selected_channels
-        self.update_plot()
+
+        # # Populate the plot lists
+        self.transfer_function_list = []
+        self.nyquist_plot_list = []
+        for channel in self.channels:
+            transfer_function = pg.PlotDataItem(channel.get_data("frequency"),
+                                                to_dB(np.abs(channel.get_data("spectrum"))),
+                                                pen=channel.colour)
+            self.transfer_function_list.append(transfer_function)
+
+            nyquist_plot = pg.PlotDataItem(channel.get_data("spectrum").real,
+                                           channel.get_data("spectrum").imag,
+                                           pen=None,
+                                           symbol='o',
+                                           symbolPen=None,
+                                           symbolBrush=pg.mkBrush(channel.colour),
+                                           symbolSize=7)
+            self.nyquist_plot_list.append(nyquist_plot)
+
+        self.refresh_transfer_function_plot()
+        self.refresh_nyquist_plot()
 
     def set_current_peak(self, current_peak):
         self.current_peak = current_peak
 
 
-class CircleFitTree(QGroupBox):
+class CircleFitResults(QGroupBox):
     """
     The tree displaying the Circle Fit results and the parameters used for
     automatically fitting the circle.
@@ -264,9 +322,15 @@ class CircleFitTree(QGroupBox):
     ----------
     sig_selected_peak_changed : pyqtSignal(int)
         The signal emitted when the selected peak is changed.
+    sig_recalculate_fit : pyqtSignal
+        Signal emitted when the fit is forced to be recalculated.
+    sig_add_new_peak : pyqtSignal
+        Signal emitted when a new peak is added.
     """
 
     sig_selected_peak_changed = pyqtSignal(int)
+    sig_recalculate_fit = pyqtSignal()
+    sig_add_new_peak = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__("Results", parent)
@@ -279,16 +343,28 @@ class CircleFitTree(QGroupBox):
     def init_ui(self):
         # # Tree for values
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Name", "Frequency", "Damping ratio",
-                                   "Amplitude", "Phase", "Select"])
-        self.tree.setStyleSheet("QTreeWidget::item:has-children { background-color : palette(mid);}")
+        self.tree.setHeaderLabels(["Name",
+                                   "Frequency",
+                                   "Damping ratio",
+                                   "Amplitude",
+                                   "Phase",
+                                   "Select"])
+
+        self.tree.setStyleSheet("QTreeWidget::item:has-children "
+                                "{ background-color : palette(mid);}")
 
         # # Tree for autofit parameters
         self.autofit_tree = QTreeWidget()
-        self.autofit_tree.setHeaderLabels(["Name", "Frequency", "Damping ratio",
-                                           "Amplitude", "Phase", "Select"])
+        self.autofit_tree.setHeaderLabels(["Name",
+                                           "Frequency",
+                                           "Damping ratio",
+                                           "Amplitude",
+                                           "Phase",
+                                           "Select"])
+
         self.autofit_tree.hide()
-        self.autofit_tree.setStyleSheet("QTreeWidget::item:has-children { background-color : palette(mid);}")
+        self.autofit_tree.setStyleSheet("QTreeWidget::item:has-children "
+                                        "{ background-color : palette(mid);}")
 
         # Connect the two trees together, so the views look identical
         self.autofit_tree.itemCollapsed.connect(self.on_item_collapsed)
@@ -347,14 +423,27 @@ class CircleFitTree(QGroupBox):
         radio_btn.setChecked(True)
 
         for col in [1, 2, 3, 4]:
-            # Put spinboxes in the tree
-            spinbox = QDoubleSpinBox()
-            self.tree.setItemWidget(peak_item, col, spinbox)
             # Put comboboxes in the autofit tree
             combobox = QComboBox()
             combobox.addItems(["Auto", "Manual"])
             combobox.currentIndexChanged.connect(self.update_peak_average)
             self.autofit_tree.setItemWidget(autofit_peak_item, col, combobox)
+
+        # Put spinboxes in the tree
+        freq_spinbox = QDoubleSpinBox()
+        freq_spinbox.setRange(0, 9e99)
+        self.tree.setItemWidget(peak_item, 1, freq_spinbox)
+        damping_spinbox = QDoubleSpinBox()
+        damping_spinbox.setRange(0, 9e99)
+        damping_spinbox.setDecimals(5)
+        self.tree.setItemWidget(peak_item, 2, damping_spinbox)
+        amp_spinbox = QDoubleSpinBox()
+        amp_spinbox.setRange(0, 9e99)
+        self.tree.setItemWidget(peak_item, 3, amp_spinbox)
+        phase_spinbox = QDoubleSpinBox()
+        phase_spinbox.setRange(-np.pi, np.pi)
+        phase_spinbox.setWrapping(True)
+        self.tree.setItemWidget(peak_item, 4, phase_spinbox)
 
         # Create the child items for each channel for this peak if there's
         # more than one channel
@@ -367,10 +456,6 @@ class CircleFitTree(QGroupBox):
                                                        ["Channel {}".format(i),
                                                         "", "", "", "", ""])
                 for col in [1, 2, 3, 4]:
-                    # Put spinboxes in the tree
-                    spinbox = QDoubleSpinBox()
-                    spinbox.valueChanged.connect(self.update_peak_average)
-                    self.tree.setItemWidget(channel_item, col, spinbox)
                     # Put comboboxes in the autofit tree
                     combobox = QComboBox()
                     combobox.addItems(["Auto", "Manual"])
@@ -378,8 +463,28 @@ class CircleFitTree(QGroupBox):
                     self.autofit_tree.setItemWidget(autofit_channel_item,
                                                     col, combobox)
 
+                freq_spinbox = QDoubleSpinBox()
+                freq_spinbox.setRange(0, 9e99)
+                freq_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 1, freq_spinbox)
+                damping_spinbox = QDoubleSpinBox()
+                damping_spinbox.setRange(0, 9e99)
+                damping_spinbox.setDecimals(5)
+                damping_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 2, damping_spinbox)
+                amp_spinbox = QDoubleSpinBox()
+                amp_spinbox.setRange(0, 9e99)
+                amp_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 3, amp_spinbox)
+                phase_spinbox = QDoubleSpinBox()
+                phase_spinbox.setRange(-np.pi, np.pi)
+                phase_spinbox.setWrapping(True)
+                phase_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 4, phase_spinbox)
+
         # Register that we've added another peak
         self.num_peaks += 1
+        self.sig_add_new_peak.emit()
 
     def delete_selected(self):
         """Delete the item that is currently selected."""
@@ -391,7 +496,7 @@ class CircleFitTree(QGroupBox):
                     # Delete this item
                     self.tree.takeTopLevelItem(i)
                     self.autofit_tree.takeTopLevelItem(i)
-                    #self.num_peaks -= 1
+                    # self.num_peaks -= 1
 
     def toggle_view(self):
         if self.tree.isVisible():
@@ -422,7 +527,7 @@ class CircleFitTree(QGroupBox):
             if peak_item is not None:
                 if self.tree.itemWidget(peak_item, 5) == self.sender():
                     if checked:
-                        print("Selected: " + str(i))
+                        print("Selected peak: " + str(i))
                         self.sig_selected_peak_changed.emit(i)
 
     def reset_to_autofit(self):
@@ -438,6 +543,8 @@ class CircleFitTree(QGroupBox):
                     channel_item = peak_item.child(channel_number)
                     for col in [1, 2, 3, 4]:
                         self.autofit_tree.itemWidget(channel_item, col).setCurrentIndex(0)
+
+        self.sig_recalculate_fit.emit()
 
     def update_peak_average(self):
         """Set the parameter values displayed for the peak to the average of
@@ -731,31 +838,13 @@ class CircleFitToolbox(Toolbox):
 
 if __name__ == '__main__':
     CurrentWorkspace = Workspace()
-    CurrentWorkspace.configure()
     app = 0
 
     app = QApplication(sys.argv)
     c = CircleFitWidget()
+    c.CurrentWorkspace = CurrentWorkspace
     c.showMaximized()
 
-    # Create a demo transfer function
-    w = np.linspace(0, 25, 3e2)
-    d = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
-        + sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
-        + sdof_modal_peak(w, 12, 0.003, 8e12, 0) \
-        + sdof_modal_peak(w, 20, 0.01, 22e12, 0)
-    v = 1j * w * d
-    a = -w**2*d
-
-    #c.transfer_function_type = 'displacement'
-    #c.set_data(w, d)
-
-    #c.transfer_function_type = 'velocity'
-    #c.set_data(w, v)
-
-    #c.transfer_function_type = 'acceleration'
-    #c.set_data(w, a)
-    #"""
     cs = ChannelSet()
 
     #c.load_tf(cs)
