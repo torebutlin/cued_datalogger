@@ -51,7 +51,7 @@ class BaseWidget(QWidget):
     
 #-------------------------CHANNEL TOGGLE WIDGET-------------------------------          
 class ChanToggleUI(BaseWidget):
-    toggleChanged = pyqtSignal(QPushButton)
+    toggleChanged = pyqtSignal(int,bool)
     
     def initUI(self):
         # Set up the channel tickboxes widget
@@ -103,7 +103,7 @@ class ChanToggleUI(BaseWidget):
                 
         self.search_status.showMessage('Awaiting...')
         
-        self.chan_btn_group.buttonClicked.connect(self.toggleChanged.emit)
+        self.chan_btn_group.buttonClicked.connect(self.toggle_channel_plot)
         self.chan_text.returnPressed.connect(self.chan_line_toggle)
         
     def invert_checkboxes(self):
@@ -169,6 +169,13 @@ class ChanToggleUI(BaseWidget):
             for chan in set(all_selected_chan):
                 if chan < n_btns:
                     self.chan_btn_group.button(chan).click()
+                    
+    def toggle_channel_plot(self, btn):
+        chan_num = self.chan_btn_group.id(btn)
+        if btn.isChecked():
+            self.toggleChanged.emit(chan_num,True)
+        else:
+            self.toggleChanged.emit(chan_num,False)
 
 #-----------------------CHANNEL CONFIGURATION WIDGET-------------------------         
 class ChanConfigUI(BaseWidget):

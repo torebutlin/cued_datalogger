@@ -57,6 +57,17 @@ class RecorderParent(object):
                  num_chunk = 4):
         """
         Initialise a ciruclar buffer, array and trigger for recording
+        
+        Parameters
+        ----------
+        channels: Int
+                Number of Channels
+        rate: Int
+            Sampling rate
+        chunk_size: Int
+            Number of samples to get from each channel in one chunk
+        num_chunk: Int
+            Number of chunks to store in circular buffer
         """
         self.channels = channels
         self.rate = rate
