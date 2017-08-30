@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGr
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer
+from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer, pyqtSignal
 
 
 class InteractivePlotWidget(QWidget):
@@ -48,7 +48,12 @@ class InteractivePlotWidget(QWidget):
         Controls whether the region is displayed.
     show_crosshair : bool
         Controls whether the crosshair is displayed.
+    sig_region_changed : pyqtSignal([int, int])
+        The signal emitted when the region is changed.
     """
+
+    sig_region_changed = pyqtSignal([float, float])
+
     def __init__(self, parent=None, show_region=True, show_crosshair=True,
                  *args, **kwargs):
         self.parent = parent
@@ -84,7 +89,9 @@ class InteractivePlotWidget(QWidget):
         # # Set up the controls
         control_layout = QHBoxLayout()
         self.lower_box = pg.SpinBox(self, bounds=(0, None))
+        self.lower_box.valueChanged.connect(self.on_region_changed)
         self.upper_box = pg.SpinBox(self, bounds=(0, None))
+        self.upper_box.valueChanged.connect(self.on_region_changed)
         self.zoom_btn = QPushButton('Zoom', self)
         self.zoom_btn.clicked.connect(self.zoomToRegion)
 
@@ -101,6 +108,11 @@ class InteractivePlotWidget(QWidget):
         self.updatetimer.start(20)
 
         self.clear()
+
+    def on_region_changed(self):
+        lower = self.lower_box.value()
+        upper = self.upper_box.value()
+        self.sig_region_changed.emit(lower, upper)
 
     def mouseMoved(self, mouse_moved_event):
         mouse_position = mouse_moved_event[0]  ## using signal proxy turns original arguments into a tuple
