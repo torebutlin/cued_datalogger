@@ -1,4 +1,4 @@
-import sys
+import sys, traceback
 if __name__ == '__main__':
     sys.path.append('../../')
 
@@ -164,7 +164,6 @@ class CircleFitWidget(QWidget):
         pass
 
     def add_new_peak(self):
-        print("Adding new peak...")
         lower, upper = self.transfer_function_plotwidget.getRegionBounds()
         self.update_from_region(lower, upper)
 
@@ -173,6 +172,7 @@ class CircleFitWidget(QWidget):
             self.freq = channel.get_data("frequency")
             self.w = channel.get_data("omega")
             self.tf = channel.get_data("spectrum")
+            self.transfer_function_type = channel.transfer_function_type
 
             f_in_region = (self.freq >= region_lower_bound) \
                               & (self.freq <= region_upper_bound)
@@ -180,19 +180,30 @@ class CircleFitWidget(QWidget):
             self.w_reg = np.extract(f_in_region, self.w)
             self.tf_reg = np.extract(f_in_region, self.tf)
 
-            # Recalculate the geometric circle fit
-            self.x0, self.y0, self.R0 = fit_circle_to_data(self.tf_reg.real,
-                                                           self.tf_reg.imag)
-
+            try:
+                # Recalculate the geometric circle fit
+                self.x0, self.y0, self.R0 = fit_circle_to_data(self.tf_reg.real,
+                                                               self.tf_reg.imag)
+            except:
+                print("Error in fitting geometric circle.")
+                traceback.print_exc()
             # Recalculate the parameters
-            wr, zr, cr, phi = self.sdof_get_parameters()
+            try:
+                wr, zr, cr, phi = self.sdof_get_parameters()
+            except:
+                print("Error in calculating parameters.")
+                traceback.print_exc()
 
             # Update the results table
             self.results.set_parameter_values(self.current_peak,
                                               i,
+                                              #{"frequency": wr / (2*np.pi),
                                               {"frequency": wr,
+                                               #"Q": 1 / (2*zr),
                                                "damping": zr,
+                                               #"amplitude": to_dB(cr),
                                                "amplitude": cr,
+                                               #"phase": np.rad2deg(phi)})
                                                "phase": phi})
 
             # Update what is displayed on the nyquist plot
