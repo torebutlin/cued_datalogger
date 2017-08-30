@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Aug 22 11:19:29 2017
-
 @author: eyt21
+
+This module contains the widget classes to the acquisition window.
+However, they are not limited to that window, and can be reused for other
+window, like the analysis window.
+
+Attribute
+----------
+NI_DRIVERS: Bool
+    Indicates whether NIDAQmx drivers and pyDAQmx module are installed
+    when attempting to import NIRecorder module
+    The module is needed to check on the available National Instrument devices
+MAX_SAMPLE: Int
+    Arbritrary maximum number of samples that can be recorded.
+
 """
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout, QPushButton, 
                              QStatusBar,QLabel,QLineEdit, QFormLayout,
@@ -33,12 +46,22 @@ MAX_SAMPLE = 1e9
 #==========================WIDGET CLASSES================================
 #---------------------------BASE WIDGET------------------------------------            
 class BaseWidget(QWidget):
+    """
+     A base widget reimplemented to allow custom styling.
+     Pretty much identical to a normal QWidget
+    """
     def __init__(self, *arg, **kwarg):
+        """
+        Reimplemented from QWidget
+        """
         super().__init__(*arg, **kwarg)
         self.initUI()
         self.setObjectName('subWidget')
        
     def paintEvent(self, evt):
+        """
+        Reimplemented from QWidget.paintEvent()
+        """
         super().paintEvent(evt)
         opt = QStyleOption()
         opt.initFrom(self)
@@ -47,13 +70,52 @@ class BaseWidget(QWidget):
         s.drawPrimitive(QStyle.PE_Widget, opt, p, self) 
     
     def initUI(self):
+        """
+        Construct the UI, to be reimplemented.
+        """
         pass
     
 #-------------------------CHANNEL TOGGLE WIDGET-------------------------------          
 class ChanToggleUI(BaseWidget):
-    toggleChanged = pyqtSignal(int,bool)
+    """
+     A Channel Toggling widget.
+     Contains: 
+     - Checkboxes to toggle channel,
+     - Buttons to select all, deselect all, and invert selection.
+     - LineEdits to toggle by expression or tags
+     
+     Attributes
+     ----------
+     toggleChanged: pyqtsignal
+         Emits when a channel toggle changes, 
+         Sends out the channel num(int) and the state(bool)
+     channels_box: QWidget
+         The widget containing the checkboxes
+     checkbox_layout: QGridLayout
+         Defines the layout of the checkboxes
+     chan_btn_group: QButtonGroup
+         Widget to handle the checkboxes presses
+     sel_all_btn:QPushButton
+         'Select All' button
+     desel_all_btn: QPushButton
+         'Deselect All' button
+     inv_sel_btn: QPushButton
+         'Invert Selection' button
+     chan_text: ChanLineText
+         For toggling by expression
+     chan_text2: QLineEdit
+         For toggling by tags
+     chan_text3: QLineEdit
+         For displaying the channels toggled (may be changed to QLabel instead)
+     search_status: QStatusBar
+         For displaying whether the toggling is successful
+    """
+    sigToggleChanged = pyqtSignal(int,bool)
     
     def initUI(self):
+        """
+        Reimplemented from BaseWidget.
+        """
         # Set up the channel tickboxes widget
         chans_toggle_layout = QVBoxLayout(self)
         
@@ -107,19 +169,41 @@ class ChanToggleUI(BaseWidget):
         self.chan_text.returnPressed.connect(self.chan_line_toggle)
         
     def invert_checkboxes(self):
+        """
+        Callback to invert selection
+        """
         for btn in self.channels_box.findChildren(QCheckBox):
             btn.click()
          
     def toggle_all_checkboxes(self,state):
+        """
+        Callback to select all or deselect all
+        
+        Parameters
+        ----------
+        state: Int
+            State of the checkboxes to be in (either Qt.Unchecked or Qt.Checked)
+        """
         for btn in self.channels_box.findChildren(QCheckBox):
             if not btn.checkState() == state:
                 btn.click()
                 
-    def adjust_channel_buttons(self, new_n_btns):
+    def adjust_channel_checkboxes(self, new_n_btns):
+        """
+        Add or delete checkboxes based on new number of buttons needed
+        
+        Parameters
+        ----------
+        new_n_btns: Int
+            New number of buttons required
+        """
         for btn in self.chan_btn_group.buttons():
             btn.setCheckState(Qt.Checked)
+            
+        # Calculate the number of extra buttons required to add/delete
         old_n_buttons = self.checkbox_layout.count()
         extra_btns = abs(new_n_btns - old_n_buttons)
+        # Add/Delete the extra buttons if there are extras
         if extra_btns:
             if new_n_btns > old_n_buttons:
                 columns_limit = 4
@@ -143,6 +227,16 @@ class ChanToggleUI(BaseWidget):
                     chan_btn.deleteLater()
                 
     def chan_line_toggle(self,chan_list):
+        """
+        Callback to intepret the input expressions and toggle the channels
+        accordingly
+        
+        Parameters
+        ----------
+        chan_list: List of str
+            Input expressions
+        """
+        # Intepret the string into either int or range, then append/extend the all_selected_chan list
         all_selected_chan = []
         for str_in in chan_list:
             r_in = str_in.split(':')
@@ -162,30 +256,84 @@ class ChanToggleUI(BaseWidget):
                         r_in[2] = 1
                     all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])+1,int(r_in[2])))
 
+        # Toggle checkboxes based on the integers in the list
         print(all_selected_chan)
-        n_btns = self.checkbox_layout.count()
         if all_selected_chan:
+            n_btns = self.checkbox_layout.count()
             self.toggle_all_checkboxes(Qt.Unchecked)
             for chan in set(all_selected_chan):
                 if chan < n_btns:
                     self.chan_btn_group.button(chan).click()
                     
     def toggle_channel_plot(self, btn):
+        """
+        Callback when a checkbox is clicked. 
+        Emits sigToggleChanged.
+        
+        Parameters
+        ----------
+        btn: QCheckBox
+            button that is clicked on
+        """
         chan_num = self.chan_btn_group.id(btn)
         if btn.isChecked():
-            self.toggleChanged.emit(chan_num,True)
+            self.sigToggleChanged.emit(chan_num,True)
         else:
-            self.toggleChanged.emit(chan_num,False)
+            self.sigToggleChanged.emit(chan_num,False)
 
 #-----------------------CHANNEL CONFIGURATION WIDGET-------------------------         
 class ChanConfigUI(BaseWidget):
-    timeOffsetChanged = pyqtSignal(int,float,float)
-    freqOffsetChanged = pyqtSignal(int,float,float)
+    """
+     A Channel Plots Configuration widget.
+     Contains: 
+     - ComboBox to switch channel plot info,
+     - Spinboxes to set the offsets
+     - Buttons to change the colour of a plot
+     - Checkbox to hold a signal
+     - Button to open a window to edit metadata
+     
+     Attributes
+     ----------
+     timeOffsetChanged: pyqtsignal
+         Emits when a time domain offset is changed, 
+         Sends out the channel num(int) and the x and y offsets(float,float)
+     freqOffsetChanged: pyqtsignal
+         Emits when a frequency domain offset is changed, 
+         Sends out the channel num(int) and the x and y offsets(float,float)
+     sigHoldChanged: pyqtsignal
+         Emits when a state of holding the plot is changed, 
+         Sends out the channel num(int) and the state(bool)
+     colourReset: pyqtsignal
+         Emits when a plot colour is reset, 
+         Sends out the channel num(int)
+     colourChanged: pyqtsignal
+         Emits when a plot colour is changed, 
+         Sends out the channel num(int) and the color(QColor)
+     chans_num_box: QComboBox
+         The widget to select the channel plot
+     hold_tickbox: QCheckBox
+         Toggles whether to hold the signal or not
+     colbox:QPushButton
+         Set the colour of the plot
+     defcol_btn: QPushButton
+         Reset the colour of the plot to the default colour
+     meta_btn: QPushButton
+         Opens the metadata editing window
+     time_offset_config: List of SpinBox
+         Sets the X and Y offsets of time domain plot
+     fft_offset_config: List of SpinBox
+         Sets the X and Y offsets of frequency domain plot
+    """
+    sigTimeOffsetChanged = pyqtSignal(int,float,float)
+    sigFreqOffsetChanged = pyqtSignal(int,float,float)
     sigHoldChanged = pyqtSignal(int,int)
-    colourReset = pyqtSignal(int)
-    colourChanged = pyqtSignal(int,object)
+    sigColourReset = pyqtSignal(int)
+    sigColourChanged = pyqtSignal(int,object)
     
     def initUI(self):
+        """
+        Reimplemented from BaseWidget.
+        """
         chans_prop_layout = QVBoxLayout(self)
         chans_prop_layout.setContentsMargins(5,5,5,5)
         #chans_prop_layout.setSpacing(10)
@@ -245,30 +393,75 @@ class ChanConfigUI(BaseWidget):
         self.colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
         self.defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
            
-    def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)
+    def set_offset_step(self,cbox,step_val):
+        """
+        Sets the single step of a spinbox
+        
+        Parameters
+        ----------
+        cbox: SpinBox
+            SpinBox to set
+        step_val: Float
+            The new value of the single step
+        """
+        cbox.setSingleStep(step_val)
         
     def set_plot_offset(self,dtype):
+        """
+        Callback to set the offset.
+        Emits sigTimeOffsetChanged or sigFreqOffsetChanged depending on dtype
+        
+        Parameters
+        ----------
+        dtype: Str
+            Either 'Time' of 'DFT' to indicate the time domain or frequency domain plot respectively
+        """
         chan = self.chans_num_box.currentIndex()
         if dtype == 'Time':
-            self.timeOffsetChanged.emit(chan,self.time_offset_config[0].value(),self.time_offset_config[1].value())
+            self.sigTimeOffsetChanged.emit(chan,self.time_offset_config[0].value(),self.time_offset_config[1].value())
         elif dtype == 'DFT':
-            self.freqOffsetChanged.emit(chan,self.fft_offset_config[0].value(),self.fft_offset_config[1].value())
+            self.sigFreqOffsetChanged.emit(chan,self.fft_offset_config[0].value(),self.fft_offset_config[1].value())
        
     def signal_hold(self,state):
+        """
+        Callback to hold the plot.
+        Emits sigHoldChanged
+        
+        Parameters
+        ----------
+        dtype: Str
+            Either 'Time' of 'DFT' to indicate the time domain or frequency domain plot respectively
+        """
         chan = self.chans_num_box.currentIndex()
         self.sigHoldChanged.emit(chan,state)
         
     def set_colour_btn(self,col):
+        """
+        Set the colour of the colour button.
+        
+        Parameters
+        ----------
+        col: QColor
+            Colour to set
+        """
         self.colbox.setColor(col)
         
     def set_plot_colour(self,reset = False):
+        """
+        Set the colour of the colour button.
+        Emits either sigColourReset or sigColourChanged
+        
+        Parameters
+        ----------
+        reset: Bool
+            Whether to reset the colour or not
+        """
         chan = self.chans_num_box.currentIndex()
         if reset:
-            self.colourReset.emit(chan)
+            self.sigColourReset.emit(chan)
         else:
             col = self.colbox.color()   
-            self.colourChanged.emit(chan,col)
+            self.sigColourChanged.emit(chan,col)
 
 #-----------------------DEVICE CONFIGURATION WIDGET-------------------------        
 class DevConfigUI(BaseWidget):

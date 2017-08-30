@@ -250,19 +250,19 @@ class LiveplotApp(QMainWindow):
         ''')
         
     #----------------------SIGNAL CONNECTIONS---------------------------
-        self.chantoggle_UI.toggleChanged.connect(self.timeplot.toggle_plotline)
-        self.chantoggle_UI.toggleChanged.connect(self.freqplot.toggle_plotline)
+        self.chantoggle_UI.sigToggleChanged.connect(self.timeplot.toggle_plotline)
+        self.chantoggle_UI.sigToggleChanged.connect(self.freqplot.toggle_plotline)
         self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
         self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
-        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
+        self.chanconfig_UI.sigTimeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.sigFreqOffsetChanged.connect(self.freqplot.set_offset)
         self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
-        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
-        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.timeplot.set_plot_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.freqplot.set_plot_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.levelsplot.set_plot_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.timeplot.reset_default_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.freqplot.reset_default_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.levelsplot.reset_default_colour)
         self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
         self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
@@ -698,7 +698,7 @@ class LiveplotApp(QMainWindow):
         """
         Reset the amount of channel toggling buttons
         """
-        self.chantoggle_UI.adjust_channel_buttons(self.rec.channels)            
+        self.chantoggle_UI.adjust_channel_checkboxes(self.rec.channels)            
         self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
