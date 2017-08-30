@@ -465,10 +465,38 @@ class ChanConfigUI(BaseWidget):
 
 #-----------------------DEVICE CONFIGURATION WIDGET-------------------------        
 class DevConfigUI(BaseWidget):
-    recorderSelected = pyqtSignal()
+    """
+     A Channel Plots Configuration widget.
+     Contains: 
+     - ComboBox to switch channel plot info,
+     - Spinboxes to set the offsets
+     - Buttons to change the colour of a plot
+     - Checkbox to hold a signal
+     - Button to open a window to edit metadata
+     
+     Attributes
+     ----------
+     configRecorder: pyqtsignal
+         Emits the configuration of the recorder is set
+     typebtngroup: QButtonGroup
+         Contains the buttons to select source of audio stream
+         Either SoundCard or NI
+     config_button: QPushButton
+         Confirm the settings and set up the new recorder
+     rec: Recorder object
+         Reference of the Recorder object
+     configboxes: List of widgets
+         Widgets for the configuration settings, in order:
+         ['Source','Rate','Channels','Chunk Size','Number of Chunks']
+         with type, respectively:
+         [QComboBox, QLineEdit, QLineEdit, QLineEdit, QLineEdit]
+    """
     configRecorder = pyqtSignal()
     
     def initUI(self):
+        """
+        Reimplemented from BaseWidget.
+        """
          # Set the device settings form
         config_form = QFormLayout(self)
         config_form.setSpacing(2)
@@ -484,16 +512,14 @@ class DevConfigUI(BaseWidget):
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
         
-        # TODO: Give id to the buttons?
         # Set up QbuttonGroup to manage the buttons' Signals
         self.typebtngroup = QButtonGroup(self)
         self.typebtngroup.addButton(pyaudio_button)
         self.typebtngroup.addButton(NI_button)
-        print('a',self.typebtngroup)
         
         config_form.addRow(self.typegroup)
         
-        # Add the remaining settings to Acquisition settings form
+        # Add the remaining settings
         configs = ['Source','Rate','Channels','Chunk Size','Number of Chunks']
         self.configboxes = []
         
@@ -508,7 +534,7 @@ class DevConfigUI(BaseWidget):
                 config_form.addRow(QLabel(c,self),cbox)
                 self.configboxes.append(cbox)  
         
-        # Add a button to device setting form
+        # Add the confirm button
         self.config_button = QPushButton('Set Config', self)
         config_form.addRow(self.config_button)
                 
@@ -516,9 +542,25 @@ class DevConfigUI(BaseWidget):
         self.typebtngroup.buttonReleased.connect(self.display_sources)
         
     def set_recorder(self,recorder):
+        """
+        Set the recorder for reference
+        
+        Parameters
+        ----------
+        recorder: Recorder object
+            The reference of the Recorder object
+        """
         self.rec = recorder
         
     def config_setup(self):
+        """
+        Configure the inputs of the config_boxes
+        
+        Parameters
+        ----------
+        recorder: Recorder object
+            The reference of the Recorder object
+        """
         rb = self.typegroup.findChildren(QRadioButton)
         if type(self.rec) == mR.Recorder:
             rb[0].setChecked(True)
@@ -533,6 +575,11 @@ class DevConfigUI(BaseWidget):
             cbox.setText(str(i))
         
     def display_sources(self):
+        """
+        Display the available sources from the type of recorder
+        Either SoundCard(myRecorder) or NI(NIRecorder)
+        """
+        # Check which type of recorder is selected
         rb = self.typegroup.findChildren(QRadioButton)
         if rb[0].isChecked():
             selR = mR.Recorder()
@@ -541,29 +588,41 @@ class DevConfigUI(BaseWidget):
         else:
             return
         
+        # Clear and fill the source configbox
         source_box = self.configboxes[0]
         source_box.clear()
-        
         try:
             full_device_name = []
-            s,b =  selR.available_devices()
-            for a,b in zip(s,b):
-                if type(b) == str:
-                    full_device_name.append(a + ' - ' + b)
+            # 'extras' are extra details of the devices
+            names,extras =  selR.available_devices()
+            for name,extra in zip(names,extras):
+                if type(extra) == str:
+                    full_device_name.append(name + ' - ' + extra)
                 else:
-                    full_device_name.append(a)
+                    full_device_name.append(name)
                     
             source_box.addItems(full_device_name)
         except Exception as e:
             print(e)
             source_box.addItems(selR.available_devices()[0])
-            
-        if self.rec.device_name:
-            source_box.setCurrentText(self.rec.device_name)
+
+        source_box.setCurrentText(self.rec.device_name)
         del selR
         
-    def read_device_config(self, *arg):
-        # TODO: Put in Validators
+    def read_device_config(self):
+        """
+        Display the available sources from the type of recorder
+        Either SoundCard(myRecorder) or NI(NIRecorder)
+        
+        Returns
+        ----------
+        recType: Str
+            Type of recorder
+        configs: list
+            The configurations ['Source','Rate','Channels','Chunk Size','Number of Chunks']
+            with type, respectively:[Str, Int, Int, Int, Int]
+        """
+        # TODO: Put in QValidators
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
         configs = []
         for cbox in self.configboxes:
