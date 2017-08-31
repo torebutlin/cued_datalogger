@@ -11,3 +11,7 @@ DataLogger.
   dependencies
 
   style
+
+  package_management
+
+  docs
