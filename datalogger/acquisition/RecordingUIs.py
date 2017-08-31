@@ -743,7 +743,7 @@ class RecUI(BaseWidget):
         # Add the recording setting UIs with the Validators
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
         default_values = [None,'1.0', '200','0','0.0']
-        validators = [QintValidator(1,MAX_SAMPLE),None,QintValidator(-1,MAX_SAMPLE),
+        validators = [QIntValidator(1,MAX_SAMPLE),None,QIntValidator(-1,MAX_SAMPLE),
                       None,QDoubleValidator(0,5,2)]
 
         self.rec_boxes = []
@@ -851,8 +851,7 @@ class RecUI(BaseWidget):
             Current index of input_chan_box
         """
         return self.input_chan_box.currentIndex()
-
-    # Read the recording setting inputs
+    
     def get_record_config(self, *arg):
         """
         Returns
@@ -911,7 +910,7 @@ class RecUI(BaseWidget):
         self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
 
         validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                     QintValidator(-1,self.rec.chunk_size)]
+                     QIntValidator(-1,self.rec.chunk_size)]
         for cbox,vd in zip(self.rec_boxes[1:-2],validators):
             cbox.setValidator(vd)
 
