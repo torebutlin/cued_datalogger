@@ -16,7 +16,7 @@ TRACE_DURATION: float
     Duration before the peak plots decay
 """
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt, pyqtSignal 
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
 
@@ -32,7 +32,7 @@ class LiveGraph(pg.PlotWidget):
     """
     A base PlotWidget reimplemented to store extra plot information, such as
     offsets, colours, and visibility.
-    
+
     Attributes
     ----------
     plotColourChanged: pyqtsignal
@@ -122,7 +122,7 @@ class LiveGraph(pg.PlotWidget):
         Parameters
         ----------
         num: int
-            Index of the line to be set
+            index of the line to be set
         col: QColor
             Colour of the line to be set
         """
@@ -167,7 +167,7 @@ class LiveGraph(pg.PlotWidget):
         
     def reset_plotlines(self):
         """
-        Clear all of the lines.
+        Clear all of the lines
         """
         for _ in range(len(self.plotlines)):
             line = self.plotlines.pop()
@@ -201,8 +201,8 @@ class LiveGraph(pg.PlotWidget):
         
         Parameters
         ----------
-            num: int
-                Index of the line to be set
+        num: int
+            Index of the line to be set
         """
         col = self.def_colours[num]
         self.set_plot_colour(num,col)
@@ -357,7 +357,7 @@ class LevelsLiveGraph(LiveGraph):
         Parameters
         ----------
         num: int
-            Index of the peak to be set
+            index of the peak to be set
         maximum: float
             Instantaneous maximum value of the peak
         """
