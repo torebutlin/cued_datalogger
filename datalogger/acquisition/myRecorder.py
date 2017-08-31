@@ -78,7 +78,7 @@ class Recorder(RecorderParent):
         
         print('You are using pyAudio for recording')
         self.p = None
-        self.format = pyaudio.paint16
+        self.format = pyaudio.paInt16
         self.device_index = None;
         self.device_name = device_name
         
