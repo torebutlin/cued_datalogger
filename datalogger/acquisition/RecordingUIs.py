@@ -9,7 +9,7 @@ window, like the analysis window.
 
 Attribute
 ----------
-NI_DRIVERS: Bool
+NI_DRIVERS: bool
     Indicates whether NIDAQmx drivers and pyDAQmx module are installed
     when attempting to import NIRecorder module
     The module is needed to check on the available National Instrument devices
@@ -78,37 +78,37 @@ class BaseWidget(QWidget):
 #-------------------------CHANNEL TOGGLE WIDGET-------------------------------
 class ChanToggleUI(BaseWidget):
     """
-     A Channel Toggling widget.
-     Contains:
-     - Checkboxes to toggle channel,
-     - Buttons to select all, deselect all, and invert selection.
-     - LineEdits to toggle by expression or tags
-
-     Attributes
-     ----------
-     toggleChanged: pyqtsignal
-         Emits when a channel toggle changes,
-         Sends out the channel num(int) and the state(bool)
-     channels_box: QWidget
-         The widget containing the checkboxes
-     checkbox_layout: QGridLayout
-         Defines the layout of the checkboxes
-     chan_btn_group: QButtonGroup
-         Widget to handle the checkboxes presses
-     sel_all_btn:QPushButton
-         'Select All' button
-     desel_all_btn: QPushButton
-         'Deselect All' button
-     inv_sel_btn: QPushButton
-         'Invert Selection' button
-     chan_text: ChanLineText
-         For toggling by expression
-     chan_text2: QLineEdit
-         For toggling by tags
-     chan_text3: QLineEdit
-         For displaying the channels toggled (may be changed to QLabel instead)
-     search_status: QStatusBar
-         For displaying whether the toggling is successful
+    A Channel Toggling widget.
+    Contains:
+        * Checkboxes to toggle channel,
+        * Buttons to select all, deselect all, and invert selection.
+        * LineEdits to toggle by expression or tags
+        
+    Attributes
+    ----------
+    toggleChanged: pyqtsignal
+        Emits when a channel toggle changes,
+        Sends out the channel num(int) and the state(bool)
+    channels_box: QWidget
+        The widget containing the checkboxes
+    checkbox_layout: QGridLayout
+        Defines the layout of the checkboxes
+    chan_btn_group: QButtonGroup
+        Widget to handle the checkboxes presses
+    sel_all_btn:QPushButton
+        'Select All' button
+    desel_all_btn: QPushButton
+        'Deselect All' button
+    inv_sel_btn: QPushButton
+        'Invert Selection' button
+    chan_text: ChanLineText
+        For toggling by expression
+    chan_text2: QLineEdit
+        For toggling by tags
+    chan_text3: QLineEdit
+        For displaying the channels toggled (may be changed to QLabel instead)
+    search_status: QStatusBar
+        For displaying whether the toggling is successful
     """
     sigToggleChanged = pyqtSignal(int,bool)
 
@@ -272,8 +272,8 @@ class ChanToggleUI(BaseWidget):
 
         Parameters
         ----------
-        btn: QCheckBox
-            button that is clicked on
+            btn: QCheckBox
+                button that is clicked on
         """
         chan_num = self.chan_btn_group.id(btn)
         if btn.isChecked():
@@ -284,45 +284,45 @@ class ChanToggleUI(BaseWidget):
 #-----------------------CHANNEL CONFIGURATION WIDGET-------------------------
 class ChanConfigUI(BaseWidget):
     """
-     A Channel Plots Configuration widget.
-     Contains:
-     - ComboBox to switch channel plot info,
-     - Spinboxes to set the offsets
-     - Buttons to change the colour of a plot
-     - Checkbox to hold a signal
-     - Button to open a window to edit metadata
-
-     Attributes
-     ----------
-     timeOffsetChanged: pyqtsignal
-         Emits when a time domain offset is changed,
-         Sends out the channel num(int) and the x and y offsets(float,float)
-     freqOffsetChanged: pyqtsignal
-         Emits when a frequency domain offset is changed,
-         Sends out the channel num(int) and the x and y offsets(float,float)
-     sigHoldChanged: pyqtsignal
-         Emits when a state of holding the plot is changed,
-         Sends out the channel num(int) and the state(bool)
-     colourReset: pyqtsignal
-         Emits when a plot colour is reset,
-         Sends out the channel num(int)
-     colourChanged: pyqtsignal
-         Emits when a plot colour is changed,
-         Sends out the channel num(int) and the color(QColor)
-     chans_num_box: QComboBox
-         The widget to select the channel plot
-     hold_tickbox: QCheckBox
-         Toggles whether to hold the signal or not
-     colbox:QPushButton
-         Set the colour of the plot
-     defcol_btn: QPushButton
-         Reset the colour of the plot to the default colour
-     meta_btn: QPushButton
-         Opens the metadata editing window
-     time_offset_config: List of SpinBox
-         Sets the X and Y offsets of time domain plot
-     fft_offset_config: List of SpinBox
-         Sets the X and Y offsets of frequency domain plot
+    A Channel Plots Configuration widget.
+    Contains:
+        * ComboBox to switch channel plot info,
+        * Spinboxes to set the offsets
+        * Buttons to change the colour of a plot
+        * Checkbox to hold a signal
+        * Button to open a window to edit metadata
+    
+    Attributes
+    ----------
+    timeOffsetChanged: pyqtsignal
+        Emits when a time domain offset is changed,
+        Sends out the channel num(int) and the x and y offsets(float,float)
+    freqOffsetChanged: pyqtsignal
+        Emits when a frequency domain offset is changed,
+        Sends out the channel num(int) and the x and y offsets(float,float)
+    sigHoldChanged: pyqtsignal
+        Emits when a state of holding the plot is changed,
+        Sends out the channel num(int) and the state(bool)
+    colourReset: pyqtsignal
+        Emits when a plot colour is reset,
+        Sends out the channel num(int)
+    colourChanged: pyqtsignal
+        Emits when a plot colour is changed,
+        Sends out the channel num(int) and the color(QColor)
+    chans_num_box: QComboBox
+        The widget to select the channel plot
+    hold_tickbox: QCheckBox
+        Toggles whether to hold the signal or not
+    colbox:QPushButton
+        Set the colour of the plot
+    defcol_btn: QPushButton
+        Reset the colour of the plot to the default colour
+    meta_btn: QPushButton
+        Opens the metadata editing window
+    time_offset_config: List of SpinBox
+        Sets the X and Y offsets of time domain plot
+    fft_offset_config: List of SpinBox
+        Sets the X and Y offsets of frequency domain plot
     """
     sigTimeOffsetChanged = pyqtSignal(int,float,float)
     sigFreqOffsetChanged = pyqtSignal(int,float,float)
@@ -396,7 +396,7 @@ class ChanConfigUI(BaseWidget):
     def set_offset_step(self,cbox,step_val):
         """
         Sets the single step of a spinbox
-
+        
         Parameters
         ----------
         cbox: SpinBox
@@ -453,8 +453,8 @@ class ChanConfigUI(BaseWidget):
 
         Parameters
         ----------
-        reset: Bool
-            Whether to reset the colour or not
+            reset: bool
+                Whether to reset the colour or not
         """
         chan = self.chans_num_box.currentIndex()
         if reset:
@@ -466,26 +466,25 @@ class ChanConfigUI(BaseWidget):
 #-----------------------DEVICE CONFIGURATION WIDGET-------------------------
 class DevConfigUI(BaseWidget):
     """
-     A Channel Plots Configuration widget.
-     Contains:
-     - Widgets to setup the recorder
-
-     Attributes
-     ----------
-     configRecorder: pyqtsignal
-         Emits the configuration of the recorder is set
-     typebtngroup: QButtonGroup
-         Contains the buttons to select source of audio stream
-         Either SoundCard or NI
-     config_button: QPushButton
-         Confirm the settings and set up the new recorder
-     rec: Recorder object
-         Reference of the Recorder object
-     configboxes: List of widgets
-         Widgets for the configuration settings, in order:
-         ['Source','Rate','Channels','Chunk Size','Number of Chunks']
-         with type, respectively:
-         [QComboBox, QLineEdit, QLineEdit, QLineEdit, QLineEdit]
+    A Channel Plots Configuration widget.
+    Contains widgets to setup the recorder
+        
+    Attributes
+    ----------
+    configRecorder: pyqtsignal
+        Emits the configuration of the recorder is set
+    typebtngroup: QButtonGroup
+        Contains the buttons to select source of audio stream
+        Either SoundCard or NI
+    config_button: QPushButton
+        Confirm the settings and set up the new recorder
+    rec: Recorder object
+        Reference of the Recorder object
+    configboxes: List of widgets
+        Widgets for the configuration settings, in order:
+            ['Source','Rate','Channels','Chunk Size','Number of Chunks']
+        with type, respectively:
+            [QComboBox, QLineEdit, QLineEdit, QLineEdit, QLineEdit]
     """
     configRecorder = pyqtSignal()
 
@@ -634,23 +633,23 @@ class DevConfigUI(BaseWidget):
 #-----------------------------STATUS WIDGET-------------------------------
 class StatusUI(BaseWidget):
     """
-     A Status Bar widget.
-     Contains:
-     - QStatusBar to display the stream status
-     - Button to reset the splitters
-     - Button to resume/pause the stream
-     - Button to grab a snapshot of the stream
-
-     Attributes
-     ----------
-     statusbar: QStatusBar
-         Displays the status of the stream
-     resetView: QPushButton
-         Reset the splitter view
-     togglebtn: Recorder object
-         Resume/pause the stream
-     sshotbtn: List of widgets
-         Grab a snapshot of the stream
+    A Status Bar widget.
+    Contains:
+        * QStatusBar to display the stream status
+        * Button to reset the splitters
+        * Button to resume/pause the stream
+        * Button to grab a snapshot of the stream
+    
+    Attributes
+    ----------
+    statusbar: QStatusBar
+        Displays the status of the stream
+    resetView: QPushButton
+        Reset the splitter view
+    togglebtn: Recorder object
+        Resume/pause the stream
+    sshotbtn: List of widgets
+        Grab a snapshot of the stream
     """
     def initUI(self):
         """
@@ -684,13 +683,13 @@ class RecUI(BaseWidget):
     """
     A Recording Configuration widget.
     Contains:
-    - ComboBox to change recording mode,
-    - Widgets for setting up the recording:
-        Recording samples/ duration
-        Triggering
-    - Additional widgets for specific recording mode:
-        Normal: None
-        Average transfer function: Buttons to undo or clear past autospectrum and crossspectrum
+        * ComboBox to change recording mode,
+        * Widgets for setting up the recording:
+            * Recording samples/ duration
+            * Triggering
+        * Additional widgets for specific recording mode:
+            * Normal: None
+            * Average transfer function: Buttons to undo or clear past autospectrum and crossspectrum
 
     Attributes
     ----------
@@ -877,7 +876,8 @@ class RecUI(BaseWidget):
     def autoset_record_config(self, setting):
         """
         Recalculate samples or duration
-        Parameter
+        
+        Parameters
         ----------
         setting: str
             Input type. Either 'Time' or 'Samples'

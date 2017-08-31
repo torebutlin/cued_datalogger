@@ -1,6 +1,6 @@
-================
+===================
 Acquisition Widgets
-================
+===================
 
 .. autoclass:: datalogger.acquisition.RecordingUIs.BaseWidget
   :members:

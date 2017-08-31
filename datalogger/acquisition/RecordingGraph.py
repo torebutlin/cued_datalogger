@@ -73,7 +73,7 @@ class LiveGraph(pg.PlotWidget):
         """
         Plot the data and set it to be clickable
         
-        Return
+        Returns
         ----------
         PlotDataItem
             The plot line, effectively
@@ -87,7 +87,7 @@ class LiveGraph(pg.PlotWidget):
         """
         Check whether a plot line exists
         
-        Return
+        Returns
         ----------
         int
             Index of the plot line, if it exists
@@ -122,7 +122,7 @@ class LiveGraph(pg.PlotWidget):
         Parameters
         ----------
         num: int
-            index of the line to be set
+            Index of the line to be set
         col: QColor
             Colour of the line to be set
         """
@@ -136,11 +136,11 @@ class LiveGraph(pg.PlotWidget):
         
         Parameters
         ----------
-        num: int
-            index of the line to be set
-        x_off: float
+        num : int
+            Index of the line to be set
+        x_off : float
             X offset of the line to be set, if given a value
-        x_off: float
+        x_off : float
             Y offset of the line to be set, if given a value
         """
         if not x_off is None:
@@ -154,11 +154,11 @@ class LiveGraph(pg.PlotWidget):
         
         Parameters
         ----------
-        num: int
+        num : int
             index of the line to be set
-        x: float
+        x : float
             X data of the line to be set, if given a value
-        y: float
+        y : float
             Y data of the line to be set, if given a value
         The rest to pass to PlotDataItem.setData
         """
@@ -167,7 +167,7 @@ class LiveGraph(pg.PlotWidget):
         
     def reset_plotlines(self):
         """
-        Clear all of the lines
+        Clear all of the lines.
         """
         for _ in range(len(self.plotlines)):
             line = self.plotlines.pop()
@@ -198,10 +198,11 @@ class LiveGraph(pg.PlotWidget):
     def reset_default_colour(self,num):
         """
         Set the default colour of the specified plot
+        
         Parameters
         ----------
-        num: int
-            Index of the line to be set
+            num: int
+                Index of the line to be set
         """
         col = self.def_colours[num]
         self.set_plot_colour(num,col)
@@ -356,7 +357,7 @@ class LevelsLiveGraph(LiveGraph):
         Parameters
         ----------
         num: int
-            index of the peak to be set
+            Index of the peak to be set
         maximum: float
             Instantaneous maximum value of the peak
         """
