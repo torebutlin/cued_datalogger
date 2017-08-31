@@ -39,13 +39,13 @@ class RecorderParent(object):
     
      Attributes
      ----------
-        channels: Int
+        channels: int
                 Number of Channels
-        rate: Int
+        rate: int
             Sampling rate
-        chunk_size: Int
+        chunk_size: int
             Number of samples to get from each channel in one chunk
-        num_chunk: Int
+        num_chunk: int
             Number of chunks to store in circular buffer
         recording: Bool
             Indicate whether to record
@@ -60,13 +60,13 @@ class RecorderParent(object):
         
         Parameters
         ----------
-        channels: Int
+        channels: int
                 Number of Channels
-        rate: Int
+        rate: int
             Sampling rate
-        chunk_size: Int
+        chunk_size: int
             Number of samples to get from each channel in one chunk
-        num_chunk: Int
+        num_chunk: int
             Number of chunks to store in circular buffer
         """
         self.channels = channels
@@ -197,9 +197,9 @@ class RecorderParent(object):
         
         Parameters
         ----------
-            samples: Int
+            samples: int
                 Number of samples to record
-            duration: Int
+            duration: int
                 The recording duration
         
         """
@@ -437,7 +437,7 @@ class RecorderParent(object):
     @property
     def num_chunk(self):
         """
-        Int: 
+        int: 
             Number of chunks to store in circular buffer
             The setter method will calculate the maximum possible number of chunks
             based on an arbitrary number of sample limit (2^25 in here)
@@ -461,7 +461,7 @@ class RecorderParent(object):
     @property
     def chunk_size(self):
         """
-        Int: 
+        int: 
             Number of samples to get from each channel in one chunk
             The setter method will calculate the maximum possible size
             based on an arbitrary number of sample limit (2^25 in here)

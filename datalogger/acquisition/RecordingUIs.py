@@ -13,7 +13,7 @@ NI_DRIVERS: Bool
     Indicates whether NIDAQmx drivers and pyDAQmx module are installed
     when attempting to import NIRecorder module
     The module is needed to check on the available National Instrument devices
-MAX_SAMPLE: Int
+MAX_SAMPLE: int
     Arbritrary maximum number of samples that can be recorded.
 
 """
@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout, QPushButton,
                              QGroupBox,QRadioButton, QComboBox,QScrollArea,
                              QGridLayout,QCheckBox,QButtonGroup,QTextEdit,
                              QStackedWidget)
-from PyQt5.QtGui import QValidator,QIntValidator,QDoubleValidator,QPainter
+from PyQt5.QtGui import QValidator,QintValidator,QDoubleValidator,QPainter
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.Qt import QStyleOption,QStyle
 
@@ -181,7 +181,7 @@ class ChanToggleUI(BaseWidget):
         
         Parameters
         ----------
-        state: Int
+        state: int
             State of the checkboxes to be in (either Qt.Unchecked or Qt.Checked)
         """
         for btn in self.channels_box.findChildren(QCheckBox):
@@ -194,7 +194,7 @@ class ChanToggleUI(BaseWidget):
         
         Parameters
         ----------
-        new_n_btns: Int
+        new_n_btns: int
             New number of buttons required
         """
         for btn in self.chan_btn_group.buttons():
@@ -236,7 +236,7 @@ class ChanToggleUI(BaseWidget):
         chan_list: List of str
             Input expressions
         """
-        # Intepret the string into either int or range, then append/extend the all_selected_chan list
+        # intepret the string into either int or range, then append/extend the all_selected_chan list
         all_selected_chan = []
         for str_in in chan_list:
             r_in = str_in.split(':')
@@ -401,7 +401,7 @@ class ChanConfigUI(BaseWidget):
         ----------
         cbox: SpinBox
             SpinBox to set
-        step_val: Float
+        step_val: float
             The new value of the single step
         """
         cbox.setSingleStep(step_val)
@@ -413,7 +413,7 @@ class ChanConfigUI(BaseWidget):
         
         Parameters
         ----------
-        dtype: Str
+        dtype: str
             Either 'Time' of 'DFT' to indicate the time domain or frequency domain plot respectively
         """
         chan = self.chans_num_box.currentIndex()
@@ -429,7 +429,7 @@ class ChanConfigUI(BaseWidget):
         
         Parameters
         ----------
-        dtype: Str
+        dtype: str
             Either 'Time' of 'DFT' to indicate the time domain or frequency domain plot respectively
         """
         chan = self.chans_num_box.currentIndex()
@@ -612,11 +612,11 @@ class DevConfigUI(BaseWidget):
         
         Returns
         ----------
-        recType: Str
+        recType: str
             Type of recorder
         configs: list
             The configurations ['Source','Rate','Channels','Chunk Size','Number of Chunks']
-            with type, respectively:[Str, Int, Int, Int, Int]
+            with type, respectively:[str, int, int, int, int]
         """
         # TODO: Put in QValidators
         recType =  [rb.isChecked() for rb in self.typegroup.findChildren(QRadioButton)]
@@ -657,10 +657,9 @@ class StatusUI(BaseWidget):
         Reimplemented from BaseWidget.
         """
         stps_layout = QHBoxLayout(self)
-    
-        # Set up the status bar
+        
         self.statusbar = QStatusBar(self)
-        self.statusbar.showMessage('Streaming')
+        self.statusbar.showMessage('streaming')
         self.statusbar.clearMessage()
         stps_layout.addWidget(self.statusbar)
         
@@ -682,6 +681,37 @@ class StatusUI(BaseWidget):
 
 #-----------------------------RECORDING WIDGET-------------------------------                
 class RecUI(BaseWidget):
+    """
+    A Recording Configuration widget.
+    Contains: 
+    - ComboBox to change recording mode,
+    - Widgets for setting up the recording:
+        Recording samples/ duration
+        Triggering
+    - Additional widgets for specific recording mode:
+        Normal: None
+        Average transfer function: Buttons to undo or clear past autospectrum and crossspectrum
+    
+    Attributes
+    ----------
+    startRecording: pyqtsignal
+        Emits when record button is pressed
+    cancelRecording: pyqtsignal
+        Emits when cancel button is pressed
+    undoLastTfAvg: pyqtsignal
+        Emits when undo last transfer function button is pressed
+    clearTfAvg: pyqtsignal
+        Emits when clear past transfer functions button is pressed
+    switch_rec_box: QComboBox
+        Switch recording options
+    rec_boxes: List of Widgets
+        Configurations: ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level'] 
+        with types    : [QLineEdit, QLineEdit, QLineEdit, QComboBox, QLineEdit]
+    spec_settings_widget:QStackedWidget
+        Contains the additional settings 
+    input_chan_box: QComboBox
+        Additional settings to put input channel for average transfer function calculation 
+    """
     startRecording = pyqtSignal()
     cancelRecording = pyqtSignal()
     
@@ -689,7 +719,9 @@ class RecUI(BaseWidget):
     clearTfAvg = pyqtSignal()
     
     def initUI(self):
-        
+        """
+        Reimplemented from BaseWidget.        
+        """
         rec_settings_layout = QVBoxLayout(self)
         global_settings_layout = QFormLayout()
         self.spec_settings_widget= QStackedWidget(self)
@@ -711,7 +743,7 @@ class RecUI(BaseWidget):
         # Add the recording setting UIs with the Validators
         configs = ['Samples','Seconds','Pretrigger','Ref. Channel','Trig. Level']
         default_values = [None,'1.0', '200','0','0.0']
-        validators = [QIntValidator(1,MAX_SAMPLE),None,QIntValidator(-1,MAX_SAMPLE),
+        validators = [QintValidator(1,MAX_SAMPLE),None,QintValidator(-1,MAX_SAMPLE),
                       None,QDoubleValidator(0,5,2)]
         
         self.rec_boxes = []
@@ -738,6 +770,7 @@ class RecUI(BaseWidget):
         normal_rec_layout.addWidget(QLabel('No Additional Options',self)) 
         self.spec_settings_widget.addWidget(self.normal_rec)
         
+        # Widgets for average transfer function
         self.tfavg_rec = QWidget(self)
         tfavg_rec_layout = QVBoxLayout(self.tfavg_rec)
         tfavg_settings = QFormLayout(self.tfavg_rec)
@@ -750,7 +783,7 @@ class RecUI(BaseWidget):
         avg_layout.addWidget(self.avg_count_box)
         tfavg_settings.addRow(QLabel('Averages',self),avg_layout)
         tfavg_rec_layout.addLayout(tfavg_settings)
-        
+        # Buttons for average transfer function
         tflog_btn_layout = QHBoxLayout()
         self.undo_log_btn = QPushButton('Undo Last',self)
         self.undo_log_btn.clicked.connect(self.undoLastTfAvg.emit)
@@ -762,11 +795,13 @@ class RecUI(BaseWidget):
         
         self.spec_settings_widget.addWidget(self.tfavg_rec)
         
+        # Widgets for average transfer function grid
         self.tfgrid_rec = QWidget(self)
         tfgrid_rec_layout = QVBoxLayout(self.tfgrid_rec)
         tfgrid_rec_layout.addWidget(QLabel('Nothing is here :(',self))
         self.spec_settings_widget.addWidget(self.tfgrid_rec)
         
+        # Placeholder
         self.something_rec = QWidget(self)
         something_rec_layout = QVBoxLayout(self.something_rec)
         something_rec_layout.addWidget(QLabel('<something is here>',self))
@@ -784,9 +819,11 @@ class RecUI(BaseWidget):
         self.cancelbtn.clicked.connect(self.cancelRecording.emit)
         rec_btn_layout.addWidget(self.cancelbtn)
         rec_settings_layout.addLayout(rec_btn_layout)
-
         
     def set_recorder(self,recorder):
+        """
+        Set the recorder reference
+        """
         self.rec = recorder
         self.reset_configs()
         self.autoset_record_config('Time')
@@ -798,13 +835,31 @@ class RecUI(BaseWidget):
             self.input_chan_box.addItems([str(i) for i in range(self.rec.channels)])
         
     def get_recording_mode(self):
+        """
+        Returns
+        ----------
+        str
+            Current text of switch_rec_box 
+        """
         return self.switch_rec_box.currentText()
     
     def get_input_channel(self):
+        """
+        Returns
+        ----------
+        int
+            Current index of input_chan_box 
+        """
         return self.input_chan_box.currentIndex()
     
     # Read the recording setting inputs
     def get_record_config(self, *arg):
+        """
+        Returns
+        ----------
+        rec_configs: list
+            List of recording settings
+        """
         try:
             rec_configs = []
             data_type = [int,float,int,int,float]
@@ -815,13 +870,19 @@ class RecUI(BaseWidget):
                 else:
                     config_input = cbox.text().strip(' ')
                     rec_configs.append(dt(float(config_input)))
-            print(rec_configs)
             return(rec_configs)
         except Exception as e:
             print(e)
-            return False
+            return None
     
     def autoset_record_config(self, setting):
+        """
+        Recalculate samples or duration
+        Parameter
+        ----------
+        setting: str
+            Input type. Either 'Time' or 'Samples'
+        """
         sample_validator = self.rec_boxes[0].validator()
         time_validator = self.rec_boxes[1].validator()
         
@@ -843,18 +904,27 @@ class RecUI(BaseWidget):
         self.rec_boxes[1].setText(str(duration))
         
     def reset_configs(self):
+        """
+        Reset the channels for triggering and reset validators
+        """
         self.rec_boxes[3].clear()
         self.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
     
         validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                     QIntValidator(-1,self.rec.chunk_size)]
+                     QintValidator(-1,self.rec.chunk_size)]
         for cbox,vd in zip(self.rec_boxes[1:-2],validators):
             cbox.setValidator(vd)
             
     def update_TFavg_count(self,val):
+        """
+        Update the value of the number of recordings for average transfer function
+        """
         self.avg_count_box.setText('Count: %i' % val)
         
     def toggle_trigger(self,string):
+        """
+        Enable or disable the trigger settings
+        """
         try:
             val = int(string)
         except:

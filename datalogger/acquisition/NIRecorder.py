@@ -20,7 +20,7 @@ True
 Recording function is ready! Use record_start() to start
 True
 >>>recorder.record_start()
-Stream already started
+stream already started
 Recording Start!
 True    
 >>>Recording Done! Please flush the data with flush_record_data().
@@ -44,9 +44,9 @@ class Recorder(RecorderParent):
      Attributes
      ----------
         In addtion to RecorderParent Attributes,
-        device_name: Str
+        device_name: str
             Name of the device to be used for recording
-        max_value: Float
+        max_value: float
             Maximum value of recorded data
     """
 #---------------- INITIALISATION METHODS -----------------------------------
@@ -138,7 +138,7 @@ class Recorder(RecorderParent):
                  pdaq.DAQmxGetDevDigTrigSupported,pdaq.DAQmxGetDevDITrigUsage,
                  pdaq.DAQmxGetDevDIPorts,pdaq.DAQmxGetDevDILines,
                  pdaq.DAQmxGetDevTerminals)
-        var_types = (pdaq.int32, str, pdaq.uInt32, pdaq.uInt32, 
+        var_types = (pdaq.int32, str, pdaq.uint32, pdaq.uint32, 
                      pdaq.bool32,pdaq.int32,str,str, 
                      pdaq.float64, pdaq.float64, pdaq.float64,
                      pdaq.bool32,pdaq.int32,str,str,str)
@@ -234,7 +234,7 @@ class Recorder(RecorderParent):
                 self.audio_stream.CfgSampClkTiming("",self.rate,
                                       pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,
                                       self.chunk_size)
-                self.audio_stream.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_Into_Buffer,
+                self.audio_stream.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_into_Buffer,
                                                     1000,0,name = 'stream_audio_callback')
                 
                 self.stream_start()
@@ -259,7 +259,7 @@ class Recorder(RecorderParent):
             if task_done.value:
                 self.audio_stream.StartTask()
             else:
-                print('Stream already started')
+                print('stream already started')
         else:
             print('No audio stream is set up')
     # Stop the streaming
@@ -273,7 +273,7 @@ class Recorder(RecorderParent):
             if not task_done.value:
                 self.audio_stream.StopTask()
             else:
-                print('Stream already stopped')
+                print('stream already stopped')
         else:
             print('No audio stream is set up')
         
