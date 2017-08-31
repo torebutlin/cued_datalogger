@@ -1,9 +1,10 @@
 from PyQt5.QtCore import QPropertyAnimation
-from PyQt5.QtWidgets import (QTabBar, QSplitter, QSizePolicy, QStackedWidget)
+from PyQt5.QtWidgets import (QWidget,QTabBar, QSplitter, QSizePolicy, QStackedWidget,QHBoxLayout)
 
 COLLAPSE_FACTOR = 0.7
 
-class Toolbox(QSplitter):
+#class Toolbox(QSplitter):
+class Toolbox(QWidget):
     """A side-oriented widget similar to a TabWidget that can be collapsed and
     expanded. 
     
@@ -33,16 +34,17 @@ class Toolbox(QSplitter):
         self.parent = parent
 
         super().__init__(parent)
-        
-        self.setHandleWidth(0)
-        self.setChildrenCollapsible(False)
+        layout = QHBoxLayout(self)
+        layout.setSpacing(0)
+        #self.setHandleWidth(0)
+        #self.setChildrenCollapsible(False)
                
         # # Create the tab bar
         self.tabBar = QTabBar(self)
 
         self.tabBar.setTabsClosable(False)
         self.tabBar.setMovable(False)
-
+        self.tabBar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # # Create the Stacked widget for the pages
         self.tabPages = QStackedWidget(self)
         self.tabPages.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -55,16 +57,19 @@ class Toolbox(QSplitter):
         if widget_side == 'right':
             self.tabBar.setShape(QTabBar.RoundedWest)
 
-            self.addWidget(self.tabBar)
-            self.addWidget(self.tabPages)
-            
+            layout.addWidget(self.tabBar)
+            layout.addWidget(self.tabPages)
+            #self.addWidget(self.tabBar)
+            #self.addWidget(self.tabPages)
         # Left side orientation
         else:
             self.tabBar.setShape(QTabBar.RoundedEast)
             
-            self.addWidget(self.tabPages)
-            self.addWidget(self.tabBar)     
-        
+            layout.addWidget(self.tabPages)
+            layout.addWidget(self.tabBar)     
+            #layout.addWidget(self.tabPages)
+            #layout.addWidget(self.tabBar) 
+            
         # # Create the animation
         self.collapse_animation = QPropertyAnimation(self.tabPages, b'maximumWidth')
         self.collapse_animation.setDuration(250)
