@@ -23,22 +23,22 @@ class ChanMetaWin(QDialog):
     
     Attributes
     ----------
-        livewin: acquisition window
-            Window to get the metadata from
-        all_info: list
-            Contains metadata for each channel
-        channel_listview: QListWidget
-            Display list of names of channels
-        meta_configs:
-            Widget for ('Channel','Name','Calibration Factor','Tags','Comments')
-            of types   (QLabel, QLineEdit, QLineEdit, QLineEdit, CommentBox)
+    livewin: acquisition window
+        Window to get the metadata from
+    all_info: list
+        Contains metadata for each channel
+    channel_listview: QListWidget
+        Display list of names of channels
+    meta_configs: list
+        Widget for ('Channel', 'Name', 'Calibration Factor', 'Tags', 'Comments')
+        of types   (QLabel, QLineEdit, QLineEdit, QLineEdit, CommentBox)
     """
     def __init__(self,livewin = None):
         """
         Parameters
         ----------
-            livewin: acquisition window
-                Window to get the metadata from
+        livewin: acquisition window
+            Window to get the metadata from
         """
         super().__init__()
         
