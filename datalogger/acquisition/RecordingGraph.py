@@ -148,7 +148,7 @@ class LiveGraph(pg.PlotWidget):
         if not y_off is None:
             self.plot_yoffset[num] = y_off
 
-    def update_line(self, num, *arg, x=None, y=None, **kwargs):
+    def update_line(self, num, x=None, y=None, *arg, **kwargs):
         """
         Update the existing lines with new data, with the offsets
 
