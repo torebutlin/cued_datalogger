@@ -23,7 +23,8 @@ from datalogger.acquisition.RecordingUIs import DevConfigUI
 
 
 class AnalysisDisplayTabWidget(QTabWidget):
-    """The central widget for display in the analysis window"""
+    """This is the central widget for the AnalysisWindow, where graphs, data,
+    and results are displayed."""
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
 
