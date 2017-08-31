@@ -3,6 +3,9 @@
 Created on Wed Aug  2 16:24:57 2017
 
 @author: eyt21
+
+This module contains the widget to open the window to edit metadata
+in the acqusition window
 """
 import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
@@ -14,7 +17,29 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 import functools as fct
 
 class ChanMetaWin(QDialog):
+    """
+    This is the Modal Dialog Window to edit metadata from acquisition window.
+    it shows the channel names on the left in a list, and the metadata on the right.
+    
+    Attributes
+    ----------
+    livewin: acquisition window
+        Window to get the metadata from
+    all_info: list
+        Contains metadata for each channel
+    channel_listview: QListWidget
+        Display list of names of channels
+    meta_configs:
+        Widget for ('Channel','Name','Calibration Factor','Tags','Comments')
+        of types   (QLabel, QLineEdit, QLineEdit, QLineEdit, CommentBox)
+    """
     def __init__(self,livewin = None):
+        """
+        Parameters
+        ----------
+        livewin: acquisition window
+            Window to get the metadata from
+        """
         super().__init__()
         
         self.livewin = livewin
@@ -28,6 +53,9 @@ class ChanMetaWin(QDialog):
         self.show()
         
     def initUI(self):
+        """
+        Initialise the UI
+        """
         main_layout = QHBoxLayout(self)
         
         self.channel_listview = QListWidget(self)
@@ -78,6 +106,9 @@ class ChanMetaWin(QDialog):
         main_layout.addLayout(channel_meta_form)
         
     def display_metadata(self):
+        """
+        Display the selected channel metadata
+        """
         sel_num = self.channel_listview.currentRow()
         self.meta_configs[0].setText(str(sel_num))
         meta_dtype = ('name','calibration_factor','tags','comments')
@@ -86,6 +117,9 @@ class ChanMetaWin(QDialog):
             self.meta_configs[n].setText(str(self.all_info[sel_num][md]))
             
     def update_metadata(self,meta_name,UI):
+        """
+        Update the selected channel metadata
+        """
         chan_num = self.channel_listview.currentRow()
         string = UI.text()
         try:
@@ -102,6 +136,9 @@ class ChanMetaWin(QDialog):
             print(traceback.format_tb(tb))
             
     def export_metadata(self):
+        """
+        Export the metadata to the livewin ChannelSet
+        """
         try:
             for i in range(len(self.all_info)):
                 self.livewin.live_chanset.set_channel_metadata(i,self.all_info[i])
@@ -118,6 +155,10 @@ class ChanMetaWin(QDialog):
         
         
 class CommentBox(QTextEdit):
+    """
+    Reimplement QTextEdit to be similar to QLineEdit,
+    i.e. having editingFinished signal and text()
+    """
     editingFinished = pyqtSignal()
         
     def focusOutEvent(self,event):
