@@ -3,10 +3,38 @@
 Created on Wed Jul  5 13:12:34 2017
 
 @author: eyt21
+
+This module contains the application to stream and record data.
+It contains widgets to configure and toggle channel plots,
+configure recording device, and configure recording.
+It displays a time domain plot, a frequecy domain plot (DFT),
+and a channel levels plot, all in real time.
+
+Further information on the functionality of each widget can be found in 
+RecordingUI.
+
+The application is meant to be used with the analysis window application,
+because recorded data are transfer to that window for analysis.
+
+However, the application can work standalone, but the recorded data will
+go nowhere.
+
+Attribute
+----------
+NI_DRIVERS: Bool
+    Indicates whether NIDAQmx drivers and pyDAQmx module are installed
+    when attempting to import NIRecorder module
+    These are required to interface with a National Instrument hardware.
+PLAYBACK: Bool
+    Indicates whether to play the streaming audio, only works with SoundCard
+WIDTH: Int
+    Width of the application window
+HEIGHT: Int
+    Height of the application window
 """
 import sys,traceback
 from PyQt5.QtWidgets import (QWidget,QHBoxLayout,QMainWindow,QPushButton,
-                             QDesktopWidget,QRadioButton,QSplitter,QCheckBox,
+                             QDesktopWidget,QRadioButton,QSplitter,
                              QApplication)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
@@ -44,13 +72,43 @@ HEIGHT = 600        # Window height
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
-#-------------------------- METADATA ----------------------------------  
-    # Signal for when data has finished acquired
+    """
+    This is the window that acts as the central hub for all the widgets.
+    Contains a left Toolbox for streaming configuration and a right Toolbox
+    for recording configuration.
+    The center contain the Time Domain and Frequency Domain Plots, along with a
+    status bar below them. The channel levels plot is placed in the right Toolbox.
+    
+    The widgets communicate with each other using the pyqt Signal and Slot method,
+    so most callback functions are self-contained in the respective widget. 
+    However, some callback function are still present in the main body, mostly
+    functions to handle the streaming and the recording processes.
+    
+    Attributes
+    ----------
+    dataSaved: pyqtSignal
+        Emitted when recorded data 
+    done: pyqtSignal
+        Emitted when the window is closed
+    playing: Bool
+        Indicate whether the stream is playing
+    rec: Recorder object
+         Object which handles the streaming and recording
+         See documentation for Recorder classes
+    """
     dataSaved = pyqtSignal(int)
     done = pyqtSignal()
-    
-#---------------------- CONSTRUCTOR METHOD------------------------------    
+   
     def __init__(self,parent = None):
+        """
+        Initialise and construct the window application.
+        
+        Parameter
+        ----------
+        parent: object
+            The object which the window interacts with
+            e.g. The analysis window
+        """
         super().__init__()
         self.parent = parent
         
@@ -68,7 +126,8 @@ class LiveplotApp(QMainWindow):
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
-           
+        
+        # Set up tallies for the average transfer function calculation  
         self.autospec_in_tally = []
         self.autospec_out_tally = []
         self.crossspec_tally = []
@@ -77,6 +136,7 @@ class LiveplotApp(QMainWindow):
             # Construct UI        
             self.initUI()
         except Exception:
+            # If it fails, show the window and stop
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
@@ -86,21 +146,30 @@ class LiveplotApp(QMainWindow):
         
         # Connect the recorder Signals
         self.connect_rec_signals()
+        
         # Attempt to start streaming
         self.init_and_check_stream()
             
         # Center and show window
-        self.center()
+        self.adjust_position()
         self.setFocus()
         self.show()
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++        
-#++++++++++++++++++++++++ UI CONSTRUCTION START ++++++++++++++++++++++++++++++     
+     
     def initUI(self):
+        """
+        Construct the window by calling the widgets classes, and any additional
+        widgets (such as Qsplitters, Toolbox)
+        Then, perform the signal connection among the widgets.
+        Also sets up the update timer for the streaming.
+        Lastly, finalise the plots and misc. items.
+        
+        There is also an experimental styling section just after the UI
+        construction.
+        """
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QHBoxLayout(self.main_widget)
-    #-------------------- STREAM TOOLBOX ------------------------------
+    #------------------------- STREAM TOOLBOX ------------------------------
         self.stream_toolbox = MasterToolbox()
         self.stream_tools = Toolbox('left',self.main_widget)
         self.stream_toolbox.add_toolbox(self.stream_tools)
@@ -181,18 +250,19 @@ class LiveplotApp(QMainWindow):
         ''')
         
     #----------------------SIGNAL CONNECTIONS---------------------------
-        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
+        self.chantoggle_UI.sigToggleChanged.connect(self.timeplot.toggle_plotline)
+        self.chantoggle_UI.sigToggleChanged.connect(self.freqplot.toggle_plotline)
         self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
         self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
-        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
+        self.chanconfig_UI.sigTimeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.sigFreqOffsetChanged.connect(self.freqplot.set_offset)
         self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
-        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
-        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
-        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
-        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.timeplot.set_plot_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.freqplot.set_plot_colour)
+        self.chanconfig_UI.sigColourChanged.connect(self.levelsplot.set_plot_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.timeplot.reset_default_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.freqplot.reset_default_colour)
+        self.chanconfig_UI.sigColourReset.connect(self.levelsplot.reset_default_colour)
         self.devconfig_UI.configRecorder.connect(self.ResetRecording)
         self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
         self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
@@ -207,7 +277,7 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelRecording.connect(self.cancel_recording)
         self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
         self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
-    #---------------------------RESETTING---------------------------
+    #---------------------------RESETTING METHODS---------------------------
         self.ResetMetaData()   
         self.ResetChanBtns()
         self.ResetPlots()
@@ -226,25 +296,25 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
         self.show()
-     
-#++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++        
-#+++++++++++++++++++++ UI CALLBACK METHODS +++++++++++++++++++++++++++++++++++
-    
-#---------------------CHANNEL TOGGLE UI----------------------------------    
-    def display_channel_plots(self, btn):
-        chan_num = self.chantoggle_UI.chan_btn_group.id(btn)
-        if btn.isChecked():
-            self.timeplot.toggle_plotline(chan_num,True)
-            self.freqplot.toggle_plotline(chan_num,True)
-        else:
-            self.timeplot.toggle_plotline(chan_num,False)
-            self.freqplot.toggle_plotline(chan_num,False)
-         
+        
+    def adjust_position(self):
+        """
+        If it has a parent, adjust its position to be slightly out of the parent
+        window towards the left
+        """
+        if self.parent:
+            pr = self.parent.frameGeometry()
+            qr = self.frameGeometry()
+            self.move(pr.topLeft())
+            self.move(qr.left()/2,qr.top())   
+            
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
+        """
+        Displays the channel plot offsets, colours, and signal holding.
+        """
+        # This function is here because it is easier for channel config to
+        # get data from the plot widgets
         if type(arg) == pg.PlotDataItem:
             num = self.timeplot.check_line(arg)
             if not num == None:
@@ -261,6 +331,9 @@ class LiveplotApp(QMainWindow):
         self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_yoffset[num])
    
     def open_meta_window(self):
+        """
+        Open the metadata window
+        """
         if not self.meta_window:
             try:
                 self.meta_window = ChanMetaWin(self)
@@ -273,24 +346,37 @@ class LiveplotApp(QMainWindow):
                 print(traceback.format_tb(tb))
                 
     def meta_win_closed(self):
+        """
+        Callback when the metadata window is closed
+        """
         self.meta_window = None
         self.update_chan_names()
 
 #----------------------PLOT WIDGETS-----------------------------------              
     # Updates the plots    
     def update_line(self):
+        """
+        Callback to update the time domain and frequency domain plot
+        """
+        # Get the buffer
         data = self.rec.get_buffer()
         
+        # Take the last chunk for the levels plot
         currentdata = data[len(data)-self.rec.chunk_size:,:]
         currentdata -= np.mean(currentdata)
         rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
         maxs = np.amax(abs(currentdata),axis = 0)
         self.levelsplot.set_channel_levels(rms,maxs)
         
+        # Prepare the window and weightage for FFT plot
         window = np.hanning(data.shape[0])
         weightage = np.exp(2* self.timedata / self.timedata[-1])
+        
+        # Update each plot item's data + level peaks
         for i in range(data.shape[1]):
             plotdata = data[:,i].reshape((len(data[:,i]),))
+            
+            # Check for zero crossing if needed
             zc = 0
             if self.timeplot.sig_hold[i] == Qt.Checked:
                 avg = np.mean(plotdata);
@@ -299,15 +385,21 @@ class LiveplotApp(QMainWindow):
                     zc = zero_crossings[0]+1
             
             self.timeplot.update_line(i,x = self.timedata[:len(plotdata)-zc] ,y = plotdata[zc:])
-
             fft_data = rfft(plotdata* window * weightage)
             psd_data = abs(fft_data)** 0.5
             self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
-            
             self.levelsplot.set_peaks(i,maxs[i])
-#---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
-    # Pause/Resume the stream, unless explicitly specified to stop or not       
+            
+#-------------------------STATUS BAR WIDGET--------------------------------
     def toggle_rec(self,stop = None):
+        """
+        Callback to pause/resume the stream, unless explicitly specified to stop or not
+        
+        Parameter
+        ----------
+        stop: Bool
+            Specify whether to stop the stream. None to toggle the current state
+        """
         if not stop == None:
             self.playing = stop
             
@@ -325,6 +417,9 @@ class LiveplotApp(QMainWindow):
         
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
+        """
+        Callback to take the current buffer data and send it out to parent window
+        """
         snapshot = self.rec.get_buffer()
         for i in range(snapshot.shape[1]):
             self.live_chanset.set_channel_data(i,'time_series',snapshot[:,i])
@@ -333,44 +428,65 @@ class LiveplotApp(QMainWindow):
                                                    {'sample_rate':self.rec.rate})
         self.save_data()
         self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
-        
+
+    def default_status(self,msg):
+        """
+        Callback to set the status message to the default messages 
+        if it is empty (ie when cleared)
+        """
+        # Placed here because it accesses self.playing (might change it soon?)
+        if not msg:
+            if self.playing:
+                self.stats_UI.statusbar.showMessage('Streaming')
+            else:
+                self.stats_UI.statusbar.showMessage('Stream Paused')
+                
     
-#---------------------------RECORDING WIDGET-------------------------------    
-    # Start the data recording        
+#---------------------------RECORDING WIDGET-------------------------------           
     def start_recording(self):
+        """
+        Callback to start the data recording  
+        """
+        success = False
         rec_configs = self.RecUI.get_record_config()
-        print(type(self.rec))
         if rec_configs[2]>=0:
-            # Set up the trigger
+            # Set up the trigger if specified
             if self.rec.trigger_start(posttrig = rec_configs[0],
                                       duration = rec_configs[1],
                                       pretrig = rec_configs[2],
                                       channel = rec_configs[3],
                                       threshold = rec_configs[4]):
+                success = True
                 self.stats_UI.statusbar.showMessage('Trigger Set!')
-                for btn in self.main_widget.findChildren(QPushButton):
-                    btn.setDisabled(True)
         else:
+            # Record normally
             self.rec.record_init(samples = rec_configs[0], duration = rec_configs[1])
-            # Start the recording immediately
             if self.rec.record_start():
+                success = True
                 self.stats_UI.statusbar.showMessage('Recording...')
-                # Disable buttons
-                for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
-                    btn.setDisabled(True)
-        
-
-        self.RecUI.switch_rec_box.setDisabled(True)
-        self.RecUI.spec_settings_widget.setDisabled(True)
-        self.RecUI.cancelbtn.setEnabled(True)
+        if success:
+            # Disable buttons
+            for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
+                btn.setDisabled(True)
+            self.RecUI.switch_rec_box.setDisabled(True)
+            self.RecUI.spec_settings_widget.setDisabled(True)
+            # Enable the cancel buttons
+            self.RecUI.cancelbtn.setEnabled(True)
     
-    # Stop the data recording and transfer the recorded data to main window    
+    #   
     def stop_recording(self):
-        #self.rec.recording = False
+        """
+        Callback when the recording finishes.
+        Process the data first, if specify, then transfer the data 
+        to the parent window   
+        """
+        # Enable the buttons
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
-            
+        # Disable the cancel button    
         self.RecUI.cancelbtn.setDisabled(True)
+        
+        # Get the recorded data and compute DFT
         data = self.rec.flush_record_data()
         ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
         for i in range(data.shape[1]):
@@ -382,17 +498,22 @@ class LiveplotApp(QMainWindow):
         self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
                                                    {'sample_rate':self.rec.rate})
         
+        # Check recording mode
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'Normal':
+            # Send data normally
             self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'TF',[])
             self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
             self.save_data(0)
         elif rec_mode == 'TF Avg.':
+            # Compute the auto- and crossspectrum for average transfer function
+            # while store them in the tally
             chans = list(range(self.rec.channels))
             in_chan = self.RecUI.get_input_channel()
             chans.remove(in_chan)
             input_chan_data = ft_datas[:,in_chan]
             
+            # Check for incorrect data length with previous recorded data
             if not len(self.autospec_in_tally)==0: 
                 if not input_chan_data.shape[0] == self.autospec_in_tally[-1].shape[0]:
                     print('Data shape does not match, you may have fiddle the settings')
@@ -420,19 +541,26 @@ class LiveplotApp(QMainWindow):
                 self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
                 self.live_chanset.add_channel_dataset(chan,'coherence',cor)
         
+            # Update the average count and send the data
             self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
             self.save_data(1)
             
         elif rec_mode == 'TF Grid':
+            # TODO: Implement recording for grid transfer function
             pass
         else:
+            # TODO?: Failsafe for unknown mode
             pass
        
+        # Enable more widgets
         self.stats_UI.statusbar.clearMessage() 
         self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.switch_rec_box.setEnabled(True) 
             
     def undo_tf_tally(self):
+        """
+        Callback to remove the last autospectrum and crossspectrum in the tally  
+        """
         if self.autospec_in_tally:
             self.autospec_in_tally.pop()
             self.autospec_out_tally.pop()
@@ -440,6 +568,9 @@ class LiveplotApp(QMainWindow):
         self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
         
     def remove_tf_tally(self):
+        """
+        Callback to clear the autospectrum and crossspectrum tallies
+        """
         if self.autospec_in_tally:
             self.autospec_in_tally = []
             self.autospec_out_tally = []
@@ -448,6 +579,9 @@ class LiveplotApp(QMainWindow):
     
     # Cancel the data recording
     def cancel_recording(self):
+        """
+        Callback to cancel the recording and re-enable the UIs
+        """
         self.rec.record_cancel()
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
@@ -457,45 +591,25 @@ class LiveplotApp(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
 
-#-------------------------STATUS BAR WIDGET--------------------------------
-    # Set the status message to the default messages if it is empty (ie when cleared)       
-    def default_status(self,*arg):
-        if not arg[0]:
-            if self.playing:
-                self.stats_UI.statusbar.showMessage('Streaming')
-            else:
-                self.stats_UI.statusbar.showMessage('Stream Paused')
-        
-#+++++++++++++++++++++++++ UI CALLBACKS END++++++++++++++++++++++++++++++++++++   
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
-
-#++++++++++++++++++++++++++ OTHER METHODS +++++++++++++++++++++++++++++++++++++        
-#----------------------- APP ADJUSTMENTS METHODS-------------------------------               
-    # Center the window
-    def center(self):
-        if self.parent:
-            pr = self.parent.frameGeometry()
-            qr = self.frameGeometry()
-            print(qr.width())
-            cp = QDesktopWidget().availableGeometry().center()
-            qr.moveCenter(cp)
-            self.move(pr.topLeft())
-            self.move(qr.left() - qr.width(),qr.top())
-        
 #--------------------------- RESET METHODS-------------------------------------    
     def ResetRecording(self):
+        """
+        Reset the stream to the specified configuration, then
+        calls upon other reset methods
+        """
+        # Spew errors to console at each major step of the resetting
         self.stats_UI.statusbar.showMessage('Resetting...')
         
-        # Stop the update and close the stream
+        # Stop the update and Delete the stream
         self.playing = False
         self.plottimer.stop()
         self.rec.close()
         del self.rec
                 
         try:    
-            # Get Input from the Acquisition settings UI
+            # Get Input from the Device Configuration UI
             Rtype, settings = self.devconfig_UI.read_device_config()
-            # Delete and reinitialise the recording object
+            # Reinitialise the recording object
             if Rtype[0]:
                 self.rec = mR.Recorder()
             elif Rtype[1]:
@@ -517,7 +631,7 @@ class LiveplotApp(QMainWindow):
             print('Cannot set up new recorder')
         
         try:
-            # Open the stream, plot and update
+            # Open the stream
             self.init_and_check_stream()
             # Reset channel configs
             self.ResetPlots()            
@@ -532,7 +646,8 @@ class LiveplotApp(QMainWindow):
             print('Cannot stream,restart the app')
         
         try:
-            # Reset recording configuration Validators and inputs checks
+            # Set the recorder reference to RecUI and devconfig_UI, and remove 
+            # average transfer function tally
             self.RecUI.set_recorder(self.rec)
             self.devconfig_UI.set_recorder(self.rec)
             self.remove_tf_tally()
@@ -543,14 +658,18 @@ class LiveplotApp(QMainWindow):
             print(traceback.format_tb(tb))
             print('Cannot recording configs')
 
-        # Reset and change channel toggles
+        # Reset metadata and change channel toggles and re-connect the signals
         self.ResetMetaData()
         self.ResetChanBtns()
         self.connect_rec_signals()
         
+        # Restart the plot update timer
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
     def ResetPlots(self):
+        """
+        Reset the plots
+        """
         self.ResetXdata()
         
         self.timeplot.reset_plotlines()
@@ -567,15 +686,24 @@ class LiveplotApp(QMainWindow):
         self.freqplot.plotItem.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
     def ResetXdata(self):
+        """
+        Reset the time and frequencies plot data
+        """
         data = self.rec.get_buffer()
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
   
     def ResetChanBtns(self):
-        self.chantoggle_UI.adjust_channel_buttons(self.rec.channels)            
+        """
+        Reset the amount of channel toggling buttons
+        """
+        self.chantoggle_UI.adjust_channel_checkboxes(self.rec.channels)            
         self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
+        """
+        Reset the channel plot configuration settings
+        """
         self.timeplot.reset_offsets()
         self.timeplot.reset_plot_visible()
         self.timeplot.reset_colour()
@@ -592,22 +720,38 @@ class LiveplotApp(QMainWindow):
         self.display_chan_config(0)
     
     def ResetMetaData(self):
+        """
+        Reset the metadata
+        """
         self.live_chanset = ChannelSet(self.rec.channels)
         self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'time_series')
         
     def ResetSplitterSizes(self):
+        """
+        Reset the metadata
+        """
         self.mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
         self.right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
         
     def update_chan_names(self):
+        """
+        Update the channel names, obtained from the ChannelSet
+        """
         names = self.live_chanset.get_channel_metadata(tuple(range(self.rec.channels)),'name')
         for n,name in enumerate(names):
             chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
             chan_btn.setText(name)
         
 #----------------------- DATA TRANSFER METHODS -------------------------------    
-    # Transfer data to main window      
+         
     def save_data(self, tab_num = 0):
+        """
+        Transfer data to parent window
+        
+        Parameter
+        ---------
+        tab_num: Tab index to switch to in the parent window (specific for analysis window)
+        """
         if self.parent:
             print('Saving data...')
             self.parent.cs = copy.copy(self.live_chanset)
@@ -616,24 +760,33 @@ class LiveplotApp(QMainWindow):
 
 #-------------------------- STREAM METHODS ------------------------------------        
     def init_and_check_stream(self):
-         if self.rec.stream_init(playback = PLAYBACK):
+        """
+        Attempts to initialise the stream
+        """
+        if self.rec.stream_init(playback = PLAYBACK):
             self.stats_UI.togglebtn.setEnabled(True)
             self.toggle_rec(stop = False)
             self.stats_UI.statusbar.showMessage('Streaming')
-         else:
+        else:
             self.stats_UI.togglebtn.setDisabled(True)
             self.toggle_rec(stop = True)
             self.stats_UI.statusbar.showMessage('Stream not initialised!')
             
     def connect_rec_signals(self):
-            self.rec.rEmitter.recorddone.connect(self.stop_recording)
-            self.rec.rEmitter.triggered.connect(self.stats_UI.trigger_message)
-            #self.rec.rEmitter.newdata.connect(self.update_line)
-            #self.rec.rEmitter.newdata.connect(self.update_chanlvls)
+        """
+        Connects the signals from the recorder object
+        """
+        self.rec.rEmitter.recorddone.connect(self.stop_recording)
+        self.rec.rEmitter.triggered.connect(self.stats_UI.trigger_message)
+        #self.rec.rEmitter.newdata.connect(self.update_line)
+        #self.rec.rEmitter.newdata.connect(self.update_chanlvls)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
-    # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
+        """
+        Reimplemented from QMainWindow
+        Stops the update timer, disconnect any signals and delete self
+        """
         if self.plottimer.isActive():
             self.plottimer.stop()
             

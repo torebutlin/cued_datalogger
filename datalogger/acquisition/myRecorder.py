@@ -14,7 +14,7 @@ You are using pyAudio for recording
 Device not found, reverting to default
 Selected device: Line (3- U24XL with SPDIF I/O)
 >>>recorder.stream_init()
-Stream already started
+stream already started
 Input latency: 2.322e-02
 Output latency: 0.000e+00
 Read Available: -9977
@@ -24,7 +24,7 @@ True
 Recording function is ready! Use record_start() to start
 True
 >>>recorder.record_start()
-Stream already started
+stream already started
 Recording Start!
 True
 >>>Recording Done! Please flush the data with flush_record_data().
@@ -58,11 +58,11 @@ class Recorder(RecorderParent):
      Attributes
      ----------
         In addtion to RecorderParent Attributes,
-        device_index: Int
+        device_index: int
             Index of the device to be used for recording
-        device_name: Str
+        device_name: str
             Name of the device to be used for recording
-        max_value: Float
+        max_value: float
             Maximum value of recorded data
     """
         
@@ -109,8 +109,6 @@ class Recorder(RecorderParent):
             self.p = None
             
 #---------------- DEVICE SETTING METHODS -----------------------------------            
-     # Set the recording audio device by name, 
-     # revert to default if no such device found
     def set_device_by_name(self, name):
         """
         Set the recording audio device by name. 
@@ -118,7 +116,7 @@ class Recorder(RecorderParent):
                 
         Parameters
         ----------
-            name: Str
+            name: str
                 Name of the device
         """
         dev_name,dev_index = self.available_devices()
@@ -178,7 +176,7 @@ class Recorder(RecorderParent):
         
         Parameters
         ----------
-            index: Int
+            index: int
                 Index of the device to be set
         """
         self.device_index = index;
@@ -259,7 +257,7 @@ class Recorder(RecorderParent):
             if self.audio_stream.is_stopped():
                 self.audio_stream.start_stream()
             else:
-                print('Stream already started')
+                print('stream already started')
         else:
             print('No audio stream is set up')
             
@@ -272,7 +270,7 @@ class Recorder(RecorderParent):
             if not self.audio_stream.is_stopped():
                 self.audio_stream.stop_stream()
             else:
-                print('Stream already stopped')
+                print('stream already stopped')
         else:
             print('No audio stream is set up')
         
