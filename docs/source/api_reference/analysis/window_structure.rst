@@ -2,4 +2,6 @@
 Window Structure
 ================
 
-A description of the layout of the analysis window and the signals/slots/other workings of it.
+Visual layout
+-------------
+The analysis window is set out in a three-part layout.

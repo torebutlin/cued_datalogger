@@ -9,7 +9,7 @@ CUED DataLogger Documentation
    
   introduction
    
-  old/api_reference_old
+  information_for_developers/information_for_developers
 
   api_reference/api_reference
 
