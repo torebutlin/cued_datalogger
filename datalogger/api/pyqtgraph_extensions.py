@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Aug  9 11:00:36 2017
+if __name__ == '__main__':
+    sys.path.append('../../')
 
-@author: eyt21
-"""
 import weakref
 import sys
 import numpy as np
@@ -14,14 +11,15 @@ from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGr
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer
-
+from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer, pyqtSignal
 
 class InteractivePlotWidget(QWidget):
     """A QWidget containing a :class:`CustomPlotWidget` with mouse tracking
-    crosshairs, a :class:`LinearRegionItem`, and spinboxes 
+    crosshairs, a :class:`LinearRegionItem`, and spinboxes
     to display and control the values of the bounds of the linear region.
-    
+    Any additional arguments to :method:`__init__` are passed to the
+    CustomPlotWidget.
+
     Attributes
     ----------
     PlotWidget : pg.PlotWidget
@@ -42,54 +40,82 @@ class InteractivePlotWidget(QWidget):
         QSpinBox displaying upper bound of :attr:`region`.
     zoom_btn : QPushButton
         Press to zoom to the :attr:`region` with a set amount of padding.
+    show_region : bool
+        Controls whether the region is displayed.
+    show_crosshair : bool
+        Controls whether the crosshair is displayed.
+    sig_region_changed : pyqtSignal([int, int])
+        The signal emitted when the region is changed.
     """
-    def __init__(self, parent):
+
+    sig_region_changed = pyqtSignal([float, float])
+
+    def __init__(self, parent=None,
+                 show_region=True, show_crosshair=True, show_label=True,
+                 *args, **kwargs):
         self.parent = parent
+        self.show_region = show_region
+        self.show_crosshair = show_crosshair
+        self.show_label = show_label
+
         super().__init__(parent)
-        
+
         layout = QVBoxLayout(self)
 
-        # # Set up the PlotWidget        
-        self.PlotWidget = CustomPlotWidget(self)
+        # # Set up the PlotWidget
+        self.PlotWidget = CustomPlotWidget(self, *args, **kwargs)
 
         self.PlotItem = self.PlotWidget.getPlotItem()
         self.PlotItem.disableAutoRange()
-        
+
         self.ViewBox = self.PlotWidget.getViewBox()
-        
+
         self.vline = pg.InfiniteLine(angle=90)
         self.hline = pg.InfiniteLine(angle=0)
-        
+
         self.region = pg.LinearRegionItem(bounds=[0, None])
         self.region.sigRegionChanged.connect(self.updateBoxFromRegion)
-        
+
         layout.addWidget(self.PlotWidget)
-        
+
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.ViewBox)
         #ViewBox.addItem(self.label)
-        
+
         self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
-                
+
+        self.ViewBox.menu.sig_show_region.connect(self.set_show_region)
+        self.ViewBox.menu.sig_show_crosshair.connect(self.set_show_crosshair)
+        self.ViewBox.menu.sig_show_label.connect(self.set_show_label)
+
         # # Set up the controls
         control_layout = QHBoxLayout()
         self.lower_box = pg.SpinBox(self, bounds=(0, None))
+        self.lower_box.valueChanged.connect(self.on_region_changed)
         self.upper_box = pg.SpinBox(self, bounds=(0, None))
+        self.upper_box.valueChanged.connect(self.on_region_changed)
         self.zoom_btn = QPushButton('Zoom', self)
         self.zoom_btn.clicked.connect(self.zoomToRegion)
-        
+
         control_layout.addWidget(QLabel('Lower', self))
         control_layout.addWidget(self.lower_box)
         control_layout.addWidget(QLabel('Upper', self))
         control_layout.addWidget(self.upper_box)
         control_layout.addWidget(self.zoom_btn)
         layout.addLayout(control_layout)
-        
+
         # # Create a QTimer for smooth updating of the region
         self.updatetimer = QTimer(self)
         self.updatetimer.timeout.connect(self.updateRegionFromBox)
         self.updatetimer.start(20)
-        
+
+        self.clear()
+
+    def on_region_changed(self):
+        lower = self.lower_box.value()
+        upper = self.upper_box.value()
+        self.sig_region_changed.emit(lower, upper)
+
     def mouseMoved(self, mouse_moved_event):
         mouse_position = mouse_moved_event[0]  ## using signal proxy turns original arguments into a tuple
         # If the mouse is in the PlotItem
@@ -103,14 +129,16 @@ class InteractivePlotWidget(QWidget):
                                 % (mousePoint.x(), mousePoint.y()) ))
             self.vline.setPos(mousePoint.x())
             self.hline.setPos(mousePoint.y())
-            
+
     def clear(self):
         """Clear the PlotItem and add the default items back in."""
         self.PlotItem.clear()
-        self.PlotItem.addItem(self.vline)
-        self.PlotItem.addItem(self.hline)
-        self.PlotItem.addItem(self.region)
-        
+        if self.show_crosshair:
+            self.PlotItem.addItem(self.vline)
+            self.PlotItem.addItem(self.hline)
+        if self.show_region:
+            self.PlotItem.addItem(self.region)
+
     def updateRegionFromBox(self):
         # Get the bounds of the region as defined by the spinboxes
         region_bounds = [self.lower_box.value(), self.upper_box.value()]
@@ -121,7 +149,7 @@ class InteractivePlotWidget(QWidget):
         # Update the spinboxes
         self.lower_box.setValue(region_bounds[0])
         self.upper_box.setValue(region_bounds[1])
-        
+
     def updateBoxFromRegion(self):
         # Get the region bounds as defined by the region
         region_bounds = list(self.region.getRegion())
@@ -130,54 +158,93 @@ class InteractivePlotWidget(QWidget):
         # Set the spinboxes to reflect the bounds of the region
         self.lower_box.setValue(region_bounds[0])
         self.upper_box.setValue(region_bounds[1])
-        
+
     def zoomToRegion(self, padding=0.1):
         """Zoom to the region, with given padding."""
         pos = self.region.getRegion()
         self.PlotItem.setXRange(pos[0],pos[1],padding=padding)
-        
+
+    def getRegionBounds(self):
+        """Return the lower and upper bounds of the region."""
+        return self.lower_box.value(), self.upper_box.value()
+
     def closeEvent(self, close_event):
         # Tidy everything up when told to close
         #self.proxy.disconnect()
         if self.updatetimer.isActive():
             self.updatetimer.stop()
         close_event.accept()
-    
+
     def plot(self, x=None, y=None, *args, **kwargs):
         """:func:`update_limits` from the x and y values, then plot
         the data on the plotWidget."""
         self.update_limits(x, y)
         self.PlotWidget.plot(x, y, *args, **kwargs)
-    
+        self.ViewBox.autoRange()
+
     def update_limits(self, x, y):
-        """Set the increment of the spinboxes, the limits of zooming and 
+        """Set the increment of the spinboxes, the limits of zooming and
         scrolling the PlotItem, and move the region to x=0"""
-        
+
         if x is not None and y is not None:
             # Update the increment of the spinboxes
             self.lower_box.setSingleStep(x.max()/100)
             self.upper_box.setSingleStep(x.max()/100)
-        
+
             # Set the linear region to be in view
             #self.lower_box.setValue(x.max()*0.4)
             #self.upper_box.setValue(x.max()*0.6)
             #self.lower_box.setValue(0)
             #self.upper_box.setValue(0)
-            
+
             # Set the limits of the PlotItem
             self.PlotItem.setLimits(xMin=0, xMax=x.max())
             self.PlotItem.setRange(xRange=(x.min(), x.max()),
                                    yRange=(y.min(), y.max()),
                                    padding=0.2)
 
+    def getPlotItem(self):
+        """Return the PlotItem (reimplemented from
+        :method:`pg.PlotWidget.getPlotItem`)."""
+        return self.PlotWidget.getPlotItem()
+
+    def set_show_crosshair(self, show_crosshair):
+        """Set whether the crosshair is visible."""
+        self.show_crosshair = show_crosshair
+
+        if self.show_crosshair:
+            self.PlotItem.addItem(self.vline)
+            self.PlotItem.addItem(self.hline)
+        else:
+            self.PlotItem.removeItem(self.vline)
+            self.PlotItem.removeItem(self.hline)
+
+    def set_show_region(self, show_region):
+        """Set whether the region is visible."""
+        self.show_region = show_region
+
+        if self.show_region:
+            self.PlotItem.addItem(self.region)
+        else:
+            self.PlotItem.removeItem(self.region)
+
+    def set_show_label(self, show_label):
+        """Set whether the label is visible."""
+        self.show_label = show_label
+
+        if self.show_label:
+            self.label.show()
+        else:
+            self.label.hide()
+
 
 class CustomPlotWidget(pg.PlotWidget):
-    def __init__(self, *arg, **kwarg):
-        super().__init__(*arg, ViewBox=CustomViewBox(cparent=self), **kwarg)
-        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, viewBox=CustomViewBox(cparent=self), **kwargs)
+
         self.PlotItem = self.getPlotItem()
         self.ViewBox = self.PlotItem.getViewBox()
-        
+
         # Removing some plot options
         ext_menu = self.PlotItem.ctrlMenu
         ext_submenus = self.PlotItem.subMenus
@@ -185,6 +252,9 @@ class CustomPlotWidget(pg.PlotWidget):
         ext_menu.removeAction(ext_submenus[2].menuAction())
         ext_menu.removeAction(ext_submenus[3].menuAction())
         ext_menu.removeAction(ext_submenus[5].menuAction())
+
+    def getViewBox(self):
+        return self.ViewBox
 
     def getViewedDataRegion(self, data_for_slice, axis='bottom'):
         """Return the indices of data_for_slice that are currently in the
@@ -199,6 +269,7 @@ class CustomPlotWidget(pg.PlotWidget):
         indices_of_data_in_display = np.where(data_in_display)[0]
         return indices_of_data_in_display[0], indices_of_data_in_display[-1]
 
+
 class CustomViewBox(pg.ViewBox):
     def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
@@ -207,6 +278,7 @@ class CustomViewBox(pg.ViewBox):
 
     def raiseContextMenu(self, ev):
         menu = self.getMenu(ev)
+        print(menu)
         menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint())
 
@@ -215,7 +287,12 @@ class CustomViewBox(pg.ViewBox):
         r = self.viewRect()
         self.setLimits(xMin = r.left(), xMax = r.right())
 
+
 class CustomViewMenu(QMenu):
+    sig_show_crosshair = pyqtSignal(bool)
+    sig_show_region = pyqtSignal(bool)
+    sig_show_label = pyqtSignal(bool)
+
     def __init__(self, view):
         QMenu.__init__(self)
 
@@ -224,9 +301,32 @@ class CustomViewMenu(QMenu):
         self.viewMap = weakref.WeakValueDictionary()  ## weakrefs to all views listed in the link combos
 
         self.setTitle("ViewBox options")
-        self.viewAll = QAction("View All", self)
-        self.viewAll.triggered.connect(self.autoRange)
-        self.addAction(self.viewAll)
+        self.autorange_action = QAction("Autorange", self)
+        self.autorange_action.triggered.connect(self.autoRange)
+        self.addAction(self.autorange_action)
+
+        # Display menu
+        self.display_menu = QMenu("Display options")
+
+        show_crosshair_action = QAction("Show crosshair", self.display_menu)
+        show_crosshair_action.setCheckable(True)
+        show_crosshair_action.setChecked(True)
+        show_crosshair_action.triggered.connect(self.sig_show_crosshair.emit)
+        self.display_menu.addAction(show_crosshair_action)
+
+        show_region_action = QAction("Show region", self.display_menu)
+        show_region_action.setCheckable(True)
+        show_region_action.setChecked(True)
+        show_region_action.triggered.connect(self.sig_show_region.emit)
+        self.display_menu.addAction(show_region_action)
+
+        show_label_action = QAction("Show Label", self.display_menu)
+        show_label_action.setCheckable(True)
+        show_label_action.setChecked(True)
+        show_label_action.triggered.connect(self.sig_show_label.emit)
+        self.display_menu.addAction(show_label_action)
+
+        self.addMenu(self.display_menu)
 
         self.axes = []
         self.ctrl = []
@@ -531,9 +631,9 @@ class CustomUITemplate(object):
 
 
 class ColorMapPlotWidget(InteractivePlotWidget):
-    """An InteractivePlotWidget optimised for plotting color(heat) maps. 
+    """An InteractivePlotWidget optimised for plotting color(heat) maps.
     Uses the Matplotlib colormap given by *cmap* to color the map.
-    
+
     Attributes
     ----------
     lookup_table : ndarray
@@ -549,45 +649,45 @@ class ColorMapPlotWidget(InteractivePlotWidget):
         self.contour_spacing_dB = 5
         self.parent = parent
         super().__init__(parent=self.parent)
-        
+
     def plot_colormap(self, x, y, z, num_contours=5, contour_spacing_dB=5):
         """Plot *x*, *y* and *z* on a colourmap, with colour intervals defined
         by *num_contours* at *contour_spacing_dB* intervals."""
-        
+
         #self.PlotWidget.removeItem(self.z_img)
-        
+
         self.x = x
         self.y = y
         self.z = z
-        
+
         self.num_contours = num_contours
         self.contour_spacing_dB = contour_spacing_dB
         self.update_lowest_contour()
-        
+
         # Set up axes:
         x_axis = self.PlotWidget.getAxis('bottom')
         y_axis = self.PlotWidget.getAxis('left')
 
         self.x_scale_fact = self.get_scale_fact(x)
         self.y_scale_fact = self.get_scale_fact(y)
-        
+
         x_axis.setScale(self.x_scale_fact)
         y_axis.setScale(self.y_scale_fact)
-        
+
         #self.autoRange()
-        
+
         self.z_img = ImageItem(z.transpose())
         self.z_img.setLookupTable(self.lookup_table)
         self.z_img.setLevels([self.lowest_contour, self.highest_contour])
-        
+
         self.PlotWidget.addItem(self.z_img)
-        
+
         self.PlotWidget.autoRange()
         #self.PlotWidget.ViewBox.autoRange()
 
     def get_scale_fact(self, var):
         return var.max() / var.size
-    
+
     def update_lowest_contour(self):
         """Find the lowest contour to plot, as determined by the number of
         contours and the contour spacing."""
@@ -604,17 +704,11 @@ if __name__ == '__main__':
 
     app = 0
     app = QApplication(sys.argv)
-    w = CustomPlotWidget()
+    w = InteractivePlotWidget()
     x = np.linspace(0, 20*np.pi, 1e4)
     y = np.sin(x)
     w.PlotItem.plot(x, y, pen=defaultpen)
     w.PlotItem.autoRange()
     w.show()
-
-    def print_region(*args, **kwargs):
-        x_lower, x_upper = w.getViewedDataRegion(x)
-        print("Index {}: {}, Index {}: {}".format(x_lower, x[x_lower], x_upper, x[x_upper]))
-
-    w.sigRangeChanged.connect(print_region)
 
     sys.exit(app.exec_())

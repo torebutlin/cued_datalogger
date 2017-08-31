@@ -6,7 +6,8 @@ from datalogger.api.channel import ChannelSet
 from datalogger.api.workspace import Workspace
 from datalogger.api.file_import import import_from_mat
 from datalogger.api.toolbox import Toolbox
-from datalogger.api.numpy_extensions import to_dB, from_dB, sdof_modal_peak
+from datalogger.api.numpy_extensions import to_dB, sdof_modal_peak
+from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5 import QtGui
@@ -82,13 +83,6 @@ def fit_circle_to_data(x, y):
     return x0, y0, R0
 
 
-def plot_circle(x0, y0, R0):
-    theta = np.linspace(-np.pi, np.pi, 180)
-    x = x0 + R0[0]*np.cos(theta)
-    y = y0 + R0[0]*np.sin(theta)
-    return x, y
-
-
 class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
@@ -102,14 +96,16 @@ class CircleFitWidget(QWidget):
     # Initialisation functions ------------------------------------------------
     def init_ui(self):
         # # Transfer function plot
-        self.transfer_func_plot_w = pg.PlotWidget(title="Transfer Function",
-                                                  labels={'bottom':
-                                                          ("Frequency", "rad"),
-                                                          'left':
-                                                          ("Transfer Function",
-                                                           "dB")})
-        self.transfer_func_plot = self.transfer_func_plot_w.getPlotItem()
+        self.transfer_func_plotwidget = InteractivePlotWidget(parent=self,
+                                                          title="Transfer Function",
+                                                          labels={'bottom':
+                                                                  ("Frequency", "rad"),
+                                                                  'left':
+                                                                  ("Transfer Function",
+                                                                   "dB")})
+        self.transfer_func_plot = self.transfer_func_plotwidget.getPlotItem()
 
+        """
         # # Region Selection plot
         self.region_select_plot_w = pg.PlotWidget(title="Region Selection",
                                                   labels={'bottom':
@@ -119,7 +115,7 @@ class CircleFitWidget(QWidget):
                                                            "dB")})
         self.region_select_plot = self.region_select_plot_w.getPlotItem()
         self.region_select_plot.setMouseEnabled(x=False, y=False)
-
+        
         self.region_select = pg.LinearRegionItem()
         self.region_select.setZValue(-10)
         self.region_select_plot.addItem(self.region_select)
@@ -129,12 +125,15 @@ class CircleFitWidget(QWidget):
         self.region_select.sigRegionChanged.connect(self.update_plots)
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_region)
         self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
-
+        """
         # # Circle plot
-        self.circle_plot_w = pg.PlotWidget(title="Circle fit",
-                                           labels={'bottom': ("Re"),
-                                                   'left': ("Im")})
-        self.circle_plot = self.circle_plot_w.getPlotItem()
+        self.circle_plotwidget = InteractivePlotWidget(parent=self,
+                                                       show_region=False,
+                                                       show_crosshair=False,
+                                                       title="Circle fit",
+                                                       labels={'bottom': ("Re"),
+                                                               'left': ("Im")})
+        self.circle_plot = self.circle_plotwidget.getPlotItem()
         # self.circle_plot.setMouseEnabled(x=False, y=False)
         self.circle_plot.setAspectLocked(lock=True, ratio=1)
         self.circle_plot.showGrid(x=True, y=True)
@@ -143,14 +142,14 @@ class CircleFitWidget(QWidget):
         self.transfer_function1 = pg.PlotDataItem(pen=defaultpen)
         self.transfer_func_plot.addItem(self.transfer_function1)
 
-        self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
-        self.region_select_plot.addItem(self.transfer_function2)
+        #self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
+        #self.region_select_plot.addItem(self.transfer_function2)
 
         self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
         self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
 
-        self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
-        self.region_select_plot.addItem(self.constructed_transfer_fn2)
+        #self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
+        #self.region_select_plot.addItem(self.constructed_transfer_fn2)
 
         self.circle_plot_points = pg.PlotDataItem()
         self.circle_plot.addItem(self.circle_plot_points)
@@ -188,10 +187,10 @@ class CircleFitWidget(QWidget):
 
         # # Widget layout
         layout = QGridLayout()
-        layout.addWidget(self.transfer_func_plot_w, 0, 0)
-        layout.addWidget(self.region_select_plot_w, 0, 1)
+        layout.addWidget(self.transfer_func_plotwidget, 0, 0)
+        #layout.addWidget(self.region_select_plot_w, 0, 1)
         layout.addWidget(results_groupbox, 2, 0)
-        layout.addWidget(self.circle_plot_w, 2, 1)
+        layout.addWidget(self.circle_plotwidget, 2, 1)
         self.setLayout(layout)
 
         self.setWindowTitle('Circle fit')
@@ -235,7 +234,7 @@ class CircleFitWidget(QWidget):
         self.modal_peaks[-1]["plot1"] = pg.PlotDataItem()
         self.modal_peaks[-1]["plot2"] = pg.PlotDataItem()
         self.transfer_func_plot.addItem(self.modal_peaks[-1]["plot1"])
-        self.region_select_plot.addItem(self.modal_peaks[-1]["plot2"])
+        #self.region_select_plot.addItem(self.modal_peaks[-1]["plot2"])
 
         # Create a load of widgets to fill the row - store them in the new dict
         self.row_list[-1]["selectbox"] = QCheckBox()
@@ -286,10 +285,10 @@ class CircleFitWidget(QWidget):
         self.set_active_row(new_row=True)
         self.update_plots()
 
-    def show_transfer_fn(self, visible):
+    def show_transfer_fn(self, visible=True):
         print("Setting transfer function visible to " + str(visible))
         self.constructed_transfer_fn1.setVisible(visible)
-        self.constructed_transfer_fn2.setVisible(visible)
+        #self.constructed_transfer_fn2.setVisible(visible)
 
     def update_spinbox_step(self, value):
         if np.abs(value) > 1:
@@ -306,10 +305,11 @@ class CircleFitWidget(QWidget):
             for item in self.transfer_func_plot.items:
                 if item == self.modal_peaks[i]["plot1"]:
                     item.setVisible(checked)
-
+            """
             for item in self.region_select_plot.items:
                 if item == self.modal_peaks[i]["plot2"]:
                     item.setVisible(checked)
+            """
 
     def delete_selected(self):
         for i, row in enumerate(self.row_list):
@@ -319,7 +319,7 @@ class CircleFitWidget(QWidget):
                 self.tableWidget.removeRow(i)
                 # Delete from graphs
                 self.transfer_func_plot.removeItem(self.modal_peaks[i]["plot1"])
-                self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
+                #self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
                 del self.modal_peaks[i]
         # With pyqtgraph's removeItem, all the other items are set back to being visible
         # so need to undo this for those that are unchecked
@@ -370,24 +370,24 @@ class CircleFitWidget(QWidget):
         self.transfer_function1.setData(x=self.w,
                                         y=to_dB(np.abs(self.a)))
 
-        self.transfer_function2.setData(x=self.w,
-                                        y=to_dB(np.abs(self.a)))
+        #self.transfer_function2.setData(x=self.w,
+        #                                y=to_dB(np.abs(self.a)))
 
         self.transfer_func_plot.autoRange()
         self.transfer_func_plot.setXRange(self.w.min(), self.w.max())
         self.transfer_func_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
         self.transfer_func_plot.disableAutoRange()
 
-        self.transfer_func_plot.autoRange()
-        self.region_select_plot.setXRange(self.w.min(), self.w.max())
-        self.region_select_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
-        self.region_select_plot.disableAutoRange()
+        #self.region_select_plot.autoRange()
+        #self.region_select_plot.setXRange(self.w.min(), self.w.max())
+        #self.region_select_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
+        #self.region_select_plot.disableAutoRange()
 
-        self.region_select.setBounds((self.w.min(), self.w.max()))
+        #self.region_select.setBounds((self.w.min(), self.w.max()))
         self.add_peak()
 
     def construct_transfer_fn(self):
-        self.show_transfer_fn_checkbox.setChecked(True)
+        #self.show_transfer_fn_checkbox.setChecked(True)
         self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["data"])
         for i, peak in enumerate(self.modal_peaks):
             if self.row_list[i]["selectbox"].isChecked():
@@ -395,23 +395,30 @@ class CircleFitWidget(QWidget):
 
         self.constructed_transfer_fn1.setData(x=self.w_fit,
                                               y=to_dB(np.abs(self.constructed_transfer_fn)))
-        self.constructed_transfer_fn2.setData(x=self.w_fit,
-                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
+        #self.constructed_transfer_fn2.setData(x=self.w_fit,
+        #                                      y=to_dB(np.abs(self.constructed_transfer_fn)))
 
     # Update functions --------------------------------------------------------
     def update_zoom(self):
+        pass
+        """
         self.transfer_func_plot.setXRange(*self.region_select.getRegion(),
                                           padding=0)
+        """
 
     def autorange_to_region(self, checked):
+        pass
+        """
         if self.autorange_to_region_checkbox.isChecked():
             self.region_select_plot.setXRange(*self.region_select.getRegion(),
                                               padding=1)
         else:
             self.region_select_plot.setXRange(self.w.min(), self.w.max())
-
+        """
+        
     def update_region(self):
-        self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
+        #self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
+        pass
 
     def get_viewed_region(self):
         # Get the axes limits
@@ -470,7 +477,7 @@ class CircleFitWidget(QWidget):
                                                                              pen='r')
 
             # Update the constructed transfer function
-            if self.show_transfer_fn_checkbox.isChecked():
+            if self.constructed_transfer_fn1.isVisible():
                 self.construct_transfer_fn()
 
     def update_from_plot(self):

@@ -5,22 +5,20 @@ Created on Wed Jul  5 13:12:34 2017
 @author: eyt21
 """
 import sys,traceback
-from PyQt5.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QMainWindow,
-    QPushButton, QDesktopWidget,QStatusBar, QLabel,QLineEdit, QFormLayout,
-    QGroupBox,QRadioButton,QSplitter,QFrame, QComboBox,QScrollArea,QGridLayout,
-    QCheckBox,QButtonGroup,QTextEdit,QApplication,QStackedLayout)
-from PyQt5.QtGui import (QValidator,QIntValidator,QDoubleValidator,QColor)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.QtWidgets import (QWidget,QHBoxLayout,QMainWindow,QPushButton,
+                             QDesktopWidget,QRadioButton,QSplitter,QCheckBox,
+                             QApplication)
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
 import pyqtgraph as pg
 
 import copy
 import numpy as np
-import functools as fct
-import math
+from numpy.fft import rfft
 
 from datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
-                                                 StatusUI,RecUI,AdvToggleUI)
+                                                 StatusUI,RecUI)
+from datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph,LevelsLiveGraph
 from datalogger.acquisition.ChanMetaWin import ChanMetaWin
 
 import datalogger.acquisition.myRecorder as mR
@@ -33,28 +31,22 @@ except NotImplementedError:
 except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
+from datalogger.analysis.frequency_domain import (compute_transfer_function,
+                                                   compute_autospec,compute_crossspec)
 
-from datalogger.api import channel as ch
-from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
-
+from datalogger.api.channel import ChannelSet
 from datalogger.api.toolbox import Toolbox, MasterToolbox
-
-
 
 # GLOBAL CONSTANTS
 PLAYBACK = False    # Whether to playback the stream
-MAX_SAMPLE = 1e9    # Recording Sample max size limit
 WIDTH = 900         # Window width
 HEIGHT = 600        # Window height
-CHANLVL_FACTOR = 0.1# The gap between each channel level (seems useless)
-TRACE_DECAY = 0.005 # Increment size for decaying trace
-TRACE_DURATION = 2  # Duration for a holding trace
 
 #++++++++++++++++++++++++ The LivePlotApp Class +++++++++++++++++++++++++++
 class LiveplotApp(QMainWindow):
 #-------------------------- METADATA ----------------------------------  
     # Signal for when data has finished acquired
-    dataSaved = pyqtSignal()
+    dataSaved = pyqtSignal(int)
     done = pyqtSignal()
     
 #---------------------- CONSTRUCTOR METHOD------------------------------    
@@ -65,46 +57,40 @@ class LiveplotApp(QMainWindow):
         # Set window parameter
         self.setGeometry(400,300,WIDTH,HEIGHT)
         self.setWindowTitle('LiveStreamPlot')
-        self.center()
         
         self.meta_window = None
-        
         
         # Set recorder object
         self.playing = False
         self.rec = mR.Recorder(channels = 2,
                                 num_chunk = 6,
                                 device_name = 'Line (U24XL with SPDIF I/O)')
-        # Connect the recorder Signals
-        self.connect_rec_signals()
-        
-        self.plottimer = QTimer(self)
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
-        
-        self.gen_plot_col()
-        self.ResetMetaData()
            
+        self.autospec_in_tally = []
+        self.autospec_out_tally = []
+        self.crossspec_tally = []
+        
         try:
             # Construct UI        
             self.initUI()
-            self.config_setup()
-        except Exception as e:
-            print(e)
+        except Exception:
             t,v,tb = sys.exc_info()
             print(t)
             print(v)
             print(traceback.format_tb(tb))
-            #self.close()
             self.show()
             return
         
+        # Connect the recorder Signals
+        self.connect_rec_signals()
         # Attempt to start streaming
         self.init_and_check_stream()
             
         # Center and show window
-        
+        self.center()
         self.setFocus()
         self.show()
 
@@ -114,152 +100,49 @@ class LiveplotApp(QMainWindow):
         # Set up the main widget        
         self.main_widget = QWidget(self)
         main_layout = QHBoxLayout(self.main_widget)
-    #-------------------- ALL TOOLBOXES ------------------------------
+    #-------------------- STREAM TOOLBOX ------------------------------
         self.stream_toolbox = MasterToolbox()
-        self.recording_toolbox = MasterToolbox()
-        
-    #---------------------CHANNEL TOGGLE UI----------------------------------
         self.stream_tools = Toolbox('left',self.main_widget)
-        
-        self.chan_toggles = QWidget(self.main_widget)
-        chan_toggle_layout = QVBoxLayout(self.chan_toggles)
-        
+        self.stream_toolbox.add_toolbox(self.stream_tools)
         self.chantoggle_UI = ChanToggleUI(self.main_widget)        
-        self.ResetChanBtns()
-        self.chantoggle_UI.chan_btn_group.buttonClicked.connect(self.display_channel_plots)
-        self.chantoggle_UI.chan_text.returnPressed.connect(self.chan_line_toggle)
-        #self.chantoggle_UI.toggle_ext_button.clicked.connect(lambda: self.toggle_ext_toggling(True))
-        
-        chan_toggle_layout.addWidget(self.chantoggle_UI)
-        
-    #---------------------------ADDITIONAL UIs----------------------------
-        self.chan_toggle_ext = AdvToggleUI(self.main_widget)
-        self.chan_toggle_ext.chan_text2.returnPressed.connect(self.chan_line_toggle)
-        #self.chan_toggle_ext.close_ext_toggle.clicked.connect(lambda: self.toggle_ext_toggling(False))
-        chan_toggle_layout.addWidget(self.chan_toggle_ext)
-        
-    #----------------CHANNEL CONFIGURATION WIDGET---------------------------
         self.chanconfig_UI = ChanConfigUI(self.main_widget)
-        
-        self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
-        self.chanconfig_UI.hold_tickbox.stateChanged.connect(self.signal_hold)
-        self.chanconfig_UI.colbox.sigColorChanging.connect(lambda: self.set_plot_colour())
-        self.chanconfig_UI.defcol_btn.clicked.connect(lambda: self.set_plot_colour(True))
-        self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
-        
-        for cbox,ax in zip(self.chanconfig_UI.time_offset_config,['x','y']):
-            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'Time'))
-        for cbox,ax in zip(self.chanconfig_UI.fft_offset_config,['x','y']):
-            cbox.sigValueChanging.connect(fct.partial(self.set_plot_offset,ax,'DFT'))
-        
-        self.ResetChanConfigs()
-    #----------------DEVICE CONFIGURATION WIDGET---------------------------   
         self.devconfig_UI = DevConfigUI(self.main_widget)
-        
-        self.devconfig_UI.typebtngroup.buttonReleased.connect(self.display_sources)
-        self.devconfig_UI.config_button.clicked.connect(self.ResetRecording)
-        
-        self.stream_tools.addTab(self.chan_toggles,'Channel Toggle')
+        self.devconfig_UI.set_recorder(self.rec)
+        self.devconfig_UI.config_setup()
+        NI_btn = self.devconfig_UI.typegroup.findChildren(QRadioButton)[1]
+        if not NI_drivers:
+            NI_btn.setDisabled(True)
+        self.stream_tools.addTab(self.chantoggle_UI,'Channel Toggle')
         self.stream_tools.addTab(self.chanconfig_UI,'Channel Config')
         self.stream_tools.addTab(self.devconfig_UI,'Device Config')
-        self.stream_toolbox.add_toolbox(self.stream_tools)
+        main_layout.addWidget(self.stream_toolbox)
+        main_layout.setStretchFactor(self.stream_toolbox, 0)
         
-    #----------------------PLOT + STATUS WIDGETS------------------------------------ 
+    #---------------------------PLOT + STATUS WIDGETS-----------------------------
         self.mid_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-    
-        self.plotlines = []
-        pg.setConfigOption('foreground', 'w')
-        pg.setConfigOption('background', 'k')
-        # Set up time domain plot, add to splitter
-        self.timeplotcanvas = CustomPlotWidget(self.mid_splitter, background = 'default')
-        self.timeplot = self.timeplotcanvas.getPlotItem()
-        self.timeplot.setLabels(title="Time Plot", bottom = 'Time(s)') 
-        #self.timeplot.disableAutoRange(axis=None)
-        #self.timeplot.setMouseEnabled(x=True,y = True)
-        
-        # Set up FFT plot, add to splitter
-        self.fftplotcanvas = pg.PlotWidget(self.mid_splitter, background = 'default')
-        self.fftplot = self.fftplotcanvas.getPlotItem()
-        self.fftplot.setLabels(title="FFT Plot", bottom = 'Freq(Hz)')
-        self.fftplot.disableAutoRange(axis=None)
-        
-        self.ResetPlots()
-        
+        self.timeplot = TimeLiveGraph(self.mid_splitter)
+        self.freqplot = FreqLiveGraph(self.mid_splitter)  
         self.stats_UI = StatusUI(self.mid_splitter)
-        
-        self.stats_UI.statusbar.messageChanged.connect(self.default_status)
-        self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
-        self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
-        self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
-        
-        self.mid_splitter.addWidget(self.timeplotcanvas)
-        self.mid_splitter.addWidget(self.fftplotcanvas)
+        self.mid_splitter.addWidget(self.timeplot)
+        self.mid_splitter.addWidget(self.freqplot)
         self.mid_splitter.addWidget(self.stats_UI)
         self.mid_splitter.setCollapsible (2, False)
-        
-    #---------------------------RECORDING WIDGET-------------------------------
-        self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
-        self.recording_tools = Toolbox('right',self.main_widget)
-        
-        self.RecUI = RecUI(self.main_widget)
-        
-        # Connect the sample and time input check
-        self.RecUI.rec_boxes[0].editingFinished.connect(lambda: self.autoset_record_config('Samples'))
-        self.RecUI.rec_boxes[1].editingFinished.connect(lambda: self.autoset_record_config('Time'))
-        self.RecUI.rec_boxes[2].editingFinished.connect(lambda: self.set_input_limits(self.RecUI.rec_boxes[2],-1,self.rec.chunk_size,int))
-        self.RecUI.rec_boxes[2].textEdited.connect(self.toggle_trigger)
-        self.RecUI.rec_boxes[4].textEdited.connect(self.change_threshold)
-
-        self.RecUI.recordbtn.pressed.connect(self.start_recording)
-        self.RecUI.cancelbtn.pressed.connect(self.cancel_recording)
-       
-        self.ResetRecConfigs()
-        self.autoset_record_config('Time')
-        self.right_splitter.addWidget(self.RecUI)
-        
-    #-----------------------CHANNEL LEVELS WIDGET------------------------------
-        chanlevel_UI = QWidget(self.right_splitter)
-        chanlevel_UI_layout = QVBoxLayout(chanlevel_UI)
-        self.chanelvlcvs = pg.PlotWidget(self.right_splitter, background = 'default')
-        chanlevel_UI_layout.addWidget(self.chanelvlcvs)
-        
-        self.channelvlplot = self.chanelvlcvs.getPlotItem()
-        self.channelvlplot.setLabels(title="Channel Levels", bottom = 'Amplitude')
-        self.channelvlplot.hideAxis('left')
-        self.chanlvl_pts = self.channelvlplot.plot()
-        
-        self.peak_plots = []
-        
-        self.chanlvl_bars = pg.ErrorBarItem(x=np.arange(self.rec.channels),
-                                            y =np.arange(self.rec.channels)*0.1,
-                                            beam = CHANLVL_FACTOR/2,
-                                            pen = pg.mkPen(width = 3))
-        
-        self.channelvlplot.addItem(self.chanlvl_bars)
-        
-        baseline = pg.InfiniteLine(pos = 0.0, movable = False)
-        self.channelvlplot.addItem(baseline)
-        
-        self.threshold_line = pg.InfiniteLine(pos = 0.0, movable = True,bounds = [0,1])
-        self.threshold_line.sigPositionChanged.connect(self.change_threshold)
-        self.channelvlplot.addItem(self.threshold_line)
-        
-        self.ResetChanLvls()
-        self.right_splitter.addWidget(chanlevel_UI)
-        
-        self.recording_tools.addTab(self.right_splitter,'Record Time Series')
-        self.recording_toolbox.add_toolbox(self.recording_tools)
-        
-        
-    #------------------------FINALISE THE LAYOUT-----------------------------
-        main_layout.addWidget(self.stream_toolbox)
         main_layout.addWidget(self.mid_splitter)
-        main_layout.addWidget(self.recording_toolbox)
-        main_layout.setStretchFactor(self.stream_toolbox, 0)
         main_layout.setStretchFactor(self.mid_splitter, 1)
-        main_layout.setStretchFactor(self.recording_toolbox, 0)
         
-        self.ResetSplitterSizes()
+    #---------------------------RECORDING TOOLBOX-------------------------------
+        self.recording_toolbox = MasterToolbox()
+        self.recording_tools = Toolbox('right',self.main_widget)
+        self.recording_toolbox.add_toolbox(self.recording_tools)
+        self.right_splitter = QSplitter(self.main_widget,orientation = Qt.Vertical)
+        self.RecUI = RecUI(self.main_widget)
+        self.RecUI.set_recorder(self.rec)
+        self.right_splitter.addWidget(self.RecUI)
+        self.levelsplot = LevelsLiveGraph(self.rec,self.right_splitter)        
+        self.right_splitter.addWidget(self.levelsplot)
+        self.recording_tools.addTab(self.right_splitter,'Record Time Series')
+        main_layout.addWidget(self.recording_toolbox)
+        main_layout.setStretchFactor(self.recording_toolbox, 0)
         
     #-----------------------EXPERIMENTAL STYLING---------------------------- 
         #self.main_splitter.setFrameShape(QFrame.Panel)
@@ -295,25 +178,54 @@ class LiveplotApp(QMainWindow):
                 margin-bottom: 2px;
                 border-radius: 4px;
             }                   
-        ''') 
+        ''')
         
-
-        
-    
+    #----------------------SIGNAL CONNECTIONS---------------------------
+        self.chantoggle_UI.toggleChanged.connect(self.display_channel_plots)
+        self.chanconfig_UI.chans_num_box.currentIndexChanged.connect(self.display_chan_config)        
+        self.chanconfig_UI.meta_btn.clicked.connect(self.open_meta_window)
+        self.chanconfig_UI.timeOffsetChanged.connect(self.timeplot.set_offset)
+        self.chanconfig_UI.freqOffsetChanged.connect(self.freqplot.set_offset)
+        self.chanconfig_UI.sigHoldChanged.connect(self.timeplot.set_sig_hold)
+        self.chanconfig_UI.colourChanged.connect(self.timeplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.freqplot.set_plot_colour)
+        self.chanconfig_UI.colourChanged.connect(self.levelsplot.set_plot_colour)
+        self.chanconfig_UI.colourReset.connect(self.timeplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.freqplot.reset_default_colour)
+        self.chanconfig_UI.colourReset.connect(self.levelsplot.reset_default_colour)
+        self.devconfig_UI.configRecorder.connect(self.ResetRecording)
+        self.timeplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.freqplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.levelsplot.plotColourChanged.connect(self.chanconfig_UI.set_colour_btn)
+        self.levelsplot.thresholdChanged.connect(self.RecUI.rec_boxes[4].setText)
+        self.stats_UI.statusbar.messageChanged.connect(self.default_status)
+        self.stats_UI.resetView.pressed.connect(self.ResetSplitterSizes)
+        self.stats_UI.togglebtn.pressed.connect(lambda: self.toggle_rec())
+        self.stats_UI.sshotbtn.pressed.connect(self.get_snapshot)
+        self.RecUI.rec_boxes[4].textEdited.connect(self.levelsplot.change_threshold)
+        self.RecUI.startRecording.connect(self.start_recording)
+        self.RecUI.cancelRecording.connect(self.cancel_recording)
+        self.RecUI.undoLastTfAvg.connect(self.undo_tf_tally)
+        self.RecUI.clearTfAvg.connect(self.remove_tf_tally)
+    #---------------------------RESETTING---------------------------
+        self.ResetMetaData()   
+        self.ResetChanBtns()
+        self.ResetPlots()
+        self.ResetChanConfigs()
+        self.levelsplot.reset_channel_levels()
+        self.ResetSplitterSizes()
     #-----------------------FINALISE THE MAIN WIDGET------------------------- 
         #Set the main widget as central widget
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
         
         # Set up a timer to update the plot
+        self.plottimer = QTimer(self)
         self.plottimer.timeout.connect(self.update_line)
         #self.plottimer.timeout.connect(self.update_chanlvls)
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
         self.show()
-        
-        #h = 600 - chans_settings_layout.geometry().height()
-        #self.main_splitter.setSizes([h*0.35,h*0.35,h*0.3])
      
 #++++++++++++++++++++++++ UI CONSTRUCTION END +++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -325,123 +237,29 @@ class LiveplotApp(QMainWindow):
     def display_channel_plots(self, btn):
         chan_num = self.chantoggle_UI.chan_btn_group.id(btn)
         if btn.isChecked():
-            self.plotlines[2*chan_num].setPen(self.plot_colours[chan_num])
-            self.plotlines[2*chan_num+1].setPen(self.plot_colours[chan_num])
+            self.timeplot.toggle_plotline(chan_num,True)
+            self.freqplot.toggle_plotline(chan_num,True)
         else:
-            self.plotlines[2*chan_num].setPen(None)
-            self.plotlines[2*chan_num+1].setPen(None)
-    '''
-    def toggle_ext_toggling(self,toggle):
-        if toggle:
-            tlpoint = self.chantoggle_UI.chan_text.mapTo(self,QPoint(0,0))
-            self.chan_toggle_ext.resize(self.chan_toggle_ext.sizeHint())
-            self.chan_toggle_ext.setGeometry(tlpoint.x(),tlpoint.y(),
-                                             self.chantoggle_UI.chan_text.width()*3,
-                                             self.chantoggle_UI.chan_text.height()*15)
-            if not self.chan_toggle_ext.isVisible():
-                self.chan_toggle_ext.show()
-        else:
-            self.chan_toggle_ext.hide()
-    ''' 
-    def chan_line_toggle(self,chan_list):
-        '''
-        try:
-            expression = eval(string)
-        except:
-            t,v,_ = sys.exc_info()
-            print(t)
-            print(v)
-            print('Invalid expression')
-            return False
-        '''
-        all_selected_chan = []
-        for str_in in chan_list:
-            r_in = str_in.split(':')
-            if len(r_in) == 1:
-                if r_in[0]:
-                    all_selected_chan.append(int(r_in[0]))
-            elif len(r_in) >1: 
-                if not r_in[0]:
-                    r_in[0] = 0
-                if not r_in[1]:
-                    r_in[1] = self.rec.channels
-                    
-                if len(r_in) == 2:
-                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1])))
-                else:
-                    if not r_in[2]:
-                        r_in[2] = 1
-                    all_selected_chan.extend(range(int(r_in[0]),int(r_in[1]),int(r_in[2])))
-                    
-                    
-        '''
-        if isinstance(expression,Sequence) and not isinstance(expression,str) :
-            for n in expression:
-                if isinstance(n,Sequence) and not isinstance(n,str):
-                    all_selected_chan.extend(n)
-                elif isinstance(expression,int):
-                    all_selected_chan.append(n)
-        elif isinstance(expression,int):
-            all_selected_chan.append(expression)
-        '''    
-        print(all_selected_chan)
-        
-        if all_selected_chan:
-            self.toggle_all_checkboxes(Qt.Unchecked)
-            for chan in set(all_selected_chan):
-                if chan < self.rec.channels:
-                    self.chantoggle_UI.chan_btn_group.button(chan).click()
+            self.timeplot.toggle_plotline(chan_num,False)
+            self.freqplot.toggle_plotline(chan_num,False)
          
 #----------------CHANNEL CONFIGURATION WIDGET---------------------------    
     def display_chan_config(self, arg):
         if type(arg) == pg.PlotDataItem:
-            num = self.plotlines.index(arg) // 2
-            self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
+            num = self.timeplot.check_line(arg)
+            if not num == None:
+                num = self.freqplot.check_line(arg)
+                self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
         else:
             num = arg
         
-        self.chanconfig_UI.colbox.setColor(self.plot_colours[num])
-        self.chanconfig_UI.time_offset_config[0].setValue(self.plot_xoffset[0,num])
-        self.chanconfig_UI.time_offset_config[1].setValue(self.plot_yoffset[0,num])
-        self.chanconfig_UI.fft_offset_config[0].setValue(self.plot_xoffset[1,num])
-        self.chanconfig_UI.fft_offset_config[1].setValue(self.plot_yoffset[1,num])
-        self.chanconfig_UI.hold_tickbox.setCheckState(self.sig_hold[num])
-        
-    def set_plot_offset(self, offset,set_type, sp,num):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        if set_type == 'Time':
-            data_type = 0
-        elif set_type == 'DFT':
-            data_type = 1
-            
-        if offset == 'x':
-            self.plot_xoffset[data_type,chan] = num
-        elif offset == 'y':
-            self.plot_yoffset[data_type,chan] = num
-            
-    def set_offset_step(self,cbox,num):
-        cbox.setSingleStep(num)
-        
-    def signal_hold(self,state):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        self.sig_hold[chan] = state
-    
-    def set_plot_colour(self,reset = False):
-        chan = self.chanconfig_UI.chans_num_box.currentIndex()
-        chan_btn = self.chantoggle_UI.chan_btn_group.button(chan)
-            
-        if reset:
-            col = self.def_colours[chan]
-            self.chanconfig_UI.colbox.setColor(col)
-        else:
-            col = self.chanconfig_UI.colbox.color()
-        
-        self.plot_colours[chan] = col;
-        if chan_btn.isChecked():
-            self.plotlines[2*chan].setPen(col)
-            self.plotlines[2*chan+1].setPen(col)
-        self.chanlvl_pts.scatter.setBrush(self.plot_colours)
-    
+        self.chanconfig_UI.colbox.setColor(self.timeplot.plot_colours[num])
+        self.chanconfig_UI.time_offset_config[0].setValue(self.timeplot.plot_xoffset[num])
+        self.chanconfig_UI.time_offset_config[1].setValue(self.timeplot.plot_yoffset[num])
+        self.chanconfig_UI.hold_tickbox.setCheckState(self.timeplot.sig_hold[num])
+        self.chanconfig_UI.fft_offset_config[0].setValue(self.freqplot.plot_xoffset[num])
+        self.chanconfig_UI.fft_offset_config[1].setValue(self.freqplot.plot_yoffset[num])
+   
     def open_meta_window(self):
         if not self.meta_window:
             try:
@@ -458,6 +276,35 @@ class LiveplotApp(QMainWindow):
         self.meta_window = None
         self.update_chan_names()
 
+#----------------------PLOT WIDGETS-----------------------------------              
+    # Updates the plots    
+    def update_line(self):
+        data = self.rec.get_buffer()
+        
+        currentdata = data[len(data)-self.rec.chunk_size:,:]
+        currentdata -= np.mean(currentdata)
+        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
+        maxs = np.amax(abs(currentdata),axis = 0)
+        self.levelsplot.set_channel_levels(rms,maxs)
+        
+        window = np.hanning(data.shape[0])
+        weightage = np.exp(2* self.timedata / self.timedata[-1])
+        for i in range(data.shape[1]):
+            plotdata = data[:,i].reshape((len(data[:,i]),))
+            zc = 0
+            if self.timeplot.sig_hold[i] == Qt.Checked:
+                avg = np.mean(plotdata);
+                zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
+                if zero_crossings.shape[0]:
+                    zc = zero_crossings[0]+1
+            
+            self.timeplot.update_line(i,x = self.timedata[:len(plotdata)-zc] ,y = plotdata[zc:])
+
+            fft_data = rfft(plotdata* window * weightage)
+            psd_data = abs(fft_data)** 0.5
+            self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
+            
+            self.levelsplot.set_peaks(i,maxs[i])
 #---------------------PAUSE & SNAPSHOT BUTTONS-----------------------------
     # Pause/Resume the stream, unless explicitly specified to stop or not       
     def toggle_rec(self,stop = None):
@@ -479,126 +326,19 @@ class LiveplotApp(QMainWindow):
     # Get the current instantaneous plot and transfer to main window     
     def get_snapshot(self):
         snapshot = self.rec.get_buffer()
-        self.save_data(data = snapshot[:,0])
+        for i in range(snapshot.shape[1]):
+            self.live_chanset.set_channel_data(i,'time_series',snapshot[:,i])
+                
+        self.live_chanset.set_channel_metadata( tuple(range(snapshot.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        self.save_data()
         self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
         
-#----------------------PLOT WIDGETS-----------------------------------              
-    # Updates the plots    
-    def update_line(self):
-        # TODO: can this be merge with update channel levels plot
-        data = self.rec.get_buffer()
-        window = np.hanning(data.shape[0])
-        weightage = np.exp(2* self.timedata / self.timedata[-1])
-        currentdata = data[len(data)-self.rec.chunk_size:,:]
-        currentdata -= np.mean(currentdata)
-        rms = np.sqrt(np.mean(currentdata ** 2,axis = 0))
-        maxs = np.amax(abs(currentdata),axis = 0)
-        
-        self.chanlvl_bars.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR, right = maxs-rms,left = rms)
-        self.chanlvl_pts.setData(x = rms,y = np.arange(self.rec.channels)*CHANLVL_FACTOR)
-
-        for i in range(data.shape[1]):
-            plotdata = data[:,i].reshape((len(data[:,i]),))
-            zc = 0
-            if self.sig_hold[i] == Qt.Checked:
-                avg = np.mean(plotdata);
-                zero_crossings = np.where(np.diff(np.sign(plotdata-avg))>0)[0]
-                if zero_crossings.shape[0]:
-                    zc = zero_crossings[0]+1
-                
-            self.plotlines[2*i].setData(x = self.timedata[:len(plotdata)-zc] + 
-            self.plot_xoffset[0,i], y = plotdata[zc:] + self.plot_yoffset[0,i])
-
-            fft_data = np.fft.rfft(plotdata* window * weightage)
-            psd_data = abs(fft_data)** 0.5
-            self.plotlines[2*i+1].setData(x = self.freqdata + self.plot_xoffset[1,i], y = psd_data  + self.plot_yoffset[1,i])
-
-            if self.trace_counter[i]>self.trace_countlimit:
-                self.peak_trace[i] = max(self.peak_trace[i]*math.exp(-self.peak_decays[i]),0)
-                self.peak_decays[i] += TRACE_DECAY
-            self.trace_counter[i] += 1
-            
-            if self.peak_trace[i]<maxs[i]:
-                self.peak_trace[i] = maxs[i]
-                self.peak_decays[i] = 0
-                self.trace_counter[i] = 0
-                
-            self.peak_plots[i].setData(x = [self.peak_trace[i],self.peak_trace[i]],
-                           y = [(i-0.3)*CHANLVL_FACTOR, (i+0.3)*CHANLVL_FACTOR])
-            
-            self.peak_plots[i].setPen(self.level_colourmap.map(self.peak_trace[i]))
-
-#----------------DEVICE CONFIGURATION WIDGET---------------------------    
-    def config_setup(self):
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if type(self.rec) == mR.Recorder:
-            rb[0].setChecked(True)
-        elif type(self.rec) == NIR.Recorder:
-            rb[1].setChecked(True)
-            
-        self.display_sources()
-        
-        info = [self.rec.rate,self.rec.channels,
-                self.rec.chunk_size,self.rec.num_chunk]
-        for cbox,i in zip(self.devconfig_UI.configboxes[1:],info):
-            cbox.setText(str(i))
-    
-    def display_sources(self):
-        # TODO: make use of the button input in callback?
-        rb = self.devconfig_UI.typegroup.findChildren(QRadioButton)
-        if not NI_drivers and rb[1].isChecked():
-            print("You don't seem to have National Instrument drivers/modules")
-            rb[0].setChecked(True)
-            return 0
-        
-        if rb[0].isChecked():
-            selR = mR.Recorder()
-        elif rb[1].isChecked():
-            selR = NIR.Recorder()
-        else:
-            return 0
-        
-        source_box = self.devconfig_UI.configboxes[0]
-        source_box.clear()
-        
-        try:
-            full_device_name = []
-            s,b =  selR.available_devices()
-            for a,b in zip(s,b):
-                if type(b) == str:
-                    full_device_name.append(a + ' - ' + b)
-                else:
-                    full_device_name.append(a)
-                    
-            source_box.addItems(full_device_name)
-        except Exception as e:
-            print(e)
-            source_box.addItems(selR.available_devices()[0])
-            
-        if self.rec.device_name:
-            source_box.setCurrentText(self.rec.device_name)
-            
-        del selR
-                
-    def read_device_config(self, *arg):
-        recType =  [rb.isChecked() for rb in self.devconfig_UI.typegroup.findChildren(QRadioButton)]
-        configs = []
-        for cbox in self.devconfig_UI.configboxes:
-            if type(cbox) == QComboBox:
-                #configs.append(cbox.currentText())
-                configs.append(cbox.currentIndex())
-            else:
-                #notnumRegex = re.compile(r'(\D)+')
-                config_input = cbox.text().strip(' ')
-                configs.append(int(float(config_input)))
-                    
-        print(recType,configs)
-        return(recType, configs)
     
 #---------------------------RECORDING WIDGET-------------------------------    
     # Start the data recording        
     def start_recording(self):
-        rec_configs = self.read_record_config()
+        rec_configs = self.RecUI.get_record_config()
         print(type(self.rec))
         if rec_configs[2]>=0:
             # Set up the trigger
@@ -618,7 +358,10 @@ class LiveplotApp(QMainWindow):
                 # Disable buttons
                 for btn in [self.stats_UI.togglebtn, self.devconfig_UI.config_button, self.RecUI.recordbtn]:
                     btn.setDisabled(True)
-                
+        
+
+        self.RecUI.switch_rec_box.setDisabled(True)
+        self.RecUI.spec_settings_widget.setDisabled(True)
         self.RecUI.cancelbtn.setEnabled(True)
     
     # Stop the data recording and transfer the recorded data to main window    
@@ -626,67 +369,94 @@ class LiveplotApp(QMainWindow):
         #self.rec.recording = False
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+            
         self.RecUI.cancelbtn.setDisabled(True)
         data = self.rec.flush_record_data()
-        self.save_data(data)
-        self.stats_UI.statusbar.clearMessage()
+        ft_datas = np.zeros((int(data.shape[0]/2)+1,data.shape[1]),dtype = np.complex)
+        for i in range(data.shape[1]):
+            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
+            ft = rfft(data[:,i])
+            self.live_chanset.add_channel_dataset(i,'spectrum',ft)
+            ft_datas[:,i] = ft
+        
+        self.live_chanset.set_channel_metadata( tuple(range(data.shape[1])),
+                                                   {'sample_rate':self.rec.rate})
+        
+        rec_mode = self.RecUI.get_recording_mode()
+        if rec_mode == 'Normal':
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'TF',[])
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
+            self.save_data(0)
+        elif rec_mode == 'TF Avg.':
+            chans = list(range(self.rec.channels))
+            in_chan = self.RecUI.get_input_channel()
+            chans.remove(in_chan)
+            input_chan_data = ft_datas[:,in_chan]
+            
+            if not len(self.autospec_in_tally)==0: 
+                if not input_chan_data.shape[0] == self.autospec_in_tally[-1].shape[0]:
+                    print('Data shape does not match, you may have fiddle the settings')
+                    print('Please either clear the past data, or revert the settings')
+                    self.stats_UI.statusbar.clearMessage() 
+                    self.RecUI.spec_settings_widget.setEnabled(True)
+                    self.RecUI.switch_rec_box.setEnabled(True) 
+                    return
+                
+            self.autospec_in_tally.append(compute_autospec(input_chan_data))
+            
+            autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
+            crossspec = np.zeros(autospec_out.shape,dtype = np.complex)
+            for i,chan in enumerate(chans):
+                autospec_out[:,i] = compute_autospec(ft_datas[:,chan])
+                crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,chan])
+             
+            self.autospec_out_tally.append(autospec_out)
+            self.crossspec_tally.append(crossspec)     
+            auto_in_sum = np.array(self.autospec_in_tally).sum(axis = 0)
+            auto_out_sum = np.array(self.autospec_out_tally).sum(axis = 0)
+            cross_sum = np.array(self.crossspec_tally).sum(axis = 0)     
+            for i,chan in enumerate(chans):
+                tf_avg,cor = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
+                self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
+                self.live_chanset.add_channel_dataset(chan,'coherence',cor)
+        
+            self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+            self.save_data(1)
+            
+        elif rec_mode == 'TF Grid':
+            pass
+        else:
+            pass
+       
+        self.stats_UI.statusbar.clearMessage() 
+        self.RecUI.spec_settings_widget.setEnabled(True)
+        self.RecUI.switch_rec_box.setEnabled(True) 
+            
+    def undo_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally.pop()
+            self.autospec_out_tally.pop()
+            self.crossspec_tally.pop()
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
+        
+    def remove_tf_tally(self):
+        if self.autospec_in_tally:
+            self.autospec_in_tally = []
+            self.autospec_out_tally = []
+            self.crossspec_tally = []
+        self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
     
     # Cancel the data recording
     def cancel_recording(self):
         self.rec.record_cancel()
         for btn in self.main_widget.findChildren(QPushButton):
             btn.setEnabled(True)
+            
+        self.RecUI.switch_rec_box.setEnabled(True) 
+        self.RecUI.spec_settings_widget.setEnabled(True)
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
-        
-    # Read the recording setting inputs
-    def read_record_config(self, *arg):
-        try:
-            rec_configs = []
-            data_type = [int,float,int,int,float]
-            for cbox,dt in zip(self.RecUI.rec_boxes,data_type):
-                if type(cbox) == QComboBox:
-                    #configs.append(cbox.currentText())
-                    rec_configs.append(cbox.currentIndex())
-                else:
-                    config_input = cbox.text().strip(' ')
-                    rec_configs.append(dt(float(config_input)))
-            print(rec_configs)
-            return(rec_configs)
-        
-        except Exception as e:
-            print(e)
-            return False
-    
-    # Auto set the time and samples based on recording limitations    
-    def autoset_record_config(self, setting):
-        sample_validator = self.RecUI.rec_boxes[0].validator()
-        time_validator = self.RecUI.rec_boxes[1].validator()
-        
-        if setting == "Time":
-            valid = time_validator.validate(self.RecUI.rec_boxes[1].text(),0)[0]
-            if not valid == QValidator.Acceptable:
-                self.RecUI.rec_boxes[1].setText(str(time_validator.bottom()))
-                
-            samples = int(float(self.RecUI.rec_boxes[1].text())*self.rec.rate)
-            valid = sample_validator.validate(str(samples),0)[0]
-            if not valid == QValidator.Acceptable:
-                samples = sample_validator.top()
-        elif setting == 'Samples':
-            samples = int(self.RecUI.rec_boxes[0].text())        
-        
-        #samples = samples//self.rec.chunk_size  *self.rec.chunk_size
-        duration = samples/self.rec.rate
-        self.RecUI.rec_boxes[0].setText(str(samples))
-        self.RecUI.rec_boxes[1].setText(str(duration))
 
-#-------------------------CHANNEL LEVELS WIDGET--------------------------------       
-    def change_threshold(self,arg):
-        if type(arg) == str:
-            self.threshold_line.setValue(float(arg))
-        else:
-            self.RecUI.rec_boxes[4].setText('%.2f' % arg.value())
-        
 #-------------------------STATUS BAR WIDGET--------------------------------
     # Set the status message to the default messages if it is empty (ie when cleared)       
     def default_status(self,*arg):
@@ -724,7 +494,7 @@ class LiveplotApp(QMainWindow):
                 
         try:    
             # Get Input from the Acquisition settings UI
-            Rtype, settings = self.read_device_config()
+            Rtype, settings = self.devconfig_UI.read_device_config()
             # Delete and reinitialise the recording object
             if Rtype[0]:
                 self.rec = mR.Recorder()
@@ -745,15 +515,15 @@ class LiveplotApp(QMainWindow):
             print(v)
             print(traceback.format_tb(tb))
             print('Cannot set up new recorder')
-            
         
         try:
             # Open the stream, plot and update
             self.init_and_check_stream()
             # Reset channel configs
+            self.ResetPlots()            
+            self.levelsplot.reset_channel_peaks(self.rec)
             self.ResetChanConfigs()
-            self.ResetPlots()
-            self.ResetChanLvls()
+            self.levelsplot.reset_channel_levels()
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -763,8 +533,9 @@ class LiveplotApp(QMainWindow):
         
         try:
             # Reset recording configuration Validators and inputs checks
-            self.ResetRecConfigs()
-            self.autoset_record_config('Samples')
+            self.RecUI.set_recorder(self.rec)
+            self.devconfig_UI.set_recorder(self.rec)
+            self.remove_tf_tally()
         except:
             t,v,tb = sys.exc_info()
             print(t)
@@ -780,108 +551,39 @@ class LiveplotApp(QMainWindow):
         self.plottimer.start(self.rec.chunk_size*1000//self.rec.rate)
         
     def ResetPlots(self):
-        n_plotlines = len(self.plotlines)
         self.ResetXdata()
         
-        for _ in range(n_plotlines):
-            line = self.plotlines.pop()
-            line.clear()
-            del line
-            
-        for i in range(self.rec.channels):
-            tplot = self.timeplot.plot(pen = self.plot_colours[i])
-            tplot.curve.setClickable(True,width = 4)
-            tplot.sigClicked.connect(self.display_chan_config)
-            self.plotlines.append(tplot)
-            
-            fplot = self.fftplot.plot(pen = self.plot_colours[i])
-            fplot.curve.setClickable(True,width = 4)
-            fplot.sigClicked.connect(self.display_chan_config)
-            self.plotlines.append(fplot)
+        self.timeplot.reset_plotlines()
+        self.freqplot.reset_plotlines()
         
-        self.fftplot.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
-        self.fftplot.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
+        for i in range(self.rec.channels):
+            tplot = self.timeplot.plot()
+            tplot.sigClicked.connect(self.display_chan_config)
+            
+            fplot = self.freqplot.plot()
+            fplot.sigClicked.connect(self.display_chan_config)
+            
+        self.freqplot.plotItem.setRange(xRange = (0,self.freqdata[-1]),yRange = (0, 100*self.rec.channels))
+        self.freqplot.plotItem.setLimits(xMin = 0,xMax = self.freqdata[-1],yMin = -20)
     
     def ResetXdata(self):
         data = self.rec.get_buffer()
         self.timedata = np.arange(data.shape[0]) /self.rec.rate 
         self.freqdata = np.arange(int(data.shape[0]/2)+1) /data.shape[0] * self.rec.rate
-        
-    def ResetChanLvls(self): 
-        self.chanlvl_pts.clear()
-        self.chanlvl_pts = self.channelvlplot.plot(pen = None,symbol='o',
-                                                  symbolBrush = self.plot_colours,
-                                                  symbolPen = None)
-        
-        for _ in range(len(self.peak_plots)):
-            line = self.peak_plots.pop()
-            line.clear()
-            del line
-        
-        self.peak_trace = np.zeros(self.rec.channels)
-        self.peak_decays = np.zeros(self.rec.channels)
-        self.trace_counter = np.zeros(self.rec.channels)
-        self.trace_countlimit = TRACE_DURATION *self.rec.rate//self.rec.chunk_size  
-        
-        self.threshold_line.setBounds((0,self.rec.max_value))
-        
-        for i in range(self.rec.channels):
-            self.peak_plots.append(self.channelvlplot.plot(x = [self.peak_trace[i],self.peak_trace[i]],
-                                                          y = [(i-0.3*CHANLVL_FACTOR), (i+0.3)*CHANLVL_FACTOR])) 
-        
-        self.channelvlplot.setRange(xRange = (0,self.rec.max_value+0.1),yRange = (-0.5*CHANLVL_FACTOR, (self.rec.channels+5-0.5)*CHANLVL_FACTOR))
-        self.channelvlplot.setLimits(xMin = -0.1,xMax = self.rec.max_value+0.1,yMin = -0.5*CHANLVL_FACTOR,yMax = (self.rec.channels+5-0.5)*CHANLVL_FACTOR)
-        
+  
     def ResetChanBtns(self):
-        for btn in self.chantoggle_UI.chan_btn_group.buttons():
-            btn.setCheckState(Qt.Checked)
-        
-        n_buttons = self.chantoggle_UI.checkbox_layout.count()
-        extra_btns = abs(self.rec.channels - n_buttons)
-        if extra_btns:
-            if self.rec.channels > n_buttons:
-                columns_limit = 4
-                current_y = (n_buttons-1)//columns_limit
-                current_x = (n_buttons-1)%columns_limit
-                for n in range(n_buttons,self.rec.channels):
-                    current_x +=1
-                    if current_x%columns_limit == 0:
-                        current_y +=1
-                    current_x = current_x%columns_limit
-                    
-                    chan_btn = QCheckBox('Channel %i' % n,self.chantoggle_UI.channels_box)
-                    chan_btn.setCheckState(Qt.Checked)
-                    self.chantoggle_UI.checkbox_layout.addWidget(chan_btn,current_y,current_x)
-                    self.chantoggle_UI.chan_btn_group.addButton(chan_btn,n)
-            else:
-                for n in range(n_buttons-1,self.rec.channels-1,-1):
-                    chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
-                    self.chantoggle_UI.checkbox_layout.removeWidget(chan_btn)
-                    self.chantoggle_UI.chan_btn_group.removeButton(chan_btn)
-                    chan_btn.deleteLater()
-            
-        self.update_chan_names()
-                    
-    def ResetRecConfigs(self):
-        self.RecUI.rec_boxes[3].clear()
-        self.RecUI.rec_boxes[3].addItems([str(i) for i in range(self.rec.channels)])
-    
-        validators = [QDoubleValidator(0.1,MAX_SAMPLE*self.rec.rate,1),
-                     QIntValidator(-1,self.rec.chunk_size)]
-        for cbox,vd in zip(self.RecUI.rec_boxes[1:-2],validators):
-            cbox.setValidator(vd)    
+        self.chantoggle_UI.adjust_channel_buttons(self.rec.channels)            
+        self.update_chan_names()                       
                 
     def ResetChanConfigs(self):
-        self.plot_xoffset = np.zeros(shape = (2,self.rec.channels))
-        self.plot_yoffset = np.repeat(np.arange(float(self.rec.channels)).reshape(1,self.rec.channels),2,axis = 0) * [[1],[50]]
-        self.sig_hold = [Qt.Unchecked]* self.rec.channels
-        c_list = self.plot_colourmap.getLookupTable(nPts = self.rec.channels)
-        self.plot_colours = []
-        self.def_colours = []
-        for i in range(self.rec.channels):
-            r,g,b = c_list[i]
-            self.plot_colours.append(QColor(r,g,b))
-            self.def_colours.append(QColor(r,g,b))
+        self.timeplot.reset_offsets()
+        self.timeplot.reset_plot_visible()
+        self.timeplot.reset_colour()
+        self.timeplot.reset_sig_hold()
+        self.freqplot.reset_offsets()
+        self.freqplot.reset_plot_visible()
+        self.freqplot.reset_colour()
+        self.levelsplot.reset_colour()
 
         self.chanconfig_UI.chans_num_box.clear()
         self.chanconfig_UI.chans_num_box.addItems([str(i) for i in range(self.rec.channels)])
@@ -890,13 +592,10 @@ class LiveplotApp(QMainWindow):
         self.display_chan_config(0)
     
     def ResetMetaData(self):
-        self.live_chanset = ch.ChannelSet(self.rec.channels)
+        self.live_chanset = ChannelSet(self.rec.channels)
         self.live_chanset.add_channel_dataset(tuple(range(self.rec.channels)), 'time_series')
         
-        
     def ResetSplitterSizes(self):
-        #self.left_splitter.setSizes([HEIGHT*0.1,HEIGHT*0.8])
-        #self.main_splitter.setSizes([WIDTH*0.25,WIDTH*0.55,WIDTH*0.2]) 
         self.mid_splitter.setSizes([HEIGHT*0.48,HEIGHT*0.48,HEIGHT*0.04])
         self.right_splitter.setSizes([HEIGHT*0.05,HEIGHT*0.85])
         
@@ -908,15 +607,12 @@ class LiveplotApp(QMainWindow):
         
 #----------------------- DATA TRANSFER METHODS -------------------------------    
     # Transfer data to main window      
-    def save_data(self,data = None):
-        print('Saving data...')
-        for i in range(data.shape[1]):
-            self.live_chanset.set_channel_data(i,'time_series',data[:,i])
-        self.live_chanset.set_channel_metadata(tuple(range(data.shape[1]))
-                                                ,{'sample_rate':self.rec.rate})
-        self.parent.cs = copy.copy(self.live_chanset)
-        self.dataSaved.emit()        
-        print('Data saved!')
+    def save_data(self, tab_num = 0):
+        if self.parent:
+            print('Saving data...')
+            self.parent.cs = copy.copy(self.live_chanset)
+            self.dataSaved.emit(tab_num)        
+            print('Data saved!')
 
 #-------------------------- STREAM METHODS ------------------------------------        
     def init_and_check_stream(self):
@@ -931,47 +627,11 @@ class LiveplotApp(QMainWindow):
             
     def connect_rec_signals(self):
             self.rec.rEmitter.recorddone.connect(self.stop_recording)
-            self.rec.rEmitter.triggered.connect(self.trigger_message)
+            self.rec.rEmitter.triggered.connect(self.stats_UI.trigger_message)
             #self.rec.rEmitter.newdata.connect(self.update_line)
             #self.rec.rEmitter.newdata.connect(self.update_chanlvls)
-            
-    def trigger_message(self):
-        self.stats_UI.statusbar.showMessage('Triggered! Recording...')
- #-------------------------- COLOUR METHODS ------------------------------------       
-    def gen_plot_col(self):
-        val = [0.0,0.5,1.0]
-        colour = np.array([[255,0,0,255],[0,255,0,255],[0,0,255,255]], dtype = np.ubyte)
-        self.plot_colourmap =  pg.ColorMap(val,colour)
-        val = [0.0,0.1,0.2]
-        colour = np.array([[0,255,0,255],[0,255,0,255],[255,0,0,255]], dtype = np.ubyte)
-        self.level_colourmap = pg.ColorMap(val,colour)
-     
-    def set_input_limits(self,linebox,low,high,in_type):
-        val = in_type(linebox.text())
-        print(val)
-        linebox.setText( str(min(max(val,low),high)) )
-    
-    def toggle_trigger(self,string):
-        try:
-            val = int(string)
-        except:
-            val = -1
-        
-        if val == -1:
-            self.RecUI.rec_boxes[3].setEnabled(False)
-            self.RecUI.rec_boxes[4].setEnabled(False)
-        else:
-            self.RecUI.rec_boxes[3].setEnabled(True)
-            self.RecUI.rec_boxes[4].setEnabled(True)
         
 #----------------------OVERRIDDEN METHODS------------------------------------
-    def resizeEvent(self, event):
-        try:
-            if self.chan_toggle_ext.isVisible():
-                self.toggle_ext_toggling(toggle = True)
-        except:
-            pass
-
     # The method to call when the mainWindow is being close       
     def closeEvent(self,event):
         if self.plottimer.isActive():
@@ -982,7 +642,6 @@ class LiveplotApp(QMainWindow):
         self.dataSaved.disconnect()
         event.accept()
         self.deleteLater()
-            
 
 if __name__ == '__main__':
     app = 0 
