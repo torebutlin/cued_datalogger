@@ -54,7 +54,10 @@ if use_anaconda and operating_system == "windows":
     # Find conda
     conda_executable = subprocess.check_output(['where', 'conda']).decode("utf-8").split()[0]
     if isinstance(conda_executable, list):
-        conda_executable = conda_executable[0]
+        for item in conda_executable:
+            if item.endswith(".bat") or item.endswith(".exe"):
+                conda_executable = item
+                break
     print("Conda executable found at {}".format(conda_executable))
 
     # Check for python3.dll
@@ -145,8 +148,7 @@ if use_anaconda:
     print("Installing conda dependencies... ")
     for dependency in conda_dependency_list:
         print("Installing " + dependency + " using conda:")
-        #install_command = [conda_executable, 'install', '-y', dependency]
-        install_command = ['conda', 'install', '-y', dependency]
+        install_command = [conda_executable, 'install', '-y', dependency]
         conda_install_process = subprocess.Popen(install_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
         #while conda_install_process.stdout:
         for line in conda_install_process.stdout:
