@@ -30,7 +30,7 @@ The built version should appear in ``docs/build/html``.
 ReadTheDocs version
 """""""""""""""""""
 `ReadTheDocs <https://readthedocs.org/>`_ is a documentation hosting website. The DataLogger
-documentation can be found at `cued-datalogger.readthedocs.io <http://cued-cued-datalogger.readthedocs.io>`_.
+documentation can be found at `cued_datalogger.readthedocs.io <http://cued-cued_datalogger.readthedocs.io>`_.
 
 Currently the process for uploading the DataLogger documentation to ReadTheDocs is quite complex
 and messy, due to issues with package dependencies. In an attempt to simplify things, there is an
@@ -55,12 +55,12 @@ To build a new version of the documentation:
 
   #. Check that the ``setup.py`` file in the repository is identical to ``docs_setup.py``.
 
-  #. Navigate to `the ReadTheDocs project homepage <https://readthedocs.org/projects/cued-datalogger/>`_.
+  #. Navigate to `the ReadTheDocs project homepage <https://readthedocs.org/projects/cued_datalogger/>`_.
 
   #. Under **Build a version**, click *Build*. You can check the progress of the build in the *Builds*
      tab.
 
   #. Click *View Docs* to view the documentation. If lots of the documentation is missing, the
      ``autodoc`` directives have probably failed, suggesting that the build did not successfully install
-     the ``cued-datalogger`` module. Check the *Builds* tab in the project homepage.
+     the ``cued_datalogger`` module. Check the *Builds* tab in the project homepage.
 

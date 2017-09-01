@@ -25,7 +25,7 @@ import numpy as np
 import copy as cp
 
 try:
-    from cued-datalogger.acquisition.RecEmitter import RecEmitter
+    from cued_datalogger.acquisition.RecEmitter import RecEmitter
     QT_EMITTER = True
 except Exception as e:
     print(e)

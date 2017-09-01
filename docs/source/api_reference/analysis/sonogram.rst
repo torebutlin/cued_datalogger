@@ -3,11 +3,11 @@ Sonogram
 ========
 
 
-.. autoclass:: cued-datalogger.analysis.sonogram.SonogramDisplayWidget
+.. autoclass:: cued_datalogger.analysis.sonogram.SonogramDisplayWidget
   :members:
 
-.. autoclass:: cued-datalogger.analysis.sonogram.SonogramToolbox
+.. autoclass:: cued_datalogger.analysis.sonogram.SonogramToolbox
   :members:
 
-.. autoclass:: cued-datalogger.analysis.sonogram.MatplotlibSonogramContourWidget
+.. autoclass:: cued_datalogger.analysis.sonogram.MatplotlibSonogramContourWidget
   :members:

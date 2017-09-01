@@ -1,5 +1,5 @@
 import scipy.io as sio
-from cued-datalogger.api.channel import Channel, DataSet, ChannelSet
+from cued_datalogger.api.channel import Channel, DataSet, ChannelSet
 import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)

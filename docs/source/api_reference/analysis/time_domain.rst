@@ -2,7 +2,7 @@
 Time domain
 ===========
 
-.. autoclass:: cued-datalogger.analysis.time_domain.TimeDomainWidget
+.. autoclass:: cued_datalogger.analysis.time_domain.TimeDomainWidget
   :members:
 
-.. autoclass:: cued-datalogger.analysis.time_domain.TimeToolbox
+.. autoclass:: cued_datalogger.analysis.time_domain.TimeToolbox

@@ -2,7 +2,7 @@
 README
 ======
 
-See the `documentation <http://cued-datalogger.readthedocs.io/en/latest/>`_
+See the `documentation <http://cued_datalogger.readthedocs.io/en/latest/>`_
 for more information.
 
 
@@ -17,9 +17,9 @@ Installing on Windows
 
    conda install pip
 
-#. Install ``cued-datalogger`` using ``pip``::
+#. Install ``cued_datalogger`` using ``pip``::
 
-    pip install cued-datalogger
+    pip install cued_datalogger
 
 
 Installing on OS X
@@ -28,9 +28,9 @@ Installing on OS X
 
     brew install portaudio
 
-#. Install ``cued-datalogger`` using ``pip`` (from Terminal or from Anaconda Prompt or wherever)::
+#. Install ``cued_datalogger`` using ``pip`` (from Terminal or from Anaconda Prompt or wherever)::
 
-    pip install cued-datalogger
+    pip install cued_datalogger
     
 \* If you do not have brew installed, install `Homebrew <https://brew.sh/>`_ then permit it to run with ``xcode-select --install``
 
@@ -50,8 +50,8 @@ Installing on Linux
         yum install portaudio portaudio-devel
 
 
-#. Install ``cued-cued-datalogger`` using ``pip``::
+#. Install ``cued-cued_datalogger`` using ``pip``::
 
-    pip install cued-cued-datalogger
+    pip install cued-cued_datalogger
 
  

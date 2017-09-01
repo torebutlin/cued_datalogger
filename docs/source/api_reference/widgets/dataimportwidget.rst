@@ -2,5 +2,5 @@
 DataImportWidget
 ================
 
-.. autoclass:: cued-datalogger.api.file_import.DataImportWidget
+.. autoclass:: cued_datalogger.api.file_import.DataImportWidget
   :members:

@@ -23,33 +23,33 @@ The Datalogger uses a three-tier structure for storing data, comprising of Chann
 
 ChannelSet
 ----------
-.. autoclass:: cued-datalogger.api.channel.ChannelSet
+.. autoclass:: cued_datalogger.api.channel.ChannelSet
   :members:
   
-  .. automethod:: cued-datalogger.api.channel.ChannelSet.__init__
+  .. automethod:: cued_datalogger.api.channel.ChannelSet.__init__
 
-  .. automethod:: cued-datalogger.api.channel.ChannelSet.__len__
+  .. automethod:: cued_datalogger.api.channel.ChannelSet.__len__
 
 
 Channel
 -------
 
-.. autoclass:: cued-datalogger.api.channel.Channel
+.. autoclass:: cued_datalogger.api.channel.Channel
   :members:
 
-  .. automethod:: cued-datalogger.api.channel.Channel.__init__
+  .. automethod:: cued_datalogger.api.channel.Channel.__init__
 
 
 DataSet
 -------
 
-.. autoclass:: cued-datalogger.api.channel.DataSet
+.. autoclass:: cued_datalogger.api.channel.DataSet
   :members:
 
-  .. automethod:: cued-datalogger.api.channel.DataSet.__init__
+  .. automethod:: cued_datalogger.api.channel.DataSet.__init__
 
 Widgets
 -------
-See :class:`~cued-datalogger.api.channel.ChannelSelectWidget` and :class:`~cued-datalogger.api.channel.ChannelMetadataWidget` for
+See :class:`~cued_datalogger.api.channel.ChannelSelectWidget` and :class:`~cued_datalogger.api.channel.ChannelMetadataWidget` for
 widgets to interact with ChannelSets.
 

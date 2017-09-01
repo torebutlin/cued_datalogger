@@ -25,7 +25,7 @@ An example of a `.wsp` file can be found in ``tests/test_workspace.wsp``.
 The ``Workspace`` class
 -----------------------
 
-.. autoclass:: cued-datalogger.api.workspace.Workspace
+.. autoclass:: cued_datalogger.api.workspace.Workspace
   :members:
 
 Widgets

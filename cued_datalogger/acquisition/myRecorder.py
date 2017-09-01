@@ -32,7 +32,7 @@ data = recorder.flush_record_data()
 >>>recorder.close()
 """
 
-from cued-datalogger.acquisition.RecorderParent import RecorderParent
+from cued_datalogger.acquisition.RecorderParent import RecorderParent
 import sys,traceback
 
 try:

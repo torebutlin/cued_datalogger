@@ -1,2 +1,2 @@
 include README.rst
-include cued-datalogger/VERSION
+include cued_datalogger/VERSION

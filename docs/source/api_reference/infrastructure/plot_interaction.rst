@@ -4,18 +4,18 @@ Plot interaction
 
 A description.
 
-.. autoclass:: cued-datalogger.api.pyqtgraph_extensions.InteractivePlotWidget
+.. autoclass:: cued_datalogger.api.pyqtgraph_extensions.InteractivePlotWidget
   :members:
 
-.. autoclass:: cued-datalogger.api.pyqtgraph_extensions.CustomPlotWidget
+.. autoclass:: cued_datalogger.api.pyqtgraph_extensions.CustomPlotWidget
   :members:
 
-.. autoclass:: cued-datalogger.api.pyqtgraph_extensions.CustomViewBox
+.. autoclass:: cued_datalogger.api.pyqtgraph_extensions.CustomViewBox
   :members:
 
-.. autoclass:: cued-datalogger.api.pyqtgraph_extensions.CustomViewMenu
+.. autoclass:: cued_datalogger.api.pyqtgraph_extensions.CustomViewMenu
   :members:
 
-.. autoclass:: cued-datalogger.api.pyqtgraph_extensions.CustomUITemplate
+.. autoclass:: cued_datalogger.api.pyqtgraph_extensions.CustomUITemplate
   :members:
 

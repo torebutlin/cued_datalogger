@@ -44,14 +44,14 @@ import copy
 import numpy as np
 from numpy.fft import rfft
 
-from cued-datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
+from cued_datalogger.acquisition.RecordingUIs import (ChanToggleUI,ChanConfigUI,DevConfigUI,
                                                  StatusUI,RecUI)
-from cued-datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph,LevelsLiveGraph
-from cued-datalogger.acquisition.ChanMetaWin import ChanMetaWin
+from cued_datalogger.acquisition.RecordingGraph import TimeLiveGraph,FreqLiveGraph,LevelsLiveGraph
+from cued_datalogger.acquisition.ChanMetaWin import ChanMetaWin
 
-import cued-datalogger.acquisition.myRecorder as mR
+import cued_datalogger.acquisition.myRecorder as mR
 try:
-    import cued-datalogger.acquisition.NIRecorder as NIR
+    import cued_datalogger.acquisition.NIRecorder as NIR
     NI_drivers = True
 except NotImplementedError:
     print("Seems like you don't have National Instruments drivers")
@@ -59,11 +59,11 @@ except NotImplementedError:
 except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
-from cued-datalogger.analysis.frequency_domain import (compute_transfer_function,
+from cued_datalogger.analysis.frequency_domain import (compute_transfer_function,
                                                    compute_autospec,compute_crossspec)
 
-from cued-datalogger.api.channel import ChannelSet
-from cued-datalogger.api.toolbox import Toolbox, MasterToolbox
+from cued_datalogger.api.channel import ChannelSet
+from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
 # GLOBAL CONSTANTS
 PLAYBACK = False    # Whether to playback the stream

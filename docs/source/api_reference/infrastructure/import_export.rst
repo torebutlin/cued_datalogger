@@ -4,7 +4,7 @@ Import & Export
 
 Importing
 ---------
-.. autofunction:: cued-datalogger.api.file_import.import_from_mat
+.. autofunction:: cued_datalogger.api.file_import.import_from_mat
 
 
 Exporting
@@ -14,5 +14,5 @@ Not implemented yet.
 
 Widgets
 -------
-See :class:`~cued-datalogger.api.file_import.DataImportWidget`.
+See :class:`~cued_datalogger.api.file_import.DataImportWidget`.
  

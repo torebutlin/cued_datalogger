@@ -1,7 +1,7 @@
-from cued-datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
-from cued-datalogger.api.toolbox import Toolbox
-from cued-datalogger.api.numpy_extensions import to_dB
-from cued-datalogger.api.channel import ChannelSet
+from cued_datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
+from cued_datalogger.api.toolbox import Toolbox
+from cued_datalogger.api.numpy_extensions import to_dB
+from cued_datalogger.api.channel import ChannelSet
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QComboBox,QCheckBox
 from PyQt5.QtCore import pyqtSignal,Qt

@@ -5,7 +5,7 @@ if __name__ == '__main__':
 import numpy as np
 import pyqtgraph as pg
 
-from cued-datalogger.api.numpy_extensions import MatlabList
+from cued_datalogger.api.numpy_extensions import MatlabList
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout,
@@ -23,7 +23,7 @@ class ChannelSet(object):
     ChannelSets can be initialised as empty, and channels added later,
     or initialised with a number of empty channels, to which DataSets can be
     added later. Channels are stored in a matlab-style list structure
-    (see :class:`MatlabList <cued-datalogger.api.numpy_extensions.MatlabList>`) 
+    (see :class:`MatlabList <cued_datalogger.api.numpy_extensions.MatlabList>`) 
     which uses tuple indexing, eg. ``channelset.channels[1, 2, range(5,10)]``, 
     so that multiple channels can be selected easily. 
     
