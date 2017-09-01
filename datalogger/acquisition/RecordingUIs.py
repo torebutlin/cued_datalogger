@@ -83,7 +83,7 @@ class ChanToggleUI(BaseWidget):
         * Checkboxes to toggle channel,
         * Buttons to select all, deselect all, and invert selection.
         * LineEdits to toggle by expression or tags
-        
+
     Attributes
     ----------
     toggleChanged: pyqtsignal
@@ -175,7 +175,7 @@ class ChanToggleUI(BaseWidget):
         for btn in self.channels_box.findChildren(QCheckBox):
             btn.click()
 
-    def toggle_all_checkboxes(self,state):
+    def toggle_all_checkboxes(self, state):
         """
         Callback to select all or deselect all
 
@@ -226,7 +226,7 @@ class ChanToggleUI(BaseWidget):
                     self.chan_btn_group.removeButton(chan_btn)
                     chan_btn.deleteLater()
 
-    def chan_line_toggle(self,chan_list):
+    def chan_line_toggle(self, chan_list):
         """
         Callback to intepret the input expressions and toggle the channels
         accordingly
@@ -291,7 +291,7 @@ class ChanConfigUI(BaseWidget):
         * Buttons to change the colour of a plot
         * Checkbox to hold a signal
         * Button to open a window to edit metadata
-    
+
     Attributes
     ----------
     timeOffsetChanged: pyqtsignal
@@ -396,7 +396,7 @@ class ChanConfigUI(BaseWidget):
     def set_offset_step(self,cbox,step_val):
         """
         Sets the single step of a spinbox
-        
+
         Parameters
         ----------
         cbox: SpinBox
@@ -468,7 +468,7 @@ class DevConfigUI(BaseWidget):
     """
     A Channel Plots Configuration widget.
     Contains widgets to setup the recorder
-        
+
     Attributes
     ----------
     configRecorder: pyqtsignal
@@ -639,7 +639,7 @@ class StatusUI(BaseWidget):
         * Button to reset the splitters
         * Button to resume/pause the stream
         * Button to grab a snapshot of the stream
-    
+
     Attributes
     ----------
     statusbar: QStatusBar
@@ -850,7 +850,7 @@ class RecUI(BaseWidget):
             Current index of input_chan_box
         """
         return self.input_chan_box.currentIndex()
-    
+
     def get_record_config(self, *arg):
         """
         Returns
@@ -876,7 +876,7 @@ class RecUI(BaseWidget):
     def autoset_record_config(self, setting):
         """
         Recalculate samples or duration
-        
+
         Parameters
         ----------
         setting: str
