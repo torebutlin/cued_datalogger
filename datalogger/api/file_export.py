@@ -36,16 +36,17 @@ def export_to_mat(file,order, channel_set=None):
     variables = {}
     data_ids = channel_set.get_channel_ids(order)
     var_names = set([y for x in data_ids for y in x])
-    meta_names = cs.get_channel_metadata(0)
+    meta_names = channel_set.get_channel_metadata(0)
     for name in var_names:
         data = channel_set.get_channel_data(order,name)
         variables[name] = data
     for mname in meta_names:
         mdata = channel_set.get_channel_metadata(order,mname)
         variables[mname] = mdata    
-    print(variables)
+    #print(variables)
+    print(file)
     # Save the variable dict as matlab file 
-    file = sio.savemat(file,variables)
+    file = sio.savemat(file,variables,appendmat = False)
     
     if new_channel_set:
         return channel_set
@@ -71,6 +72,7 @@ class DataExportWidget(QWidget):
         shift_btn_layout.addWidget(shift_up_btn )
         shift_btn_layout.addWidget(shift_down_btn )
         self.mat_export_btn = QPushButton('Export as MAT',self)
+        self.mat_export_btn.clicked.connect(self.export_files)
         
         layout.addWidget(QLabel('ChannelSet Saving Order',self))
         layout.addWidget(self.channel_listview)
@@ -105,20 +107,11 @@ class DataExportWidget(QWidget):
         self.channel_listview.addItems(full_names)
         
     def export_files(self):
-        pass
-        '''
-        # Get a list of URLs from a QFileDialog
-        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
-                                               "MAT Files (*.mat)")[0]        
-        try:
-            import_from_mat(url[0], self.new_cs)
-        except:
-            print('Load failed. Revert to default!')
-            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
-                            self.new_cs)
-    
-        self.set_channel_set(self.new_cs)
-        '''
+        # Get save URL from QFileDialog
+        url = QFileDialog.getSaveFileName(self, "Export Data", "",
+                                           "MAT Files (*.mat)")[0]
+        export_to_mat(url,tuple(self.order), self.cs)
+        
 if __name__ == '__main__':
     cs = ChannelSet(4)
     cs.add_channel_dataset((0,1,2,3),'time_series',np.random.rand(5,1))

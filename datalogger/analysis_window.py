@@ -168,6 +168,7 @@ class AnalysisWindow(QMainWindow):
         self.cs = cs
         self.channel_select_widget.cs = self.cs
         self.channel_select_widget.set_channel_name()
+        self.export_widget.update_list()
 
     def init_ui(self):
         menubar = self.menuBar()
