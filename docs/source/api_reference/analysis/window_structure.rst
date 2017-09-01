@@ -1,5 +1,5 @@
 ================
-Analysis window
+Window structure
 ================
 
 The AnalysisWindow is comprised of three main widgets and a menu bar.
@@ -7,10 +7,12 @@ The AnalysisWindow is comprised of three main widgets and a menu bar.
 .. figure:: analysis_window_labeled.png
    :width: 100%
 
+The widgets use PyQt's signal and slot mechanism to interact with each other, rather than interacting directly.
+
 
 Menu bar
 --------
-Found at :attr:`~datalogger.analysis_window.AnalysisWindow.menubar`
+Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.menubar` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 Currently the menu bar is only a placeholder, it has no functionality.
 
@@ -22,7 +24,7 @@ only be performed once per session.
 
 Local toolbox
 -------------
-Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 The local toolbox contains all the operations and conversions that are associated with the widget
 that is currently showing in the display TabWidget. If something changes the channel data, or
@@ -35,7 +37,7 @@ conversion options').
 
 Display TabWidget
 ------------------------------------------------------------------------
-Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.display_tabwidget` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.display_tabwidget` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 This is the central widget for the AnalysisWindow, where graphs, data, and results are displayed.
 For each section of the analysis window (time domain, sonogram, etc) there is one
@@ -57,7 +59,7 @@ and visualisation.
 
 Global toolbox
 --------------
-Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 The global toolbox contains operations that have a universal effect, and are not limited to one
 specific analysis widget. Examples include interacting with channel selection and metadata, or running

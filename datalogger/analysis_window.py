@@ -24,7 +24,8 @@ from datalogger.acquisition.RecordingUIs import DevConfigUI
 
 class AnalysisDisplayTabWidget(QTabWidget):
     """This is the central widget for the AnalysisWindow, where graphs, data,
-    and results are displayed.
+    and results are displayed. In general the user does not interact explicitly
+    with this widget, instead accessing the widgets it contains.
 
     Attributes
     ----------

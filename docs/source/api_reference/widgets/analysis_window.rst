@@ -2,4 +2,4 @@
 Analysis Window
 ===============
 
-See :doc:`/api_reference/analysis/window_structure`.
+See :class:`~datalogger.analysis_window.AnalysisWindow`.
