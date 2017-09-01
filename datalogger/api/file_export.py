@@ -8,7 +8,7 @@ Created on Fri Sep  1 14:00:14 2017
 import scipy.io as sio
 from datalogger.api.channel import ChannelSet
 import numpy as np
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QListWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)
 from PyQt5.QtCore import  Qt
 
@@ -53,61 +53,37 @@ def export_to_mat(file,order, channel_set=None):
 class DataExportWidget(QWidget):
     def __init__(self,parent):
         super().__init__(parent)
-        self.new_cs = ChannelSet()
+        self.cs = ChannelSet()
+        self.order = list(range(len(self.cs)))
         self.init_UI()
         
     def init_UI(self):
         layout = QVBoxLayout(self)
         
-        self.import_btn = QPushButton('Import Mat Files',self)
-        self.import_btn.clicked.connect(self.import_files)
-        layout.addWidget(self.import_btn)
-        
-        layout.addWidget(QLabel('New ChannelSet Preview',self))
-        
-        self.tree = QTreeWidget(self)
-        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
-                                   "Comments", "Tags", "Sample rate",
-                                   "Calibration factor",
-                                   "Transfer function type"])
-    
-        layout.addWidget(self.tree)
-        
+        self.channel_listview = QListWidget(self)
+        layout.addWidget(self.channel_listview)
+        shift_btn_layout = QHBoxLayout()
+        self.shift_up_btn = QPushButton('Shift Up',self)
+        self.shift_down_btn = QPushButton('Shift Down',self)
+        shift_btn_layout.addWidget(self.shift_up_btn )
+        shift_btn_layout.addWidget(self.shift_down_btn )
         self.mat_export_btn = QPushButton('Export as MAT',self)
-        layout.addWidget(self.add_data_btn)
-        layout.addWidget(self.rep_data_btn)
-    '''    
-    def set_channel_set(self, channel_set):
-        print("Setting channel set...")
-        self.tree.clear()
-
-        #self.cs = channel_set
-
-        self.channel_items = []
-
-        for channel_number, channel in enumerate(channel_set.channels):
-            # Create a tree widget item for this channel
-            channel_item = QTreeWidgetItem(self.tree)
-            #channel_item.setFlags(channel_item.flags() | Qt.ItemIsEditable)
-            channel_item.setData(0, Qt.DisplayRole, channel_number)
-            channel_item.setData(1, Qt.DisplayRole, channel.name)
-            channel_item.setData(3, Qt.DisplayRole, channel.comments)
-            channel_item.setData(4, Qt.DisplayRole, channel.tags)
-            channel_item.setData(5, Qt.DisplayRole, '%.2f' % channel.sample_rate )
-            channel_item.setData(6, Qt.DisplayRole, '%.2f' % channel.calibration_factor)
-            channel_item.setData(7, Qt.DisplayRole, channel.transfer_function_type)
-            # Add it to the list
-            self.channel_items.append(channel_item)
-
-            # Create a child tree widget item for each of the channel's datasets
-            for dataset in channel.datasets:
-                dataset_item = QTreeWidgetItem(channel_item)
-                #dataset_item.setFlags(dataset_item.flags() | Qt.ItemIsEditable)
-                dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
-                dataset_item.setData(2, Qt.DisplayRole, dataset.units)
-        print("Done.")
         
-    def import_files(self):
+        layout.addWidget(QLabel('ChannelSet Saving Order',self))
+        layout.addWidget(self.channel_listview)
+        layout.addLayout(shift_btn_layout)
+        layout.addWidget(self.mat_export_btn)
+        
+    def set_channel_set(self, channel_set):
+        self.cs = channel_set
+        self.order = list(range(len(self.cs)))
+        
+    def update_list(self):
+        pass
+        
+    def export_files(self):
+        pass
+        '''
         # Get a list of URLs from a QFileDialog
         url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
                                                "MAT Files (*.mat)")[0]        
@@ -119,15 +95,11 @@ class DataExportWidget(QWidget):
                             self.new_cs)
     
         self.set_channel_set(self.new_cs)
-        
-    def clear(self):
-        self.new_cs = ChannelSet()
-        self.set_channel_set(self.new_cs)
- '''       
+        '''
 if __name__ == '__main__':
     cs = ChannelSet(4)
     cs.add_channel_dataset((0,1,2,3),'time_series',np.random.rand(5,1))
     cs.set_channel_metadata(0,{'name':'Nope'})
     cs.set_channel_metadata(1,{'name':'Lol'})
-    export_to_mat('C:\Users\eyt21\test3',(0,1,2,3),cs)
+    export_to_mat('test3',(0,1,2,3),cs)
 

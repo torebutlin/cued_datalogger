@@ -16,6 +16,7 @@ from datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
 from datalogger.api.addons import AddonManager
 from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from datalogger.api.file_import import DataImportWidget
+from datalogger.api.file_export import DataExportWidget
 from datalogger.api.toolbox import Toolbox, MasterToolbox
 
 import datalogger.acquisition_window as lpUI
@@ -156,6 +157,10 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.global_tools.addTab(self.import_widget, 'Import Files')
+        
+        # # Export
+        self.export_widget = DataExportWidget(self)
+        self.global_tools.addTab(self.export_widget, 'Export Files')
 
         self.global_toolbox.add_toolbox(self.global_tools)
 
@@ -234,6 +239,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_metadata_widget.set_channel_set(self.cs)
         self.time_toolbox.set_channel_set(self.cs)
         self.frequency_toolbox.set_channel_set(self.cs)
+        self.export_widget.set_channel_set(self.cs)
 
     def plot_time_series(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
