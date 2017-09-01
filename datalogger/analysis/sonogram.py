@@ -10,11 +10,11 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushBu
 
 import numpy as np
 
-import scipy.signal 
+import scipy.signal
 
 
 class MatplotlibSonogramContourWidget(MatplotlibCanvas):
-    """A MatplotlibCanvas widget displaying the Sonogram contour plot"""
+    """A MatplotlibCanvas widget displaying the Sonogram contour plot."""
 
     def __init__(self, sonogram_toolbox=None,
                  channel=None,
@@ -35,31 +35,31 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
         self.update_plot()
 
     def update_plot(self):
-        """Redraw the sonogram on the canvas"""
+        """Redraw the sonogram on the canvas."""
         if self.channel is not None:
             self.F_bins, self.T_bins = np.meshgrid(self.channel.get_data("sonogram_frequency"),
                                                    self.channel.get_data("sonogram_time"))
-    
+
             self.axes.clear()
-    
+
             self.update_contour_sequence()
-    
-            self.axes.contour(self.F_bins, self.T_bins, 
-                              to_dB(np.abs(self.channel.get_data("sonogram"))), 
+
+            self.axes.contour(self.F_bins, self.T_bins,
+                              to_dB(np.abs(self.channel.get_data("sonogram"))),
                               self.contour_sequence)
-    
+
             self.axes.set_xlabel('Freq (Hz)')
             self.axes.set_ylabel('Time (s)')
-    
+
             self.axes.set_xlim(self.channel.get_data("sonogram_frequency").min(),
                                self.channel.get_data("sonogram_frequency").max())
             self.axes.set_ylim(self.channel.get_data("sonogram_time").min(),
                                self.channel.get_data("sonogram_time").max())
-    
+
             self.draw()
 
     def update_contour_sequence(self):
-        """Update the array which says where to plot contours, how many etc"""
+        """Update the array which says where to plot contours, how many etc."""
         if self.channel is not None:
             # Create a vector with the right spacing from min to max value
             self.contour_sequence = np.arange(to_dB(np.abs(self.channel.get_data("sonogram"))).min(),
@@ -67,19 +67,19 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
                                               self.contour_spacing_dB)
             # Take the appropriate number of contours
             self.contour_sequence = self.contour_sequence[-self.num_contours:]
-       
+
     def update_contour_spacing(self, value):
-        """Slot for updating the plot when the contour spacing is changed"""
+        """Slot for updating the plot when the contour spacing is changed."""
         self.contour_spacing_dB = value
         self.update_plot()
-        
+
     def update_num_contours(self, value):
-        """Slot for updating the plot when the number of contours is changed"""
+        """Slot for updating the plot when the number of contours is changed."""
         self.num_contours = value
         self.update_plot()
-    
+
     def set_selected_channels(self, selected_channels):
-        """Update which channel is being plotted"""
+        """Update which channel is being plotted."""
         # If no channel list is given
         if not selected_channels:
             self.channel = None
@@ -89,14 +89,16 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
 
 
 class SonogramDisplayWidget(ColorMapPlotWidget):
-    """The display widget for the Sonogram in the Analysis Window"""
-
+    """
+    The SonogramDisplayWidget is the main display widget for everything in
+    the sonogram domain.
+    """
     def __init__(self, parent=None,
                  window_width=256,
                  window_overlap_fraction=8,
                  contour_spacing_dB=5,
                  num_contours=5):
-        
+
         super().__init__(parent)
         self.parent = parent
 
@@ -111,27 +113,28 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         self.show()
 
     def update_window_width(self, value):
-        """Slot for updating the plot when the window width is changed"""
+        """Slot for updating the plot when the window width is changed."""
         self.window_width = value
         self.update_plot()
-    
+
     def update_window_overlap_fraction(self, value):
-        """Slot for updating the plot when the window overlap fraction is changed"""
+        """Slot for updating the plot when the window overlap fraction is changed."""
         self.window_overlap_fraction = value
         self.update_plot()
-        
+
     def update_contour_spacing(self, value):
-        """Slot for updating the plot when the contour spacing is changed"""
+        """Slot for updating the plot when the contour spacing is changed."""
         self.contour_spacing_dB = value
         self.update_plot()
-        
+
     def update_num_contours(self, value):
-        """Slot for updating the plot when the number of contours is changed"""
+        """Slot for updating the plot when the number of contours is changed."""
         self.num_contours = value
         self.update_plot()
-    
+
     def calculate_sonogram(self):
-        """Calculate the sonogram, and store the values in the channel (including autogenerated datasets)"""
+        """Calculate the sonogram, and store the values in the channel
+        (including autogenerated datasets)."""
 
         (self.freqs,
          self.times,
@@ -141,7 +144,7 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
                                            nperseg=self.window_width,
                                            noverlap=self.window_width // self.window_overlap_fraction,
                                            return_onesided=False)
-        
+
         # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
         self.FT = self.FT.transpose()
         # Scipy calculates all the conjugate spectra/frequencies as well -
@@ -156,7 +159,7 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
 
 
     def update_plot(self):
-        """Recalculate the sonogram, clear the canvas and replot"""
+        """Recalculate the sonogram, clear the canvas and replot."""
         if self.channel is not None:
             if self.channel.is_dataset("time_series"):
                 self.calculate_sonogram()
@@ -168,25 +171,25 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
                                    contour_spacing_dB=self.contour_spacing_dB)
         else:
             self.clear()
-   
+
     def set_selected_channels(self, selected_channels):
-        """Update which channel is being plotted"""
+        """Update which channel is being plotted."""
         # If no channel list is given
         if not selected_channels:
             self.channel = None
         else:
             self.channel = selected_channels[0]
             self.update_plot()
-        
+
 
 class SonogramToolbox(Toolbox):
-    """Toolbox containing Sonogram controls"""  
-    
+    """Toolbox containing Sonogram controls."""
+
     sig_window_width_changed = pyqtSignal(int)
     sig_window_overlap_fraction_changed = pyqtSignal(int)
     sig_num_contours_changed = pyqtSignal(int)
     sig_contour_spacing_changed = pyqtSignal(int)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.parent = parent
@@ -195,7 +198,7 @@ class SonogramToolbox(Toolbox):
         self.window_overlap_fraction = 8
         self.num_contours = 5
         self.contour_spacing_dB = 5
-        
+
         self.init_ui()
 
 
@@ -275,7 +278,7 @@ class SonogramToolbox(Toolbox):
         sonogram_controls_layout.addWidget(self.window_width_control, 1, 0)
         sonogram_controls_layout.addWidget(self.window_overlap_fraction_label, 0, 1)
         sonogram_controls_layout.addWidget(self.window_overlap_fraction_control, 1, 1)
-        
+
         self.sonogram_controls_tab.setLayout(sonogram_controls_layout)
 
         # Plot controls:
@@ -288,16 +291,16 @@ class SonogramToolbox(Toolbox):
         plot_controls_layout.addWidget(self.num_contours_label, 1, 1)
         plot_controls_layout.addWidget(self.num_contours_spinbox, 2, 1)
         plot_controls_layout.addWidget(self.num_contours_slider, 3, 1)
-        
+
         self.plot_controls_tab.setLayout(plot_controls_layout)
-        
+
         # Export:
         self.export_tab = QWidget(self)
-        
+
         export_layout = QVBoxLayout()
         export_layout.addWidget(self.convert_to_contour_btn)
-        
-        self.export_tab.setLayout(export_layout)        
+
+        self.export_tab.setLayout(export_layout)
 
         #-------------Add tabs-----------------
         self.addTab(self.plot_controls_tab, "Plot Controls")
@@ -315,7 +318,7 @@ class SonogramToolbox(Toolbox):
             self.sig_contour_spacing_changed.connect(self.contour_plot.update_contour_spacing)
             self.sig_num_contours_changed.connect(self.contour_plot.update_num_contours)
             self.contour_plot.show()
-    
+
     def set_selected_channels(self, selected_channels):
         """Update which channel is being plotted"""
         # If no channel list is given
@@ -323,7 +326,7 @@ class SonogramToolbox(Toolbox):
             self.channel = None
         else:
             self.channel = selected_channels[0]
-        
+
         if hasattr(self, 'contour_plot'):
             self.contour_plot.set_selected_channels(selected_channels)
 
@@ -350,30 +353,30 @@ if __name__ == '__main__':
     app = 0
 
     app = QApplication(sys.argv)
-    
+
     w = QWidget()
-    
+
     hbox = QHBoxLayout()
     w.setLayout(hbox)
-    
+
     toolbox = SonogramToolbox(w)
     displaywidget = SonogramDisplayWidget()
     displaywidget.update_plot(sig)
-   
+
     hbox.addWidget(toolbox)
     hbox.addWidget(displaywidget)
-    
+
     toolbox.contour_spacing_slider.valueChanged.connect(displaywidget.update_contour_spacing)
     toolbox.contour_spacing_spinbox.valueChanged.connect(displaywidget.update_contour_spacing)
-    
+
     toolbox.num_contours_slider.valueChanged.connect(displaywidget.update_num_contours)
     toolbox.num_contours_spinbox.valueChanged.connect(displaywidget.update_num_contours)
-    
+
     toolbox.window_overlap_fraction_control.valueChanged.connect(displaywidget.update_window_overlap_fraction)
-    
+
     toolbox.window_width_control.valueChanged.connect(displaywidget.update_window_width)
 
     w.show()
-    
+
     sys.exit(app.exec_())
 
