@@ -43,17 +43,16 @@ class Recorder(RecorderParent):
     
      Attributes
      ----------
-        In addtion to RecorderParent Attributes,
-        device_name: str
-            Name of the device to be used for recording
-        max_value: float
-            Maximum value of recorded data
+    device_name: str
+        Name of the device to be used for recording
+    max_value: float
+        Maximum value of recorded data
     """
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 30000.0, chunk_size = 1000,
                  num_chunk = 4,device_name = None):
         """
-         Re-implemented from RecorderParent
+        Re-implemented from RecorderParent
         """
 
         super().__init__(channels = channels,rate = rate, 
@@ -92,14 +91,14 @@ class Recorder(RecorderParent):
      # Get audio device names 
     def available_devices(self):
         """
-        Get all the available input National Instrument devices
-         
+        Get all the available input National Instrument devices.
+        
         Returns
         ----------
-            devices_name: List of str
-                Name of the device, e.g. Dev0
-            device_type: List of str
-                Type of device, e.g. USB-6003 
+        devices_name: List of str
+            Name of the device, e.g. Dev0
+        device_type: List of str
+            Type of device, e.g. USB-6003 
         """
         numBytesneeded = pdaq.DAQmxGetSysDevNames(None,0)
         databuffer = pdaq.create_string_buffer(numBytesneeded)
@@ -172,9 +171,9 @@ class Recorder(RecorderParent):
         
         Returns
         ----------
-            channelname: str
-                The channel names to be used when assigning Task 
-                e.g. Dev0/ai0:Dev0/ai1
+        channelname: str
+            The channel names to be used when assigning Task 
+            e.g. Dev0/ai0:Dev0/ai1
         """
         if self.channels >1:
             channelname =  '%s/ai0:%s/ai%i' % (self.device_name, self.device_name,self.channels-1)
@@ -200,7 +199,7 @@ class Recorder(RecorderParent):
         then record data if it is recording,
         finally check for any trigger.
         
-        Return 0 as part of the callback format.
+        Returns 0 as part of the callback format.
         More info can be found in PyDAQmx documentation on Task class
         """
         in_data = np.zeros(self.chunk_size*self.channels,dtype = np.int16)

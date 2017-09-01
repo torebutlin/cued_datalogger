@@ -52,7 +52,7 @@ if use_anaconda and operating_system != "windows":
 
 if use_anaconda and operating_system == "windows":
     # Find conda
-    conda_executable = subprocess.check_output(['where', 'conda.exe']).decode("utf-8").split()[0]
+    conda_executable = subprocess.check_output(['where', 'conda']).decode("utf-8").split()[0]
     if isinstance(conda_executable, list):
         conda_executable = conda_executable[0]
     print("Conda executable found at {}".format(conda_executable))
@@ -186,3 +186,4 @@ setup(name='cued-datalogger',
                         'datalogger.__main__:run_datalogger_full']},
       zip_safe=True,
       include_package_data=True)
+
