@@ -12,7 +12,9 @@ See the `PyQt5 Reference Guide <http://pyqt.sourceforge.net/Docs/PyQt5/>`_ and t
 
 PyQtGraph
 """""""""
-PyQtGraph is used for all graph plotting. Use the built-in :class:`PlotWidget` for creating plots.
+PyQtGraph is used for all graph plotting. However, in general plots should be created using the DataLogger's
+:class:`~datalogger.api.pyqtgraph_extensions.InteractivePlotWidget`, which provides some additional 
+functionality.
 
 See the `PyQtGraph Documentation <http://www.pyqtgraph.org/documentation/>`_.
 

@@ -24,7 +24,15 @@ from datalogger.acquisition.RecordingUIs import DevConfigUI
 
 class AnalysisDisplayTabWidget(QTabWidget):
     """This is the central widget for the AnalysisWindow, where graphs, data,
-    and results are displayed."""
+    and results are displayed.
+
+    Attributes
+    ----------
+    circle_widget : :class:`~datalogger.analysis.circle_fit.CircleFitWidget`
+    freqdomain_widget : :class:`~datalogger.analysis.frequency_domain.FrequencyDomainWidget`
+    sonogram_widget : :class:`~datalogger.analysis.sonogram.SonogramDisplayWidget`
+    timedomain_widget : :class:`~datalogger.analysis.time_domain.TimeDomainWidget`
+    """
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
 
@@ -68,7 +76,42 @@ class ProjectMenu(QMenu):
 
 class AnalysisWindow(QMainWindow):
     """
-    Data Analysis Window
+    The main window for analysing and processing data.
+
+    Attributes
+    ----------
+    cs : :class:`~datalogger.api.channel.ChannelSet`
+      The ChannelSet containing all the data. Data is accessed through this
+      ChannelSet.
+
+    menubar : :class:`PyQt5.QtWidgets.QMenuBar`
+
+    toolbox : :class:`~datalogger.api.toolbox.MasterToolbox`
+      The widget containing local tools and operations. Contains four
+      toolboxes: :attr:`time_toolbox`, :attr:`frequency_toolbox`,
+      :attr:`sonogram_toolbox`, :attr:`circle_fit_toolbox`.
+
+    time_toolbox : :class:`~datalogger.analysis.time_domain.TimeToolbox`
+    frequency_toolbox : :class:`~datalogger.analysis.frequency_domain.FrequencyToolbox`
+    sonogram_toolbox : :class:`~datalogger.analysis.sonogram.SonogramToolbox`
+    circle_fit_toolbox : :class:`~datalogger.analysis.circle_fit.CircleFitToolbox`
+
+    display_tabwidget : :class:`~datalogger.analysis_window.AnalysisDisplayTabWidget`
+        The central widget for display.
+
+    global_master_toolbox : :class:`~datalogger.api.toolbox.MasterToolbox`
+      The master toolbox containing the :attr:`global_toolbox`.
+
+    global_toolbox : :class:`~datalogger.api.toolbox.Toolbox`
+      The widget containing global tools and operations. Has five tabs,
+      containing: <acquisition window launcher>, :attr:`channel_select_widget`,
+      :attr:`channel_metadata_widget`, :attr:`addon_widget`,
+      :attr:`import_widget`.
+    liveplot : :class:`~datalogger.acquisition_window.LiveplotApp`
+    channel_select_widget : :class:`~datalogger.api.channel.ChannelSelectWidget`
+    channel_metadata_widget : :class:`~datalogger.api.channel.ChannelMetadataWidget`
+    addon_widget : :class:`~datalogger.api.addons.AddonManager`
+    import_widget : :class:`~datalogger.api.file_import.DataImportWidget`
     """
     def __init__(self):
         super().__init__()
@@ -84,7 +127,6 @@ class AnalysisWindow(QMainWindow):
         self.show()
 
     def init_toolbox(self):
-        """Create the master toolbox"""
         self.toolbox = MasterToolbox(self)
 
         # # Time toolbox
@@ -120,54 +162,55 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.add_toolbox(self.circle_fit_toolbox)
         self.toolbox.set_toolbox(0)
 
-    def init_global_toolbox(self):
-        self.global_toolbox = MasterToolbox()
+    def init_global_master_toolbox(self):
+        self.global_master_toolbox = MasterToolbox()
 
-        self.global_tools = Toolbox('right', self.global_toolbox)
+        self.global_toolbox = Toolbox('right', self.global_master_toolbox)
 
         # # Acquisition Window
         self.liveplot = None
         dev_configUI = DevConfigUI()
         dev_configUI.config_button.setText('Open Oscilloscope')
         dev_configUI.config_button.clicked.connect(self.open_liveplot)
-        self.global_tools.addTab(dev_configUI,'Oscilloscope')
+        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
 
         # # Channel Selection
-        self.channel_select_widget = ChannelSelectWidget(self.global_tools)
+        self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.timedomain_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.sonogram_toolbox.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circle_widget.set_selected_channels)
 
-        self.global_tools.addTab(self.channel_select_widget, 'Channel Selection')
+        self.global_toolbox.addTab(self.channel_select_widget, 'Channel Selection')
 
         # # Channel Metadata
-        self.channel_metadata_widget = ChannelMetadataWidget(self.global_tools)
-        self.global_tools.addTab(self.channel_metadata_widget, 'Channel Metadata')
+        self.channel_metadata_widget = ChannelMetadataWidget(self.global_toolbox)
+        self.global_toolbox.addTab(self.channel_metadata_widget, 'Channel Metadata')
 
         self.channel_metadata_widget.metadataChange.connect(self.update_cs)
 
         # # Addon Manager
         self.addon_widget = AddonManager(self)
-        self.global_tools.addTab(self.addon_widget, 'Addon Manager')
+        self.global_toolbox.addTab(self.addon_widget, 'Addon Manager')
 
         # # Import
         self.import_widget = DataImportWidget(self)
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
-        self.global_tools.addTab(self.import_widget, 'Import Files')
+        self.global_toolbox.addTab(self.import_widget, 'Import Files')
 
-        self.global_toolbox.add_toolbox(self.global_tools)
+        self.global_master_toolbox.add_toolbox(self.global_toolbox)
 
     def update_cs(self, cs):
+        """Set the ChannelSet of the AnalysisWindow."""
         self.cs = cs
         self.channel_select_widget.cs = self.cs
         self.channel_select_widget.set_channel_name()
 
     def init_ui(self):
-        menubar = self.menuBar()
-        menubar.addMenu(ProjectMenu(self))
+        self.menubar = self.menuBar()
+        self.menubar.addMenu(ProjectMenu(self))
 
         # # Create the main widget
         self.main_widget = QWidget(self)
@@ -183,7 +226,7 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.currentChanged.connect(self.toolbox.set_toolbox)
 
         # Create the global toolbox
-        self.init_global_toolbox()
+        self.init_global_master_toolbox()
 
         self.tfplots = []
         self.config_channelset()
@@ -194,11 +237,11 @@ class AnalysisWindow(QMainWindow):
         # Add the widgets
         self.main_layout.addWidget(self.toolbox)
         self.main_layout.addWidget(self.display_tabwidget)
-        self.main_layout.addWidget(self.global_toolbox)
+        self.main_layout.addWidget(self.global_master_toolbox)
         # Set the stretch factors
         self.main_layout.setStretchFactor(self.toolbox, 0)
         self.main_layout.setStretchFactor(self.display_tabwidget, 1)
-        self.main_layout.setStretchFactor(self.global_toolbox, 0.5)
+        self.main_layout.setStretchFactor(self.global_master_toolbox, 0.5)
 
     def create_test_channelset(self):
         self.cs = ChannelSet(5)

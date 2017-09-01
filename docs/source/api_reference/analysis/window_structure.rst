@@ -1,5 +1,5 @@
 ================
-Window Structure
+Analysis window
 ================
 
 The AnalysisWindow is comprised of three main widgets and a menu bar.
@@ -10,6 +10,8 @@ The AnalysisWindow is comprised of three main widgets and a menu bar.
 
 Menu bar
 --------
+Found at :attr:`~datalogger.analysis_window.AnalysisWindow.menubar`
+
 Currently the menu bar is only a placeholder, it has no functionality.
 
 The menu bar will be the place for functions that are not tools for interacting with or affecting
@@ -20,7 +22,7 @@ only be performed once per session.
 
 Local toolbox
 -------------
-Instance of: :class:`~datalogger.api.toolbox.MasterToolbox`
+Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 The local toolbox contains all the operations and conversions that are associated with the widget
 that is currently showing in the display TabWidget. If something changes the channel data, or
@@ -32,9 +34,8 @@ conversion options').
 
 
 Display TabWidget
------------------
-Instance of: :class:`datalogger.analysis_window.AnalysisDisplayTabWidget`, which
-inherits :class:`PyQt5.QtWidgets.QTabWidget`
+------------------------------------------------------------------------
+Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.display_tabwidget` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 This is the central widget for the AnalysisWindow, where graphs, data, and results are displayed.
 For each section of the analysis window (time domain, sonogram, etc) there is one
@@ -56,8 +57,23 @@ and visualisation.
 
 Global toolbox
 --------------
-Instance of: :class:`~datalogger.api.toolbox.MasterToolbox`
+Accessed at :attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
 
 The global toolbox contains operations that have a universal effect, and are not limited to one
 specific analysis widget. Examples include interacting with channel selection and metadata, or running
 addons.
+
+The global toolbox is actually contained within a :class:`~datalogger.api.toolbox.MasterToolbox`,
+:attr:`~datalogger.analysis_window.AnalysisWindow.global_master_toolbox` to provide an interface 
+symmetric with the local toolbox. However, the user should never need to interact with the 
+MasterToolbox, and all of the global functionality should be located in the the 
+:attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox`.
+
+
+AnalysisWindow widget
+---------------------
+.. autoclass:: datalogger.analysis_window.AnalysisWindow
+  :members:
+
+.. autoclass:: datalogger.analysis_window.AnalysisDisplayTabWidget
+
