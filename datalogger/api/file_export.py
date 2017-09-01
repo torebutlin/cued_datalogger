@@ -55,6 +55,7 @@ class DataExportWidget(QWidget):
         super().__init__(parent)
         self.cs = ChannelSet()
         self.order = list(range(len(self.cs)))
+        #self.selection = 0
         self.init_UI()
         
     def init_UI(self):
@@ -63,10 +64,12 @@ class DataExportWidget(QWidget):
         self.channel_listview = QListWidget(self)
         layout.addWidget(self.channel_listview)
         shift_btn_layout = QHBoxLayout()
-        self.shift_up_btn = QPushButton('Shift Up',self)
-        self.shift_down_btn = QPushButton('Shift Down',self)
-        shift_btn_layout.addWidget(self.shift_up_btn )
-        shift_btn_layout.addWidget(self.shift_down_btn )
+        shift_up_btn = QPushButton('Shift Up',self)
+        shift_up_btn.clicked.connect(lambda: self.shift_list('up'))
+        shift_down_btn = QPushButton('Shift Down',self)
+        shift_down_btn.clicked.connect(lambda: self.shift_list('down'))
+        shift_btn_layout.addWidget(shift_up_btn )
+        shift_btn_layout.addWidget(shift_down_btn )
         self.mat_export_btn = QPushButton('Export as MAT',self)
         
         layout.addWidget(QLabel('ChannelSet Saving Order',self))
@@ -77,9 +80,29 @@ class DataExportWidget(QWidget):
     def set_channel_set(self, channel_set):
         self.cs = channel_set
         self.order = list(range(len(self.cs)))
+        #self.selection = 0
+        self.update_list()
+        self.channel_listview.setCurrentRow(0)
         
+    
+    def shift_list(self,mode):
+        ind = self.channel_listview.currentRow()
+        if mode == 'up':
+            if not ind == 0:
+                self.order[ind-1],self.order[ind] = self.order[ind],self.order[ind-1]
+                ind -= 1
+        elif mode == 'down':
+            if not ind == self.channel_listview.count()-1:
+                self.order[ind],self.order[ind+1] = self.order[ind+1],self.order[ind]
+                ind += 1
+        self.update_list()
+        self.channel_listview.setCurrentRow(ind)
+    
     def update_list(self):
-        pass
+        self.channel_listview.clear()
+        names = self.cs.get_channel_metadata(tuple(self.order),'name')
+        full_names = [str(self.order[i])+' : '+names[i] for i in range(len(names))]
+        self.channel_listview.addItems(full_names)
         
     def export_files(self):
         pass
