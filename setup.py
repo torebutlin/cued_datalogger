@@ -148,7 +148,7 @@ if use_anaconda:
         conda_install_process = subprocess.Popen(install_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
         #while conda_install_process.stdout:
         for line in conda_install_process.stdout:
-            print(line.decode(), end='')
+            print(line.decode("utf-8"), end='')
 
 # PyQt5 does not have a source distribution currently (09/2017) so it cannot
 # be installed using setuptools. The wheel must be installed manually.
