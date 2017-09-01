@@ -2,8 +2,8 @@
 Frequency domain
 ================
 
-.. autoclass:: datalogger.analysis.frequency_domain.FrequencyDomainWidget
+.. autoclass:: cued-datalogger.analysis.frequency_domain.FrequencyDomainWidget
   :members:
 
-.. autoclass:: datalogger.analysis.frequency_domain.FrequencyToolbox
+.. autoclass:: cued-datalogger.analysis.frequency_domain.FrequencyToolbox
   :members:

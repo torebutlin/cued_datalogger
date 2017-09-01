@@ -8,7 +8,7 @@ import pip
 
 def version():
     """Get version number"""
-    with open('datalogger/VERSION') as f:
+    with open('cued-datalogger/VERSION') as f:
         return f.read()
 
 def readme():
@@ -175,16 +175,16 @@ setup(name='cued-datalogger',
       author='Theo Brown, En Yi Tee',
       author_email='tab53@cam.ac.uk, eyt21@cam.ac.uk',
       license='BSD 3-Clause License',
-      packages=['datalogger',
-                'datalogger/acquisition',
-                'datalogger/analysis',
-                'datalogger/api'],
+      packages=['cued-datalogger',
+                'cued-datalogger/acquisition',
+                'cued-datalogger/analysis',
+                'cued-datalogger/api'],
       install_requires=None,#dependency_list,
       entry_points={
-        'console_scripts': ['datalogger_dbg ='
-                            ' datalogger.__main__:run_datalogger_full'],
-        'gui_scripts': ['datalogger = '
-                        'datalogger.__main__:run_datalogger_full']},
+        'console_scripts': ['cued-datalogger_dbg ='
+                            ' cued-datalogger.__main__:run_full'],
+        'gui_scripts': ['cued-datalogger = '
+                        'cued-datalogger.__main__:run_full']},
       zip_safe=True,
       include_package_data=True)
 

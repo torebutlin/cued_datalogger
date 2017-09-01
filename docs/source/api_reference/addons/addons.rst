@@ -7,11 +7,11 @@ Addons (extra extension scripts) may be written to extend the functionality of t
 Addon structure
 ---------------
 
-See :mod:`datalogger/addons/example_addon.py` and :mod:`datalogger/addons/addon_template.py` for examples of addons.
+See :mod:`cued-datalogger/addons/example_addon.py` and :mod:`cued-datalogger/addons/addon_template.py` for examples of addons.
 
 Addons must all be structured according to the ``addon_template.py``. That is::
 
-    #datalogger_addon
+    #cued-datalogger_addon
 
     #------------------------------------------------------------------------------
     # Put metadata about this addon here
@@ -35,7 +35,7 @@ Addons must all be structured according to the ``addon_template.py``. That is::
         #--------------------------------------------------------------------------
         <code goes here>
 
-**Header** (``#datalogger_addon``): This informs the datalogger that this is an addon file.
+**Header** (``#cued-datalogger_addon``): This informs the cued-datalogger that this is an addon file.
 
 **Metadata** (:data:`addon_metadata`): Contains information about the addon. Displayed in the Addon Manager. Addons are sorted according to their ``"category"``.
 
@@ -56,5 +56,5 @@ And probably a lot of other things as well.
 Addon Manager
 -------------
 
-Addons are normally run through the :class:`~datalogger.api.addons.AddonManager`.
+Addons are normally run through the :class:`~cued-datalogger.api.addons.AddonManager`.
 

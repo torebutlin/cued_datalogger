@@ -1,4 +1,4 @@
-#datalogger_addon
+#cued-datalogger_addon
 addon_metadata = {"name": "Example Addon",
 "author": "John Smith",
 "category": "Plotting",

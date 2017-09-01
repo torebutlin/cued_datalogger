@@ -7,19 +7,19 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
 
 import sys
 
-#from datalogger.analysis.circle_fit import CircleFitWidget, CircleFitToolbox
-from datalogger.analysis.circle_fit_v2 import CircleFitWidget, CircleFitToolbox
-from datalogger.analysis.frequency_domain import FrequencyDomainWidget, FrequencyToolbox
-from datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
-from datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
+#from cued-datalogger.analysis.circle_fit import CircleFitWidget, CircleFitToolbox
+from cued-datalogger.analysis.circle_fit_v2 import CircleFitWidget, CircleFitToolbox
+from cued-datalogger.analysis.frequency_domain import FrequencyDomainWidget, FrequencyToolbox
+from cued-datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
+from cued-datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
 
-from datalogger.api.addons import AddonManager
-from datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
-from datalogger.api.file_import import DataImportWidget
-from datalogger.api.toolbox import Toolbox, MasterToolbox
+from cued-datalogger.api.addons import AddonManager
+from cued-datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
+from cued-datalogger.api.file_import import DataImportWidget
+from cued-datalogger.api.toolbox import Toolbox, MasterToolbox
 
-import datalogger.acquisition_window as lpUI
-from datalogger.acquisition.RecordingUIs import DevConfigUI
+import cued-datalogger.acquisition_window as lpUI
+from cued-datalogger.acquisition.RecordingUIs import DevConfigUI
 
 
 class AnalysisDisplayTabWidget(QTabWidget):
@@ -29,10 +29,10 @@ class AnalysisDisplayTabWidget(QTabWidget):
 
     Attributes
     ----------
-    circle_widget : :class:`~datalogger.analysis.circle_fit.CircleFitWidget`
-    freqdomain_widget : :class:`~datalogger.analysis.frequency_domain.FrequencyDomainWidget`
-    sonogram_widget : :class:`~datalogger.analysis.sonogram.SonogramDisplayWidget`
-    timedomain_widget : :class:`~datalogger.analysis.time_domain.TimeDomainWidget`
+    circle_widget : :class:`~cued-datalogger.analysis.circle_fit.CircleFitWidget`
+    freqdomain_widget : :class:`~cued-datalogger.analysis.frequency_domain.FrequencyDomainWidget`
+    sonogram_widget : :class:`~cued-datalogger.analysis.sonogram.SonogramDisplayWidget`
+    timedomain_widget : :class:`~cued-datalogger.analysis.time_domain.TimeDomainWidget`
     """
     def __init__(self, *arg, **kwarg):
         super().__init__(*arg, **kwarg)
@@ -81,38 +81,38 @@ class AnalysisWindow(QMainWindow):
 
     Attributes
     ----------
-    cs : :class:`~datalogger.api.channel.ChannelSet`
+    cs : :class:`~cued-datalogger.api.channel.ChannelSet`
       The ChannelSet containing all the data. Data is accessed through this
       ChannelSet.
 
     menubar : :class:`PyQt5.QtWidgets.QMenuBar`
 
-    toolbox : :class:`~datalogger.api.toolbox.MasterToolbox`
+    toolbox : :class:`~cued-datalogger.api.toolbox.MasterToolbox`
       The widget containing local tools and operations. Contains four
       toolboxes: :attr:`time_toolbox`, :attr:`frequency_toolbox`,
       :attr:`sonogram_toolbox`, :attr:`circle_fit_toolbox`.
 
-    time_toolbox : :class:`~datalogger.analysis.time_domain.TimeToolbox`
-    frequency_toolbox : :class:`~datalogger.analysis.frequency_domain.FrequencyToolbox`
-    sonogram_toolbox : :class:`~datalogger.analysis.sonogram.SonogramToolbox`
-    circle_fit_toolbox : :class:`~datalogger.analysis.circle_fit.CircleFitToolbox`
+    time_toolbox : :class:`~cued-datalogger.analysis.time_domain.TimeToolbox`
+    frequency_toolbox : :class:`~cued-datalogger.analysis.frequency_domain.FrequencyToolbox`
+    sonogram_toolbox : :class:`~cued-datalogger.analysis.sonogram.SonogramToolbox`
+    circle_fit_toolbox : :class:`~cued-datalogger.analysis.circle_fit.CircleFitToolbox`
 
-    display_tabwidget : :class:`~datalogger.analysis_window.AnalysisDisplayTabWidget`
+    display_tabwidget : :class:`~cued-datalogger.analysis_window.AnalysisDisplayTabWidget`
         The central widget for display.
 
-    global_master_toolbox : :class:`~datalogger.api.toolbox.MasterToolbox`
+    global_master_toolbox : :class:`~cued-datalogger.api.toolbox.MasterToolbox`
       The master toolbox containing the :attr:`global_toolbox`.
 
-    global_toolbox : :class:`~datalogger.api.toolbox.Toolbox`
+    global_toolbox : :class:`~cued-datalogger.api.toolbox.Toolbox`
       The widget containing global tools and operations. Has five tabs,
       containing: <acquisition window launcher>, :attr:`channel_select_widget`,
       :attr:`channel_metadata_widget`, :attr:`addon_widget`,
       :attr:`import_widget`.
-    liveplot : :class:`~datalogger.acquisition_window.LiveplotApp`
-    channel_select_widget : :class:`~datalogger.api.channel.ChannelSelectWidget`
-    channel_metadata_widget : :class:`~datalogger.api.channel.ChannelMetadataWidget`
-    addon_widget : :class:`~datalogger.api.addons.AddonManager`
-    import_widget : :class:`~datalogger.api.file_import.DataImportWidget`
+    liveplot : :class:`~cued-datalogger.acquisition_window.LiveplotApp`
+    channel_select_widget : :class:`~cued-datalogger.api.channel.ChannelSelectWidget`
+    channel_metadata_widget : :class:`~cued-datalogger.api.channel.ChannelMetadataWidget`
+    addon_widget : :class:`~cued-datalogger.api.addons.AddonManager`
+    import_widget : :class:`~cued-datalogger.api.file_import.DataImportWidget`
     """
     def __init__(self):
         super().__init__()

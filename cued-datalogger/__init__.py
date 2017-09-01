@@ -1,9 +1,8 @@
-from datalogger import api
-from datalogger import analysis
-from datalogger import acquisition
-from datalogger import analysis_window, acquisition_window
-#from datalogger.api import workspace as workspace
-from datalogger.api import workspace as workspace
+from cued-datalogger import api
+from cued-datalogger import analysis
+from cued-datalogger import acquisition
+from cued-datalogger import analysis_window, acquisition_window
+from cued-datalogger.api import workspace as workspace
 
 import os.path as _path
 

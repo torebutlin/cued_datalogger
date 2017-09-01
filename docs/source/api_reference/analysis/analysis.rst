@@ -2,7 +2,7 @@
 Analysis
 ========
 
-This section contains the documentation for the :class:`~datalogger.analysis_window.AnalysisWindow`.
+This section contains the documentation for the :class:`~cued-datalogger.analysis_window.AnalysisWindow`.
 
 .. toctree::
   :maxdepth: 2

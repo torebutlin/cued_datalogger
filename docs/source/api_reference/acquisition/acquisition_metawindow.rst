@@ -2,8 +2,8 @@
 Channel MetaData Window
 =======================
 
-.. autoclass:: datalogger.acquisition.ChanMetaWin.ChanMetaWin
+.. autoclass:: cued-datalogger.acquisition.ChanMetaWin.ChanMetaWin
   :members:
 
-.. autoclass:: datalogger.acquisition.ChanMetaWin.CommentBox
+.. autoclass:: cued-datalogger.acquisition.ChanMetaWin.CommentBox
   :members:

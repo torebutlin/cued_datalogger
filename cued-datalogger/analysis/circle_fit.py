@@ -2,12 +2,12 @@ import sys
 if __name__ == '__main__':
     sys.path.append('..')
 
-from datalogger.api.channel import ChannelSet
-from datalogger.api.workspace import Workspace
-from datalogger.api.file_import import import_from_mat
-from datalogger.api.toolbox import Toolbox
-from datalogger.api.numpy_extensions import to_dB, sdof_modal_peak
-from datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
+from cued-datalogger.api.channel import ChannelSet
+from cued-datalogger.api.workspace import Workspace
+from cued-datalogger.api.file_import import import_from_mat
+from cued-datalogger.api.toolbox import Toolbox
+from cued-datalogger.api.numpy_extensions import to_dB, sdof_modal_peak
+from cued-datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5 import QtGui

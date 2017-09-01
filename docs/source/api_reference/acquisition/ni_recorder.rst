@@ -2,6 +2,6 @@
 National Instrument Recorder
 ============================
 
-.. autoclass:: datalogger.acquisition.NIRecorder.Recorder
+.. autoclass:: cued-datalogger.acquisition.NIRecorder.Recorder
   :members:
   :noindex:

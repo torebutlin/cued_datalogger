@@ -2,7 +2,7 @@ from setuptools import setup
 
 def version():
     """Get version number"""
-    with open('datalogger/VERSION') as f:
+    with open('cued-datalogger/VERSION') as f:
         return f.read()
 
 def readme():
@@ -18,10 +18,10 @@ setup(name='cued-datalogger',
       author='Theo Brown, En Yi Tee',
       author_email='tab53@cam.ac.uk, eyt21@cam.ac.uk',
       license='BSD 3-Clause License',
-      packages=['datalogger',
-                'datalogger/acquisition',
-                'datalogger/analysis',
-                'datalogger/api'],
+      packages=['cued-datalogger',
+                'cued-datalogger/acquisition',
+                'cued-datalogger/analysis',
+                'cued-datalogger/api'],
       install_requires=['numpy',
                       'scipy',
                       'pyqtgraph',

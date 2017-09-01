@@ -2,22 +2,24 @@
 README
 ======
 
-See the `documentation <http://datalogger-docs.readthedocs.io/en/latest/>`_
+See the `documentation <http://cued-datalogger.readthedocs.io/en/latest/>`_
 for more information.
+
 
 Installation
 ------------
 
-
 Installing on Windows
 ^^^^^^^^^^^^^^^^^^^^^
-#. Download and install `Anaconda / Miniconda <https://www.continuum.io/downloads>`_.  
-  
-#. Visit the `Bitbucket repository <https://bitbucket.org/tab53/cued_datalogger/src>`_ and download the ``python3.dll`` file.   
+#. Download and install `Anaconda / Miniconda <https://www.continuum.io/downloads>`_. 
 
-#. Place the file in ``/path/to/your/Anaconda/Library/bin/``. This is so that PyQt5.9 works with your Anaconda install.  
+#. Check that your Anaconda is using the latest version of ``pip``. In an Anaconda Prompt, type::
 
-#. Follow the steps for "Installing on Anaconda" below.  
+   conda install pip
+
+#. Install ``cued-datalogger`` using ``pip``::
+
+    pip install cued-datalogger
 
 
 Installing on OS X
@@ -26,35 +28,16 @@ Installing on OS X
 
     brew install portaudio
 
-#. If you are using Anaconda, follow the steps for "Installing on Anaconda" below. Otherwise, install ``cued-datalogger`` using ``pip``::
+#. Install ``cued-datalogger`` using ``pip`` (from Terminal or from Anaconda Prompt or wherever)::
 
     pip install cued-datalogger
     
 \* If you do not have brew installed, install `Homebrew <https://brew.sh/>`_ then permit it to run with ``xcode-select --install``
 
 
-Installing on Anaconda
-^^^^^^^^^^^^^^^^^^^^^^
-#. Install dependecies::
+Installing on Linux
+^^^^^^^^^^^^^^^^^^^
 
-    conda install numpy scipy
-    pip install matplotlib pyaudio pydaqmx pyqt5 pyqtgraph
-
-#. Install ``cued-datalogger`` using ``pip``::
-
-    pip install cued-datalogger --no-deps
-
-
-*Explanation*:
-
-*Packages that are installed in both* ``conda`` *and* ``pip`` *can cause problems, 
-so everything that can be is installed with* ``conda``. *This means that* ``pip`` 
-*must be told not to install any of the* ``cued-datalogger`` *dependencies 
-with the* ``--no-deps`` *flag.*
-
-
-Installing on Linux (without Anaconda)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #. Install the ``portaudio`` development headers using your package manager.
 
     **Debian / Ubuntu**::
@@ -67,8 +50,8 @@ Installing on Linux (without Anaconda)
         yum install portaudio portaudio-devel
 
 
-#. Install ``cued-datalogger`` using ``pip``::
+#. Install ``cued-cued-datalogger`` using ``pip``::
 
-    pip install cued-datalogger
+    pip install cued-cued-datalogger
 
  

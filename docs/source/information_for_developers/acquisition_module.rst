@@ -2,10 +2,6 @@
 Acquisition Module
 ==================
 
-==================
-Acquisition Module
-==================
-
 Recorder Class
 --------------
 Two modules are created to handle data acquisition from different types of hardware: 

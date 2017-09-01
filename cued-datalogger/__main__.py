@@ -5,11 +5,11 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 
-from datalogger.api.workspace import Workspace
-from datalogger.analysis_window import AnalysisWindow
-from datalogger import __version__
+from cued-datalogger.api.workspace import Workspace
+from cued-datalogger.analysis_window import AnalysisWindow
+from cued-datalogger import __version__
 
-def run_datalogger_full():
+def run_full():
     print("CUED DataLogger {}".format(__version__))
 
     app = 0
@@ -28,5 +28,10 @@ def run_datalogger_full():
     w.show()
     sys.exit(app.exec_())
 
+"""
+def run_4c6():
+    pass
+"""
+
 if __name__ == '__main__':
-    run_datalogger_full()
+    run_full()

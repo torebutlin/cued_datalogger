@@ -2,5 +2,5 @@
 Recorder Parent
 ================
 
-.. autoclass:: datalogger.acquisition.RecorderParent.RecorderParent
+.. autoclass:: cued-datalogger.acquisition.RecorderParent.RecorderParent
   :members:

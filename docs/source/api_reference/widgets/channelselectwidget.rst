@@ -2,5 +2,5 @@
 ChannelSelectWidget
 =====================
 
-.. autoclass:: datalogger.api.channel.ChannelSelectWidget
+.. autoclass:: cued-datalogger.api.channel.ChannelSelectWidget
   :members:

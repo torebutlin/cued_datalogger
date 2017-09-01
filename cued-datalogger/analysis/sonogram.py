@@ -1,9 +1,9 @@
 import sys
 
-from datalogger.api.numpy_extensions import to_dB
-from datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
-from datalogger.api.pyqtgraph_extensions import ColorMapPlotWidget
-from datalogger.api.toolbox import Toolbox
+from cued-datalogger.api.numpy_extensions import to_dB
+from cued-datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
+from cued-datalogger.api.pyqtgraph_extensions import ColorMapPlotWidget
+from cued-datalogger.api.toolbox import Toolbox
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QPushButton, QLabel, QSpinBox, QHBoxLayout, QGridLayout

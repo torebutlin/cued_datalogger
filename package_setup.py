@@ -8,7 +8,7 @@ import pip
 
 def version():
     """Get version number"""
-    with open('datalogger/VERSION') as f:
+    with open('cued-datalogger/VERSION') as f:
         return f.read()
 
 def readme():
@@ -52,9 +52,12 @@ if use_anaconda and operating_system != "windows":
 
 if use_anaconda and operating_system == "windows":
     # Find conda
-    conda_executable = subprocess.check_output(['where', 'conda.exe']).decode("utf-8").split()[0]
+    conda_executable = subprocess.check_output(['where', 'conda']).decode("utf-8").split()
     if isinstance(conda_executable, list):
-        conda_executable = conda_executable[0]
+        for item in conda_executable:
+            if item.endswith(".bat") or item.endswith(".exe"):
+                conda_executable = item
+                break
     print("Conda executable found at {}".format(conda_executable))
 
     # Check for python3.dll
@@ -118,20 +121,21 @@ print("Configuring dependency list...")
 if use_anaconda:
     conda_dependency_list = ['numpy', 'scipy']
     dependency_list = ['matplotlib',
+                       'pyaudio',
                        'pydaqmx',
+                       'pyqt5',
                        'pyqtgraph']
 else:
     dependency_list = ['numpy',
                        'scipy',
-                       'pyqtgraph',
                        'matplotlib',
-                       'PyDAQmx',
-                       'pyaudio']
+                       'pyaudio',
+                       'pydaqmx',
+                       'pyqt5',
+                       'pyqtgraph']
 print("Dependencies: ")
 for package in dependency_list:
     print(package)
-print("PyQt5 (cannot be installed using install_requires)")
-print("pyaudio (cannot be installed using install_requires)")
 if use_anaconda:
     for item in conda_dependency_list:
         print(item + (" (conda version)"))
@@ -148,18 +152,15 @@ if use_anaconda:
         conda_install_process = subprocess.Popen(install_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
         #while conda_install_process.stdout:
         for line in conda_install_process.stdout:
-            print(line.decode(), end='')
+            print(line.decode("utf-8"), end='')
 
 # PyQt5 does not have a source distribution currently (09/2017) so it cannot
 # be installed using setuptools. The wheel must be installed manually.
 # see https://stackoverflow.com/questions/4628519/is-it-possible-to-require-pyqt-from-setuptools-setup-py/45598092#45598092
-print("Installing PyQt5 from wheel...")
-pip.main(['install', 'PyQt5'])
 
-# PyAudio has some strange dependency on a C++ library
-print("Installing pyaudio from wheel...")
-pip.main(['install', 'pyaudio'])
-
+# There were also problems with pyaudio depending on some c libraries.
+# As a result, it was decided to install all the packages this way rather than
+# using the setuptools install_requires parameter.
 for package in dependency_list:
     pip.main(['install', package])
 
@@ -174,15 +175,16 @@ setup(name='cued-datalogger',
       author='Theo Brown, En Yi Tee',
       author_email='tab53@cam.ac.uk, eyt21@cam.ac.uk',
       license='BSD 3-Clause License',
-      packages=['datalogger',
-                'datalogger/acquisition',
-                'datalogger/analysis',
-                'datalogger/api'],
+      packages=['cued-datalogger',
+                'cued-datalogger/acquisition',
+                'cued-datalogger/analysis',
+                'cued-datalogger/api'],
       install_requires=None,#dependency_list,
       entry_points={
-        'console_scripts': ['datalogger_dbg ='
-                            ' datalogger.__main__:run_datalogger_full'],
-        'gui_scripts': ['datalogger = '
-                        'datalogger.__main__:run_datalogger_full']},
+        'console_scripts': ['cued-datalogger_dbg ='
+                            ' cued-datalogger.__main__:run_full'],
+        'gui_scripts': ['cued-datalogger = '
+                        'cued-datalogger.__main__:run_full']},
       zip_safe=True,
       include_package_data=True)
+

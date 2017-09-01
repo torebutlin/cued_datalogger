@@ -2,5 +2,5 @@
 Toolbox
 =======
 
-.. autoclass:: datalogger.api.toolbox.Toolbox
+.. autoclass:: cued-datalogger.api.toolbox.Toolbox
   :members:

@@ -2,20 +2,20 @@
 Acquisition Widgets
 ===================
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.BaseWidget
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.BaseWidget
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.ChanToggleUI
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.ChanToggleUI
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.ChanConfigUI
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.ChanConfigUI
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.DevConfigUI
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.DevConfigUI
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.StatusUI
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.StatusUI
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingUIs.RecUI
+.. autoclass:: cued-datalogger.acquisition.RecordingUIs.RecUI
   :members:

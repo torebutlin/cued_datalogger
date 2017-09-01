@@ -2,5 +2,5 @@
 MasterToolbox
 =============
 
-.. autoclass:: datalogger.api.toolbox.MasterToolbox
+.. autoclass:: cued-datalogger.api.toolbox.MasterToolbox
   :members:
