@@ -122,7 +122,7 @@ if use_anaconda:
     conda_dependency_list = ['numpy', 'scipy']
     dependency_list = ['matplotlib',
                        'pyaudio',
-                       'pydaqmx'
+                       'pydaqmx',
                        'pyqt5',
                        'pyqtgraph']
 else:
@@ -130,7 +130,7 @@ else:
                        'scipy',
                        'matplotlib',
                        'pyaudio',
-                       'pydaqmx'
+                       'pydaqmx',
                        'pyqt5',
                        'pyqtgraph']
 print("Dependencies: ")
