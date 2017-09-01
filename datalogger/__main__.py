@@ -22,7 +22,7 @@ def run_datalogger_full():
 
     w.CurrentWorkspace = CurrentWorkspace
 
-    w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
+    #w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
 
     # Run the program
     w.show()
