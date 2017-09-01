@@ -22,7 +22,7 @@ import os,traceback,sys
 
 import re
 
-from datalogger.api.channel import ChannelSet
+from cued_datalogger.api.channel import ChannelSet
 
 
 class AddonManager(QWidget):
@@ -110,14 +110,14 @@ class AddonManager(QWidget):
             if file.endswith(".py"):
                 with open(path + file, 'r') as f:
                     line1 = f.readline()
-                if line1 == "#datalogger_addon\n":
+                if line1 == "#cued_datalogger_addon\n":
                     print("\t {}".format(path+file))
                     self.add_addon(path + file)
 
     def load_new(self):
         # Get a list of URLs from a QFileDialog
         url_list = QFileDialog.getOpenFileNames(self, "Load new addon", "addons",
-                                               "DataLogger Addons (*.py)")[0]
+                                               "CUED DataLogger Addons (*.py)")[0]
 
         # For each url, add it to the tree
         for url in url_list:
@@ -320,7 +320,7 @@ class AddonWriter(QWidget):
         metadata = ["\"" + md + "\""  for md in metadata]
         
         with open("./addons/%s.py" % file_name,'w',encoding='ASCII') as file: 
-            file.write('#datalogger_addon\n')
+            file.write('#cued_datalogger_addon\n')
             file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
                        tuple(metadata))
             main_code = self.main_code_text.toPlainText()

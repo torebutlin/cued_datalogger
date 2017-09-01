@@ -30,9 +30,9 @@ import re
 import pyqtgraph as pg
 import functools as fct
 
-import datalogger.acquisition.myRecorder as mR
+import cued_datalogger.acquisition.myRecorder as mR
 try:
-    import datalogger.acquisition.NIRecorder as NIR
+    import cued_datalogger.acquisition.NIRecorder as NIR
     NI_drivers = True
 except NotImplementedError:
     print("Seems like you don't have National Instruments drivers")

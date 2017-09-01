@@ -2,4 +2,4 @@
 Analysis Window
 ===============
 
-See :class:`~datalogger.analysis_window.AnalysisWindow`.
+See :class:`~cued_datalogger.analysis_window.AnalysisWindow`.

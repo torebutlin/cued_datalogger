@@ -12,7 +12,7 @@ The widgets use PyQt's signal and slot mechanism to interact with each other, ra
 
 Menu bar
 --------
-Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.menubar` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~cued_datalogger.analysis_window.AnalysisWindow.menubar` in :class:`~cued_datalogger.analysis_window.AnalysisWindow`.
 
 Currently the menu bar is only a placeholder, it has no functionality.
 
@@ -24,7 +24,7 @@ only be performed once per session.
 
 Local toolbox
 -------------
-Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~cued_datalogger.analysis_window.AnalysisWindow.toolbox` in :class:`~cued_datalogger.analysis_window.AnalysisWindow`.
 
 The local toolbox contains all the operations and conversions that are associated with the widget
 that is currently showing in the display TabWidget. If something changes the channel data, or
@@ -37,15 +37,15 @@ conversion options').
 
 Display TabWidget
 ------------------------------------------------------------------------
-Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.display_tabwidget` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~cued_datalogger.analysis_window.AnalysisWindow.display_tabwidget` in :class:`~cued_datalogger.analysis_window.AnalysisWindow`.
 
 This is the central widget for the AnalysisWindow, where graphs, data, and results are displayed.
 For each section of the analysis window (time domain, sonogram, etc) there is one
 :class:`~PyQt5.QtWidgets.QWidget` that is created for display, which is the focal point of that
 section.
 
-In general it is simply an :class:`~datalogger.api.pyqtgraph_extensions.InteractivePlotWidget`, 
-but it can contain other widgets (eg. :class:`~datalogger.analysis.circle_fit.CircleFitWidget`)
+In general it is simply an :class:`~cued_datalogger.api.pyqtgraph_extensions.InteractivePlotWidget`, 
+but it can contain other widgets (eg. :class:`~cued_datalogger.analysis.circle_fit.CircleFitWidget`)
 if they are absolutely necessary to smooth operation (such as the results tree in the CircleFitWidget).
 
 The user should not have to jump around between the toolboxes and the display TabWidget to view
@@ -59,23 +59,23 @@ and visualisation.
 
 Global toolbox
 --------------
-Accessed as :attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox` in :class:`~datalogger.analysis_window.AnalysisWindow`.
+Accessed as :attr:`~cued_datalogger.analysis_window.AnalysisWindow.global_toolbox` in :class:`~cued_datalogger.analysis_window.AnalysisWindow`.
 
 The global toolbox contains operations that have a universal effect, and are not limited to one
 specific analysis widget. Examples include interacting with channel selection and metadata, or running
 addons.
 
-The global toolbox is actually contained within a :class:`~datalogger.api.toolbox.MasterToolbox`,
-:attr:`~datalogger.analysis_window.AnalysisWindow.global_master_toolbox` to provide an interface 
+The global toolbox is actually contained within a :class:`~cued_datalogger.api.toolbox.MasterToolbox`,
+:attr:`~cued_datalogger.analysis_window.AnalysisWindow.global_master_toolbox` to provide an interface 
 symmetric with the local toolbox. However, the user should never need to interact with the 
 MasterToolbox, and all of the global functionality should be located in the the 
-:attr:`~datalogger.analysis_window.AnalysisWindow.global_toolbox`.
+:attr:`~cued_datalogger.analysis_window.AnalysisWindow.global_toolbox`.
 
 
 AnalysisWindow widget
 ---------------------
-.. autoclass:: datalogger.analysis_window.AnalysisWindow
+.. autoclass:: cued_datalogger.analysis_window.AnalysisWindow
   :members:
 
-.. autoclass:: datalogger.analysis_window.AnalysisDisplayTabWidget
+.. autoclass:: cued_datalogger.analysis_window.AnalysisDisplayTabWidget
 

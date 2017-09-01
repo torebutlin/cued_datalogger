@@ -18,7 +18,7 @@ TRACE_DURATION: float
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal
 
-from datalogger.api.pyqtgraph_extensions import CustomPlotWidget
+from cued_datalogger.api.pyqtgraph_extensions import CustomPlotWidget
 
 import pyqtgraph as pg
 import numpy as np

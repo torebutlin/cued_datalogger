@@ -5,11 +5,11 @@ if __name__ == '__main__':
     sys.path.append('../')
 
 
-from datalogger.api.workspace import Workspace
-from datalogger.analysis_window import AnalysisWindow
-from datalogger import __version__
+from cued_datalogger.api.workspace import Workspace
+from cued_datalogger.analysis_window import AnalysisWindow
+from cued_datalogger import __version__
 
-def run_datalogger_full():
+def run_full():
     print("CUED DataLogger {}".format(__version__))
 
     app = 0
@@ -22,11 +22,16 @@ def run_datalogger_full():
 
     w.CurrentWorkspace = CurrentWorkspace
 
-    w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
+    #w.addon_widget.discover_addons(w.CurrentWorkspace.path + "addons/")
 
     # Run the program
     w.show()
     sys.exit(app.exec_())
 
+"""
+def run_4c6():
+    pass
+"""
+
 if __name__ == '__main__':
-    run_datalogger_full()
+    run_full()

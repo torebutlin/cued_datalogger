@@ -1,4 +1,4 @@
-#datalogger_addon
+#cued_datalogger_addon
 
 #------------------------------------------------------------------------------
 # Put metadata about this addon here

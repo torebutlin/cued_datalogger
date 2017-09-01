@@ -2,5 +2,5 @@
 Pyaudio Recorder
 ================
 
-.. autoclass:: datalogger.acquisition.myRecorder.Recorder
+.. autoclass:: cued_datalogger.acquisition.myRecorder.Recorder
   :members:

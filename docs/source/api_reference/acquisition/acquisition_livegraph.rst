@@ -2,14 +2,14 @@
 Acquisition Live Graphs
 =======================
 
-.. autoclass:: datalogger.acquisition.RecordingGraph.LiveGraph
+.. autoclass:: cued_datalogger.acquisition.RecordingGraph.LiveGraph
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingGraph.TimeLiveGraph
+.. autoclass:: cued_datalogger.acquisition.RecordingGraph.TimeLiveGraph
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingGraph.FreqLiveGraph
+.. autoclass:: cued_datalogger.acquisition.RecordingGraph.FreqLiveGraph
   :members:
 
-.. autoclass:: datalogger.acquisition.RecordingGraph.LevelsLiveGraph
+.. autoclass:: cued_datalogger.acquisition.RecordingGraph.LevelsLiveGraph
   :members:

@@ -28,7 +28,7 @@ data = recorder.flush_record_data()
 Data flushed
 >>>recorder.close()
 """
-from datalogger.acquisition.RecorderParent import RecorderParent
+from cued_datalogger.acquisition.RecorderParent import RecorderParent
 
 import sys,traceback
 import PyDAQmx as pdaq

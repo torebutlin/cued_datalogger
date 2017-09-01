@@ -15,7 +15,7 @@ class Toolbox(QWidget):
     animated mode (soft slide) and a 'quick' mode which skips the animation.
     Commonly the collapse/expand slots are connected to the tabBar's
     :meth:`tabBarDoubleClicked` signal. Normally in the DataLogger a Toolbox is
-    created and then added to a :class:`~datalogger.api.toolbox.MasterToolbox`,
+    created and then added to a :class:`~cued_datalogger.api.toolbox.MasterToolbox`,
     which connects the relevant signals for collapsing and expanding the
     Toolbox.
 
