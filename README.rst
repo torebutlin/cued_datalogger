@@ -11,7 +11,7 @@ Installation
 
 Installing on Windows
 ^^^^^^^^^^^^^^^^^^^^^
-#. Download and install `Anaconda / Miniconda <https://www.continuum.io/downloads>`_. 
+#. Download and install `Anaconda / Miniconda <https://www.continuum.io/downloads>`_.
 
 #. Check that your Anaconda is using the latest version of ``pip``. In an Anaconda Prompt, type::
 
@@ -23,7 +23,7 @@ Installing on Windows
 
 
 Installing on OS X
-^^^^^^^^^^^^^^^^^^ 
+^^^^^^^^^^^^^^^^^^
 #. Install ``portaudio`` with ``brew`` \*::
 
     brew install portaudio
@@ -31,7 +31,7 @@ Installing on OS X
 #. Install ``cued_datalogger`` using ``pip`` (from Terminal or from Anaconda Prompt or wherever)::
 
     pip install cued_datalogger
-    
+
 \* If you do not have brew installed, install `Homebrew <https://brew.sh/>`_ then permit it to run with ``xcode-select --install``
 
 
@@ -50,8 +50,8 @@ Installing on Linux
         yum install portaudio portaudio-devel
 
 
-#. Install ``cued-cued_datalogger`` using ``pip``::
+#. Install ``cued_datalogger`` using ``pip``::
 
-    pip install cued-cued_datalogger
+    pip install cued_datalogger
 
- 
+

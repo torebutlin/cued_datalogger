@@ -181,9 +181,9 @@ setup(name='cued_datalogger',
                 'cued_datalogger/api'],
       install_requires=None,#dependency_list,
       entry_points={
-        'console_scripts': ['run-cued_datalogger_dbg ='
+        'console_scripts': ['cued_datalogger_dbg ='
                             ' cued_datalogger.__main__:run_full'],
-        'gui_scripts': ['run-cued_datalogger = '
+        'gui_scripts': ['cued_datalogger_run = '
                         'cued_datalogger.__main__:run_full']},
       zip_safe=True,
       include_package_data=True)
