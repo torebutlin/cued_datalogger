@@ -186,3 +186,4 @@ setup(name='cued-datalogger',
                         'datalogger.__main__:run_datalogger_full']},
       zip_safe=True,
       include_package_data=True)
+

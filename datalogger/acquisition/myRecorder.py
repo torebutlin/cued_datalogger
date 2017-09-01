@@ -53,17 +53,16 @@ import pprint as pp
 
 class Recorder(RecorderParent):
     """
-     Sets up the recording stream through a SoundCard
-    
-     Attributes
-     ----------
-        In addtion to RecorderParent Attributes,
-        device_index: int
-            Index of the device to be used for recording
-        device_name: str
-            Name of the device to be used for recording
-        max_value: float
-            Maximum value of recorded data
+    Sets up the recording stream through a SoundCard
+
+    Attributes
+    ----------
+    device_index: int
+        Index of the device to be used for recording
+    device_name: str
+        Name of the device to be used for recording
+    max_value: float
+        Maximum value of recorded data
     """
         
 #---------------- INITIALISATION METHODS -----------------------------------
@@ -116,8 +115,8 @@ class Recorder(RecorderParent):
                 
         Parameters
         ----------
-            name: str
-                Name of the device
+        name: str
+            Name of the device
         """
         dev_name,dev_index = self.available_devices()
         if not dev_name:
@@ -146,10 +145,10 @@ class Recorder(RecorderParent):
         
         Returns
         ----------
-            names: List
-                Name of the devices
-            index: List
-                Index of the devices
+        names: List
+            Name of the devices
+        index: List
+            Index of the devices
         """
         names = [self.p.get_device_info_by_index(i)['name']
                   for i in range(self.p.get_device_count())
@@ -176,8 +175,8 @@ class Recorder(RecorderParent):
         
         Parameters
         ----------
-            index: int
-                Index of the device to be set
+        index: int
+            Index of the device to be set
         """
         self.device_index = index;
         self.device_name = self.p.get_device_info_by_index(index)['name']

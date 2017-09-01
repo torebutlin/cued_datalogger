@@ -29,8 +29,8 @@ class ChanMetaWin(QDialog):
         Contains metadata for each channel
     channel_listview: QListWidget
         Display list of names of channels
-    meta_configs:
-        Widget for ('Channel','Name','Calibration Factor','Tags','Comments')
+    meta_configs: list
+        Widget for ('Channel', 'Name', 'Calibration Factor', 'Tags', 'Comments')
         of types   (QLabel, QLineEdit, QLineEdit, QLineEdit, CommentBox)
     """
     def __init__(self,livewin = None):

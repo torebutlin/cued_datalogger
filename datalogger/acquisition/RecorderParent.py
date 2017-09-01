@@ -35,20 +35,20 @@ except Exception as e:
 
 class RecorderParent(object):
     """
-     Recorder abstract class. Sets up the buffer and skeleton for audio streaming
+    Recorder abstract class. Sets up the buffer and skeleton for audio streaming
     
-     Attributes
-     ----------
-        channels: int
-                Number of Channels
-        rate: int
-            Sampling rate
-        chunk_size: int
-            Number of samples to get from each channel in one chunk
-        num_chunk: int
-            Number of chunks to store in circular buffer
-        recording: Bool
-            Indicate whether to record
+    Attributes
+    ----------
+    channels: int
+        Number of Channels
+    rate: int
+        Sampling rate
+    chunk_size: int
+        Number of samples to get from each channel in one chunk
+    num_chunk: int
+        Number of chunks to store in circular buffer
+    recording: bool
+        Indicate whether to record
     """
     __metaclass__ = ABCMeta
     
@@ -143,10 +143,10 @@ class RecorderParent(object):
         """
         Convert audio data obtained into a proper array
         
-        Paramters
-        ----------
-            data: Numpy Array
-                Audio data 
+        Parameters
+        -----------
+        data: Numpy Array
+            Audio data 
         """
         return data.reshape((-1,self.channels))/ 2**15
     
@@ -155,10 +155,10 @@ class RecorderParent(object):
         """
         Write the data obtained into buffer and move to the next chunk
         
-        Paramters
-        ----------
-            data: Numpy Array
-                Audio data 
+        Parameters
+        -----------
+        data: Numpy Array
+            Audio data 
         """
         self.buffer[self.next_chunk,:,:] = data
         self.next_chunk = (self.next_chunk + 1) % self.num_chunk
@@ -169,9 +169,9 @@ class RecorderParent(object):
         
         Returns
         ----------
-            Buffer data: Numpy Array
-                with dimension of(chunk_size * num_chunk) x channels
-                The newest data on the most right 
+        Buffer data: Numpy Array
+            with dimension of(chunk_size * num_chunk) x channels
+            The newest data on the most right 
         """
         return np.concatenate((self.buffer[self.next_chunk:],self.buffer[:self.next_chunk]),axis = 0) \
                  .reshape((self.buffer.shape[0] * self.buffer.shape[1],
@@ -197,11 +197,10 @@ class RecorderParent(object):
         
         Parameters
         ----------
-            samples: int
-                Number of samples to record
-            duration: int
-                The recording duration
-        
+        samples: int
+            Number of samples to record
+        duration: int
+            The recording duration
         """
         if not self._record_check():
             return False
@@ -231,8 +230,8 @@ class RecorderParent(object):
         
         Returns
         ----------
+        bool
             True if possible, False otherwise
-        
         """
         if not self.audio_stream:
             print('No recording stream initiated!')
@@ -252,8 +251,8 @@ class RecorderParent(object):
         
         Returns
         ----------
+        bool
             True if possible, False otherwise
-        
         """
         if not self._record_check():
             return False
@@ -308,8 +307,8 @@ class RecorderParent(object):
         
         Returns
         ----------
-            flushed_data: numpy array
-                2D numpy array (similar to get_buffer) 
+        flushed_data: numpy array
+            2D numpy array (similar to get_buffer) 
         """
         if self.recorded_data:
             data =  np.array(self.recorded_data);
@@ -335,11 +334,12 @@ class RecorderParent(object):
                 
         Parameters
         ----------
-            playback: Bool
-                Whether to output the stream to a device
+        playback: bool
+            Whether to output the stream to a device
             
         Returns
         ----------
+        bool
             True if successful, False otherwise
         """
         pass
@@ -382,6 +382,7 @@ class RecorderParent(object):
         
         Returns
         ----------
+        bool
             True if successful, False otherwise
         """
         if self.recording:
@@ -410,8 +411,8 @@ class RecorderParent(object):
         
         Parameters
         ----------
-            data: Numpy Array
-                data to be analysed
+        data: Numpy Array
+            data to be analysed
         """
         trig_data = data[:,self.trigger_channel]
         norm_data = abs(trig_data - np.mean(trig_data))#- self.ref_level
@@ -437,7 +438,7 @@ class RecorderParent(object):
     @property
     def num_chunk(self):
         """
-        int: 
+        int 
             Number of chunks to store in circular buffer
             The setter method will calculate the maximum possible number of chunks
             based on an arbitrary number of sample limit (2^25 in here)
@@ -461,7 +462,7 @@ class RecorderParent(object):
     @property
     def chunk_size(self):
         """
-        int: 
+        int 
             Number of samples to get from each channel in one chunk
             The setter method will calculate the maximum possible size
             based on an arbitrary number of sample limit (2^25 in here)

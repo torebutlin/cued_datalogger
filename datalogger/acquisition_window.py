@@ -21,11 +21,11 @@ go nowhere.
 
 Attribute
 ----------
-NI_DRIVERS: Bool
+NI_DRIVERS: bool
     Indicates whether NIDAQmx drivers and pyDAQmx module are installed
     when attempting to import NIRecorder module
     These are required to interface with a National Instrument hardware.
-PLAYBACK: Bool
+PLAYBACK: bool
     Indicates whether to play the streaming audio, only works with SoundCard
 WIDTH: Int
     Width of the application window
@@ -90,7 +90,7 @@ class LiveplotApp(QMainWindow):
         Emitted when recorded data 
     done: pyqtSignal
         Emitted when the window is closed
-    playing: Bool
+    playing: bool
         Indicate whether the stream is playing
     rec: Recorder object
          Object which handles the streaming and recording
@@ -103,7 +103,7 @@ class LiveplotApp(QMainWindow):
         """
         Initialise and construct the window application.
         
-        Parameter
+        Parameters
         ----------
         parent: object
             The object which the window interacts with
@@ -395,9 +395,9 @@ class LiveplotApp(QMainWindow):
         """
         Callback to pause/resume the stream, unless explicitly specified to stop or not
         
-        Parameter
+        Parameters
         ----------
-        stop: Bool
+        stop: bool
             Specify whether to stop the stream. None to toggle the current state
         """
         if not stop == None:
@@ -748,8 +748,8 @@ class LiveplotApp(QMainWindow):
         """
         Transfer data to parent window
         
-        Parameter
-        ---------
+        Parameters
+        ----------
         tab_num: Tab index to switch to in the parent window (specific for analysis window)
         """
         if self.parent:
