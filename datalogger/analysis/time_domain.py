@@ -8,6 +8,10 @@ import pyqtgraph as pg
 from numpy.fft import rfft
 
 class TimeDomainWidget(InteractivePlotWidget):
+    """
+    The TimeDomainWidget is the main display widget for everything in
+    the time domain.
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.channels = []
@@ -30,7 +34,7 @@ class TimeDomainWidget(InteractivePlotWidget):
 
 
 class TimeToolbox(Toolbox):
-    """Toolbox containing the Time Domain controls"""
+    """Toolbox containing the Time Domain controls."""
 
     sig_convert_to_sonogram = pyqtSignal()
     sig_convert_to_fft = pyqtSignal()
