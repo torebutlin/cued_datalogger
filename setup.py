@@ -144,7 +144,8 @@ if use_anaconda:
     print("Installing conda dependencies... ")
     for dependency in conda_dependency_list:
         print("Installing " + dependency + " using conda:")
-        install_command = [conda_executable, 'install', '-y', dependency]
+        #install_command = [conda_executable, 'install', '-y', dependency]
+        install_command = ['conda', 'install', '-y', dependency]
         conda_install_process = subprocess.Popen(install_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
         #while conda_install_process.stdout:
         for line in conda_install_process.stdout:
