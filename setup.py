@@ -52,7 +52,7 @@ if use_anaconda and operating_system != "windows":
 
 if use_anaconda and operating_system == "windows":
     # Find conda
-    conda_executable = subprocess.check_output(['where', 'conda']).decode("utf-8").split()[0]
+    conda_executable = subprocess.check_output(['where', 'conda']).decode("utf-8").split()
     if isinstance(conda_executable, list):
         for item in conda_executable:
             if item.endswith(".bat") or item.endswith(".exe"):
