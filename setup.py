@@ -118,20 +118,21 @@ print("Configuring dependency list...")
 if use_anaconda:
     conda_dependency_list = ['numpy', 'scipy']
     dependency_list = ['matplotlib',
-                       'pydaqmx',
+                       'pyaudio',
+                       'pydaqmx'
+                       'pyqt5',
                        'pyqtgraph']
 else:
     dependency_list = ['numpy',
                        'scipy',
-                       'pyqtgraph',
                        'matplotlib',
-                       'PyDAQmx',
-                       'pyaudio']
+                       'pyaudio',
+                       'pydaqmx'
+                       'pyqt5',
+                       'pyqtgraph']
 print("Dependencies: ")
 for package in dependency_list:
     print(package)
-print("PyQt5 (cannot be installed using install_requires)")
-print("pyaudio (cannot be installed using install_requires)")
 if use_anaconda:
     for item in conda_dependency_list:
         print(item + (" (conda version)"))
@@ -154,13 +155,10 @@ if use_anaconda:
 # PyQt5 does not have a source distribution currently (09/2017) so it cannot
 # be installed using setuptools. The wheel must be installed manually.
 # see https://stackoverflow.com/questions/4628519/is-it-possible-to-require-pyqt-from-setuptools-setup-py/45598092#45598092
-print("Installing PyQt5 from wheel...")
-pip.main(['install', 'PyQt5'])
 
-# PyAudio has some strange dependency on a C++ library
-print("Installing pyaudio from wheel...")
-pip.main(['install', 'pyaudio'])
-
+# There were also problems with pyaudio depending on some c libraries.
+# As a result, it was decided to install all the packages this way rather than
+# using the setuptools install_requires parameter.
 for package in dependency_list:
     pip.main(['install', package])
 
