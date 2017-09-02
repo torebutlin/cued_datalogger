@@ -57,8 +57,8 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
         time_series_data = np.array(channel_set.get_channel_data(order,'time_series'))
         print(time_series_data)
         n_samples = time_series_data[0].shape[0]
-        variables = {'indata':np.transpose(time_series_data),'freq':sampling_rate,
-                     'dt2' :[len(order),0,0],'buflen':n_samples,
+        variables = {'indata':np.transpose(time_series_data),'freq':float(sampling_rate),
+                     'dt2' :[float(len(order)),0,0],'buflen':float(n_samples),
                      'tsmax':float(calibration_factor)}
         sio.savemat(file,variables,appendmat = False)
         
