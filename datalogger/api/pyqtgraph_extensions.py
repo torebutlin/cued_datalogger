@@ -1,8 +1,7 @@
-if __name__ == '__main__':
-    sys.path.append('../../')
-
 import weakref
 import sys
+if __name__ == '__main__':
+    sys.path.append('../../')
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import ImageItem
@@ -80,7 +79,6 @@ class InteractivePlotWidget(QWidget):
 
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.ViewBox)
-        #ViewBox.addItem(self.label)
 
         self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
 
@@ -88,7 +86,7 @@ class InteractivePlotWidget(QWidget):
         self.ViewBox.menu.sig_show_crosshair.connect(self.set_show_crosshair)
         self.ViewBox.menu.sig_show_label.connect(self.set_show_label)
 
-        # # Set up the controls
+        # # Set up the region controls
         control_layout = QHBoxLayout()
         self.lower_box = pg.SpinBox(self, bounds=(0, None))
         self.lower_box.valueChanged.connect(self.on_region_changed)
@@ -239,13 +237,26 @@ class InteractivePlotWidget(QWidget):
 
 
 class CustomPlotWidget(pg.PlotWidget):
+    '''
+    Reimplementation of the original PlotWidget.
+    This is where you would implement options to modify the plots.
+    For that, reimplement the ctrlMenu variable. Currently, only certain options
+    are removed, rather than adding any new custom actions.
+    Also, bring out the PlotItem and ViewBox for easy access.
+    
+    Attributes
+    ----------
+    PlotItem: PlotItem
+    
+    ViewBox: ViewBox
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, viewBox=CustomViewBox(cparent=self), **kwargs)
 
         self.PlotItem = self.getPlotItem()
         self.ViewBox = self.PlotItem.getViewBox()
 
-        # Removing some plot options
+        # Removing some plot options, HERE!!!!!
         ext_menu = self.PlotItem.ctrlMenu
         ext_submenus = self.PlotItem.subMenus
         ext_menu.removeAction(ext_submenus[1].menuAction())
@@ -271,6 +282,9 @@ class CustomPlotWidget(pg.PlotWidget):
 
 
 class CustomViewBox(pg.ViewBox):
+    '''
+    A custom ViewBox, reimplemented to allow custom right context menu
+    '''
     def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
         self.cparent = cparent
@@ -278,17 +292,25 @@ class CustomViewBox(pg.ViewBox):
 
     def raiseContextMenu(self, ev):
         menu = self.getMenu(ev)
-        print(menu)
         menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint())
 
-    def autoRange(self, padding= None, items=None):
-        super().autoRange(padding=padding, items= None)
-        r = self.viewRect()
-        self.setLimits(xMin = r.left(), xMax = r.right())
+    # Temporarily disable the autorange
+    #def autoRange(self, padding= None, items=None):
+    #    super().autoRange(padding=padding, items= None)
+        #r = self.viewRect()
+        #self.setLimits(xMin = r.left(), xMax = r.right())
 
 
 class CustomViewMenu(QMenu):
+    '''
+    A custom right click context menu. This is a complete implementation of the 
+    original context menu. The purpose of these is to allow custom implementation
+    of actions. In this case, there is extra options to toggle on/off the crosshair.
+    Note that this context menu only affects the view, not the data, i.e. 'Plot Options'.
+    For that, you would need to reimplement ctrlMenu in the PlotItem, demonstrated in
+    InteractivePlotWidget.
+    '''
     sig_show_crosshair = pyqtSignal(bool)
     sig_show_region = pyqtSignal(bool)
     sig_show_label = pyqtSignal(bool)
@@ -300,12 +322,13 @@ class CustomViewMenu(QMenu):
         self.valid = False  ## tells us whether the ui needs to be updated
         self.viewMap = weakref.WeakValueDictionary()  ## weakrefs to all views listed in the link combos
 
+        # Autorange option
         self.setTitle("ViewBox options")
         self.autorange_action = QAction("Autorange", self)
         self.autorange_action.triggered.connect(self.autoRange)
         self.addAction(self.autorange_action)
 
-        # Display menu
+        # Display menu, our custom actions
         self.display_menu = QMenu("Display options")
 
         show_crosshair_action = QAction("Show crosshair", self.display_menu)
@@ -327,7 +350,8 @@ class CustomViewMenu(QMenu):
         self.display_menu.addAction(show_label_action)
 
         self.addMenu(self.display_menu)
-
+        
+        # One-to-one reimplementation of the original options
         self.axes = []
         self.ctrl = []
         self.widgetGroups = []
@@ -552,6 +576,12 @@ class CustomViewMenu(QMenu):
                 c.currentIndexChanged.emit(c.currentIndex())
 
 class CustomUITemplate(object):
+    '''
+    A custom template for the X and Y Axis options in the right click context menu. 
+    This is a complete implementation of the original template. 
+    The purpose of these is to allow custom implementation of templates.
+    Currently, it is a complete one-to-one copy of the original ones.
+    '''
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(186, 154)

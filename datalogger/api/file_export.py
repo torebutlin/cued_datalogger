@@ -61,6 +61,8 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
                      'dt2' :[float(len(order)),0,0],'buflen':float(n_samples),
                      'tsmax':float(calibration_factor)}
         sio.savemat(file,variables,appendmat = False)
+        #TODO: Save FFT and TF
+        #TODO: Save Sonogram
         
 class DataExportWidget(QWidget):
     def __init__(self,parent):
