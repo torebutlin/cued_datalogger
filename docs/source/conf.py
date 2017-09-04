@@ -160,8 +160,7 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-#autodoc_mock_imports = ["pyaudio", 'scipy', 'PyQt5', 'pyqtgraph', 'matplotlib',
-#                        'pyDAQmx', 'numpy', 'cued_datalogger']
+autodoc_mock_imports = ['pyaudio', 'pyDAQmx']
 
 autodoc_default_flags = ['show-inheritance']
 autodoc_member_order = 'alphabetical'
