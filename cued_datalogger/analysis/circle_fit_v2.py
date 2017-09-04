@@ -383,7 +383,7 @@ class CircleFitResults(QGroupBox):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Name",
                                    "Frequency (Hz)",
-                                   "Q Factor",
+                                   "Damping ratio",
                                    "Amplitude (dB)",
                                    "Phase (deg)",
                                    "Select"])
@@ -395,7 +395,7 @@ class CircleFitResults(QGroupBox):
         self.autofit_tree = QTreeWidget()
         self.autofit_tree.setHeaderLabels(["Name",
                                            "Frequency (Hz)",
-                                           "Q Factor",
+                                           "Damping ratio",
                                            "Amplitude (dB)",
                                            "Phase (deg)",
                                            "Select"])
@@ -608,7 +608,7 @@ class CircleFitResults(QGroupBox):
                 avg_phase_deg = 0
 
                 for channel_number in range(len(self.channels)):
-                    avg_freq += self.get_omega(peak_number, channel_number)
+                    avg_freq += self.get_frequency(peak_number, channel_number)
                     avg_damping += self.get_damping(peak_number, channel_number)
                     avg_amplitude_dB += self.get_amplitude_dB(peak_number, channel_number)
                     avg_phase_deg += self.get_phase_deg(peak_number, channel_number)
