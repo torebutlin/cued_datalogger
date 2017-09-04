@@ -1,9 +1,9 @@
-===========
-National Instrument Recorder
-===========
+=======================
+Channel MetaData Window
+=======================
 
-.. autoclass:: datalogger.acquisition.ChanMetaWin.ChanMetaWin
+.. autoclass:: cued_datalogger.acquisition.ChanMetaWin.ChanMetaWin
   :members:
 
-.. autoclass:: datalogger.acquisition.ChanMetaWin.CommentBox
+.. autoclass:: cued_datalogger.acquisition.ChanMetaWin.CommentBox
   :members:

@@ -2,5 +2,5 @@
 ChannelMetadataWidget
 =======================
 
-.. autoclass:: datalogger.api.channel.ChannelMetadataWidget
+.. autoclass:: cued_datalogger.api.channel.ChannelMetadataWidget
   :members:

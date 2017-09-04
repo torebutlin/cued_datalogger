@@ -8,6 +8,8 @@ Widgets
 
   addonmanager
 
+  analysis_window
+
   channelmetadatawidget
 
   channelselectwidget

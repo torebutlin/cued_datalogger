@@ -6,11 +6,11 @@ Modal fitting
 Circle fitting
 --------------
 
-.. autoclass:: datalogger.analysis.circle_fit.CircleFitWidget
+.. autoclass:: cued_datalogger.analysis.circle_fit.CircleFitWidget
   :members:
 
-.. autoclass:: datalogger.analysis.circle_fit.CircleFitToolbox
+.. autoclass:: cued_datalogger.analysis.circle_fit.CircleFitToolbox
   :members:
 
-.. autofunction:: datalogger.analysis.circle_fit.fit_circle_to_data
+.. autofunction:: cued_datalogger.analysis.circle_fit.fit_circle_to_data
 
