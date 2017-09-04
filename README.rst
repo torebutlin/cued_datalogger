@@ -26,7 +26,7 @@ Installing on Windows
 
 #. Check that your Anaconda is using the latest version of ``pip``. In an Anaconda Prompt, type::
 
-   conda install pip
+    conda install pip
 
 #. Install ``cued_datalogger`` using ``pip``::
 
