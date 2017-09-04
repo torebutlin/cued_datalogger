@@ -28,9 +28,11 @@ class TimeDomainWidget(InteractivePlotWidget):
     def update_plot(self):
         self.clear()
         for channel in self.channels:
-            self.plot(channel.get_data("time"),
-                      channel.get_data("time_series"),
-                      pen=channel.colour)
+            time_series = channel.get_data("time_series")
+            if not time_series.shape[0] == 0:
+                self.plot(channel.get_data("time"),
+                          time_series,
+                          pen=channel.colour)
 
 
 class TimeToolbox(Toolbox):

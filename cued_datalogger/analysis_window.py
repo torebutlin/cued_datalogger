@@ -16,6 +16,7 @@ from cued_datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
 from cued_datalogger.api.addons import AddonManager
 from cued_datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from cued_datalogger.api.file_import import DataImportWidget
+from cued_datalogger.api.file_export import DataExportWidget
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
 import cued_datalogger.acquisition_window as lpUI
@@ -128,6 +129,7 @@ class AnalysisWindow(QMainWindow):
         self.show()
 
     def init_toolbox(self):
+        """Create the master toolbox"""
         self.toolbox = MasterToolbox(self)
 
         # # Time toolbox
@@ -200,11 +202,14 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
+        
+        # # Export
+        self.export_widget = DataExportWidget(self)
+        self.global_toolbox.addTab(self.export_widget, 'Export Files')
 
         self.global_master_toolbox.add_toolbox(self.global_toolbox)
 
     def update_cs(self, cs):
-        """Set the ChannelSet of the AnalysisWindow."""
         self.cs = cs
         self.channel_select_widget.cs = self.cs
         self.channel_select_widget.set_channel_name()
@@ -279,6 +284,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_metadata_widget.set_channel_set(self.cs)
         self.time_toolbox.set_channel_set(self.cs)
         self.frequency_toolbox.set_channel_set(self.cs)
+        self.export_widget.set_channel_set(self.cs)
 
     def plot_time_series(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
