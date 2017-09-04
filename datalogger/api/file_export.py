@@ -15,7 +15,8 @@ from PyQt5.QtCore import  Qt
 
 def export_to_mat(file,order, channel_set=None,back_comp = False):
     """
-    Export data and metadata from ChannelsSet to a mat file
+    Export data and metadata from ChannelsSet to a mat file.
+    Support backward compatibility with the oldlogger
     
     Parameters
     ----------
@@ -26,50 +27,77 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
     channel_set : ChannelSet
         The ChannelSet to save the imported data and metadata to. If ``None``, 
         a new ChannelSet is created and returned.
+    back_comp: bool
+        Whether to export as the old format
     """
-    if not back_comp:
-        if channel_set is None:
-            new_channel_set = True
-            channel_set = ChannelSet(len(order))
-        else:
-            new_channel_set = False
+    
+    if channel_set is None:
+        new_channel_set = True
+        channel_set = ChannelSet(len(order))
+    else:
+        new_channel_set = False
+    
+    # Obtain the ids and metadata names
+    data_ids = channel_set.get_channel_ids(order)
+    var_names = set([y for x in data_ids for y in x])
+    meta_names = channel_set.get_channel_metadata(0)
         
+    if not back_comp:
+        # Save all the variable names and metadata names as dicts
         variables = {}
-        data_ids = channel_set.get_channel_ids(order)
-        var_names = set([y for x in data_ids for y in x])
-        meta_names = channel_set.get_channel_metadata(0)
         for name in var_names:
             data = channel_set.get_channel_data(order,name)
             variables[name] = data
         for mname in meta_names:
             mdata = channel_set.get_channel_metadata(order,mname)
             variables[mname] = mdata    
-        #print(variables)
-        print(file)
-        # Save the variable dict as matlab file 
+        # Save the dict as matlab file 
         sio.savemat(file,variables,appendmat = False)
         
         if new_channel_set:
             return channel_set
     else:
+        # Save as the old format
         sampling_rate = channel_set.get_channel_metadata(0,'sample_rate')
         calibration_factor = channel_set.get_channel_metadata(0,'calibration_factor')
-        time_series_data = np.array(channel_set.get_channel_data(order,'time_series'))
-        print(time_series_data)
-        n_samples = time_series_data[0].shape[0]
-        variables = {'indata':np.transpose(time_series_data),'freq':float(sampling_rate),
-                     'dt2' :[float(len(order)),0,0],'buflen':float(n_samples),
-                     'tsmax':float(calibration_factor)}
-        sio.savemat(file,variables,appendmat = False)
-        #TODO: Save FFT and TF
+        # Save Time Series
+        if 'time_series' in var_names:
+            time_series_data = np.array(channel_set.get_channel_data(order,'time_series'))
+            n_samples = time_series_data[0].shape[0]
+            variables = {'indata':np.transpose(time_series_data),'freq':float(sampling_rate),
+                         'dt2' :[float(len(order)),0,0],'buflen':float(n_samples),
+                         'tsmax':float(calibration_factor)}
+            time_series_fname = file[:-4]+'_TimeSeries.mat'
+            sio.savemat(time_series_fname,variables,appendmat = False)
+        # Save FFT
+        if 'spectrum' in var_names:
+            fft_data = np.array(channel_set.get_channel_data(order,'spectrum'))
+            n_samples = fft_data[0].shape[0]
+            variables = {'yspec':np.transpose(fft_data),'freq':float(sampling_rate),
+                         'dt2' :[0,float(len(order)),0],'npts':float((n_samples-1)*2),
+                         'tfun':0}
+            time_series_fname = file[:-4]+'_FFT.mat'
+            sio.savemat(time_series_fname,variables,appendmat = False)
+        # Save TF
+        if 'TF' in var_names:
+            TF_data = np.array(channel_set.get_channel_data(order,'TF'))
+            TF_data = [data for data in TF_data if not data.shape[0] == 0]
+            n_samples = TF_data[0].shape[0]
+            variables = {'yspec':np.transpose(TF_data),'freq':float(sampling_rate),
+                         'dt2' :[0,float(len(order)-1),0],'npts':float((n_samples-1)*2),
+                         'tfun':1}
+            time_series_fname = file[:-4]+'_TF.mat'
+            sio.savemat(time_series_fname,variables,appendmat = False)
         #TODO: Save Sonogram
         
 class DataExportWidget(QWidget):
+    """
+    A proof-of-concept widget to show that exporting data is possible
+    """
     def __init__(self,parent):
         super().__init__(parent)
         self.cs = ChannelSet()
         self.order = list(range(len(self.cs)))
-        #self.selection = 0
         self.init_UI()
         
     def init_UI(self):
@@ -88,6 +116,7 @@ class DataExportWidget(QWidget):
         self.mat_export_btn = QPushButton('Export as MAT',self)
         self.mat_export_btn.clicked.connect(self.export_files)
         
+        # TODO: Have a preview of what is being saved?
         layout.addWidget(QLabel('ChannelSet Saving Order',self))
         layout.addWidget(self.channel_listview)
         layout.addLayout(shift_btn_layout)
@@ -97,10 +126,8 @@ class DataExportWidget(QWidget):
     def set_channel_set(self, channel_set):
         self.cs = channel_set
         self.order = list(range(len(self.cs)))
-        #self.selection = 0
         self.update_list()
         self.channel_listview.setCurrentRow(0)
-        
     
     def shift_list(self,mode):
         ind = self.channel_listview.currentRow()
@@ -127,7 +154,6 @@ class DataExportWidget(QWidget):
                                            "MAT Files (*.mat)")[0]
         if url:
             if self.back_comp_btn.checkState() == Qt.Checked:
-                print('BackComp')
                 export_to_mat(url,tuple(self.order), self.cs,back_comp = True)
             else:
                 export_to_mat(url,tuple(self.order), self.cs)
