@@ -30,7 +30,7 @@ The built version should appear in ``docs/build/html``.
 ReadTheDocs version
 """""""""""""""""""
 `ReadTheDocs <https://readthedocs.org/>`_ is a documentation hosting website. The DataLogger
-documentation can be found at `cued_datalogger.readthedocs.io <http://cued-cued_datalogger.readthedocs.io>`_.
+documentation can be found at `cued-datalogger.readthedocs.io <http://cued-datalogger.readthedocs.io>`_.
 
 Currently the process for uploading the DataLogger documentation to ReadTheDocs is quite complex
 and messy, due to issues with package dependencies. In an attempt to simplify things, there is an
