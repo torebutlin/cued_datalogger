@@ -88,8 +88,19 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
                          'tfun':1}
             time_series_fname = file[:-4]+'_TF.mat'
             sio.savemat(time_series_fname,variables,appendmat = False)
-        #TODO: Save Sonogram
-        
+        # Save Sonogram
+        if 'sonogram' in var_names:
+            sono_data = channel_set.get_channel_data(order[0],'sonogram')
+            if not sono_data.shape[0] == 0:
+                sono_phase = channel_set.get_channel_data(order[0],'sonogram_phase')
+                sono_step = channel_set.get_channel_data(order[0],'sonogram_step')
+                n_samples = sono_data[0].shape[0]
+                variables = {'yson':sono_data,'freq':float(sampling_rate),
+                             'dt2' :[0,0,1],'npts':float((n_samples-1)*2),
+                             'sonstep':float(sono_step),'yphase': sono_phase}
+                time_series_fname = file[:-4]+'_sonogram.mat'
+                sio.savemat(time_series_fname,variables,appendmat = False)
+            
 class DataExportWidget(QWidget):
     """
     A proof-of-concept widget to show that exporting data is possible
