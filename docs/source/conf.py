@@ -19,7 +19,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../datalogger'))
+sys.path.insert(0, os.path.abspath('../../cued_datalogger'))
 
 
 # -- General configuration ------------------------------------------------
@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.abspath('../../datalogger'))
 # ones.
 extensions = ['sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.mathjax',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     #'sphinx.ext.napoleon']
@@ -143,7 +143,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'cueddatalogger', 'CUED DataLogger Documentation',
+    (master_doc, 'cued_datalogger', 'CUED DataLogger Documentation',
      [author], 1)
 ]
 
@@ -160,8 +160,7 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-#autodoc_mock_imports = ["pyaudio", 'scipy', 'PyQt5', 'pyqtgraph', 'matplotlib',
-#                        'pyDAQmx', 'numpy', 'datalogger']
+autodoc_mock_imports = ['pyaudio', 'pyDAQmx']
 
 autodoc_default_flags = ['show-inheritance']
 autodoc_member_order = 'alphabetical'

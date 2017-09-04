@@ -8,11 +8,11 @@ Addon structure
 ^^^^^^^^^^^^^^^
 File structure
 """"""""""""""
-See ``datalogger/addons/example_addon.py`` and ``datalogger/addons/addon_template.py`` for examples of addons.
+See ``cued_datalogger/addons/example_addon.py`` and ``cued_datalogger/addons/addon_template.py`` for examples of addons.
 
 Addons must all be structured according to the ``addon_template.py``. That is::
 
-    #datalogger_addon
+    #cued_datalogger_addon
 
     #------------------------------------------------------------------------------
     # Put metadata about this addon here
@@ -36,7 +36,7 @@ Addons must all be structured according to the ``addon_template.py``. That is::
         #--------------------------------------------------------------------------
         <code goes here>
 
-*Header* (``#datalogger_addon``): This informs the datalogger that this is an addon file.
+*Header* (``#cued_datalogger_addon``): This informs the cued_datalogger that this is an addon file.
 
 *Metadata* (``addon_metadata``): Contains information about the addon. Displayed in the Addon Manager. Addons are sorted according to their ``"category"``.
 
