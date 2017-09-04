@@ -6,7 +6,7 @@ Created on Fri Sep  1 14:00:14 2017
 """
 
 import scipy.io as sio
-from datalogger.api.channel import ChannelSet
+from cued_datalogger.api.channel import ChannelSet
 import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QListWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog,QCheckBox)

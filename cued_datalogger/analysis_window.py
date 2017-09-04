@@ -16,6 +16,7 @@ from cued_datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
 from cued_datalogger.api.addons import AddonManager
 from cued_datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from cued_datalogger.api.file_import import DataImportWidget
+from cued_datalogger.api.file_export import DataExportWidget
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
 import cued_datalogger.acquisition_window as lpUI
