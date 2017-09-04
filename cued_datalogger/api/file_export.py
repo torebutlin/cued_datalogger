@@ -11,7 +11,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QListWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog,QCheckBox)
 from PyQt5.QtCore import  Qt
-
+from cued_datalogger.api.numpy_extensions import to_dB
 
 def export_to_mat(file,order, channel_set=None,back_comp = False):
     """
@@ -95,7 +95,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
                 sono_phase = channel_set.get_channel_data(order[0],'sonogram_phase')
                 sono_step = channel_set.get_channel_data(order[0],'sonogram_step')
                 n_samples = sono_data[0].shape[0]
-                variables = {'yson':sono_data,'freq':float(sampling_rate),
+                variables = {'yson':to_dB(np.abs(sono_data)),'freq':float(sampling_rate),
                              'dt2' :[0,0,1],'npts':float((n_samples-1)*2),
                              'sonstep':float(sono_step),'yphase': sono_phase}
                 time_series_fname = file[:-4]+'_sonogram.mat'
@@ -103,7 +103,15 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             
 class DataExportWidget(QWidget):
     """
-    A proof-of-concept widget to show that exporting data is possible
+    A proof-of-concept widget to show that exporting data is possible.
+    Currently, it saves all of the available variables.
+    
+    Attributes
+    ----------
+    cs : ChannelSet
+        Reference to the channelSet
+    order : list
+        The order of channels to be saved    
     """
     def __init__(self,parent):
         super().__init__(parent)
