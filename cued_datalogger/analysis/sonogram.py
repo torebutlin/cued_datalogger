@@ -1,4 +1,4 @@
-import sys
+import sys,traceback
 
 from cued_datalogger.api.numpy_extensions import to_dB
 from cued_datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
@@ -157,7 +157,19 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         self.channel.add_dataset("sonogram_time", data=self.times, units="s")
         self.channel.add_dataset("sonogram", data=self.FT, units=None)
 
-
+        # For backwards compatibility (and probably decay rate calculation in the future)
+        _,_,phase = scipy.signal.spectrogram(self.channel.get_data("time_series"),
+                                           self.channel.get_metadata("sample_rate"),
+                                           window=scipy.signal.get_window('hann', self.window_width),
+                                           nperseg=self.window_width,
+                                           noverlap=self.window_width // self.window_overlap_fraction,
+                                           return_onesided=False,
+                                           mode = 'phase')
+        phase = phase.transpose()
+        phase = phase[:, :phase.shape[1] // 2 + 1]
+        self.channel.add_dataset("sonogram_phase", data=phase, units=None)
+        self.channel.add_dataset("sonogram_step", data=self.window_overlap_fraction, units=None)
+        
     def update_plot(self):
         """Recalculate the sonogram, clear the canvas and replot."""
         if self.channel is not None:

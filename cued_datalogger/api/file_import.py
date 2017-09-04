@@ -1,3 +1,4 @@
+import sys,traceback
 import scipy.io as sio
 from cued_datalogger.api.channel import Channel, DataSet, ChannelSet
 import numpy as np
@@ -67,7 +68,7 @@ def import_from_mat(file, channel_set=None):
     # Numpy works more easily if it is in the form
     # (num_channels, num_samples_per_channel) - each channel is a row
     if "indata" in file.keys():
-        time_series = file["indata"].transpose()[0]
+        time_series = file["indata"].transpose()
     if "yspec" in file.keys():
         spectrum = file["yspec"].transpose()
     if "yson" in file.keys():
@@ -76,7 +77,7 @@ def import_from_mat(file, channel_set=None):
         sonogram_phase = file["yphase"].transpose()
 
     # # Save everything
-    for i in np.arange(num_channels):
+    for i in np.arange(num_channels,dtype = np.int):
         # Create a new channel
         channel_set.add_channels()
 
@@ -90,14 +91,22 @@ def import_from_mat(file, channel_set=None):
         if i < num_time_series_datasets:
             channel_set.add_channel_dataset(i,
                                             "time_series",
-                                            time_series)
+                                            time_series[i])
 
+        # Differentiate between TF and FFT
         if i < num_spectrum_datasets:
-            channel_set.add_channel_dataset(i,
-                                            "spectrum",
-                                             spectrum[i],
-                                             'Hz')
-
+            if is_transfer_function:
+                channel_set.add_channel_dataset(i,
+                                                "TF",
+                                                 spectrum[i],
+                                                 ' ')
+            else:
+                channel_set.add_channel_dataset(i,
+                                                "spectrum",
+                                                 spectrum[i],
+                                                 'Hz')
+            print(channel_set.channels[i].get_data("frequency"))
+            
         if i < num_sonogram_datasets:
             channel_set.add_channel_dataset(i,
                                             "sonogram",
@@ -174,9 +183,12 @@ class DataImportWidget(QWidget):
         try:
             import_from_mat(url[0], self.new_cs)
         except:
-            print('Load failed. Revert to default!')
-            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", 
-                            self.new_cs)
+            t,v,tb = sys.exc_info()
+            print(t)
+            print(v)
+            print(traceback.format_tb(tb))
+            print('Load failed.')
+            return
     
         self.set_channel_set(self.new_cs)
         
