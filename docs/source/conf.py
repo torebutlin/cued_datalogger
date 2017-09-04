@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.abspath('../../cued_datalogger'))
 # ones.
 extensions = ['sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.mathjax',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     #'sphinx.ext.napoleon']
