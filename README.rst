@@ -1,6 +1,6 @@
-======
-README
-======
+=================
+Quick start guide
+=================
 
 Install the DataLogger by following the relevant instructions below.
 
