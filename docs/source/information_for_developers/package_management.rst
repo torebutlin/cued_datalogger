@@ -3,7 +3,7 @@ Package management
 ==================
 
 The ``cued_datalogger`` package is installable from PyPI (the Python Package Index) via ``pip``
-(see :doc:`installation` for more information).
+(see :doc:`quickstart` for more information).
 
 This section of documentation attempts to describe how the package was set up.
 
