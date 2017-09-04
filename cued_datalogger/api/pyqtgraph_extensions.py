@@ -89,9 +89,9 @@ class InteractivePlotWidget(QWidget):
 
         # # Set up the region controls
         control_layout = QHBoxLayout()
-        self.lower_box = pg.SpinBox(self, bounds=(0, None))
+        self.lower_box = pg.SpinBox(self, bounds=(None, None))
         self.lower_box.valueChanged.connect(self.on_region_changed)
-        self.upper_box = pg.SpinBox(self, bounds=(0, None))
+        self.upper_box = pg.SpinBox(self, bounds=(None, None))
         self.upper_box.valueChanged.connect(self.on_region_changed)
         self.zoom_btn = QPushButton('Zoom', self)
         self.zoom_btn.clicked.connect(self.zoomToRegion)
