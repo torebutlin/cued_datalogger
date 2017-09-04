@@ -138,7 +138,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
         self.channel_select_widget.sig_channel_selection_changed.connect(self.sonogram_toolbox.set_selected_channels)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circle_widget.set_selected_channels)
+        #self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circle_widget.set_selected_channels)
 
         self.global_tools.addTab(self.channel_select_widget, 'Channel Selection')
 

@@ -396,13 +396,18 @@ class Channel(object):
         if self.is_dataset("time_series"):
             t = self.get_dataset("time")
             t.set_data(np.linspace(0, self.get_data("time_series").size / self.sample_rate, self.get_data("time_series").size))
-        if self.is_dataset("spectrum"):
+        # Both TF and FFT requires frequency bins
+        if self.is_dataset("spectrum") or self.is_dataset("TF"):
             f = self.get_dataset("frequency")
             #f.set_data(np.linspace(0, self.sample_rate, self.get_data("spectrum").size))
             # Theo: sample_rate is divided by 2 because rfft return half of the actual FFT
-            f.set_data(np.linspace(0, self.sample_rate/2, self.get_data("spectrum").size))
+            if self.is_dataset("spectrum"): 
+                fdata = self.get_data("spectrum")
+            elif self.is_dataset("TF"):
+                fdata = self.get_data("TF")
+            f.set_data(np.linspace(0, self.sample_rate/2, fdata.size))
             w = self.get_dataset("omega")
-            w.set_data(self.get_data("frequency") * 2*np.pi)
+            w.set_data(fdata * 2*np.pi)
 
 
 class DataSet(object):
