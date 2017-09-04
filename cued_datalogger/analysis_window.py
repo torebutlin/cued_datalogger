@@ -251,7 +251,7 @@ class AnalysisWindow(QMainWindow):
 
     def create_test_channelset(self):
         self.cs = ChannelSet(5)
-        t = np.arange(0,0.1,1/5000)
+        t = np.arange(0,0.5,1/5000)
         for i, channel in enumerate(self.cs.channels):
             self.cs.set_channel_metadata(i,{'sample_rate': 5000})
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))

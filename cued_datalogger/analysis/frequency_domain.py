@@ -58,7 +58,7 @@ class FrequencyDomainWidget(InteractivePlotWidget):
 
     def update_plot(self):
         self.clear()
-        print("Plotting %s." % self.current_plot_type)
+        print("Plotting %s %s." % (self.current_plot_type,self.current_plot))
         for channel in self.channels:
 
             data = channel.get_data(self.current_plot)
@@ -200,7 +200,6 @@ def compute_transfer_function(autospec_in,autospec_out,crossspec):
 
     transfer_func = (autospec_out/crossspec)
     coherence = ((crossspec * np.conjugate(crossspec))/(autospec_in*autospec_out))
-    print(coherence)
     return(transfer_func,np.real(coherence))
 
 
