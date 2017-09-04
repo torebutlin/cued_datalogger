@@ -13,12 +13,6 @@ Compiling the package
 Python provides a package for creating packages, ``setuptools``. The ``setup.py`` script uses
 ``setuptools`` to compile the code into a Python package.
 
-.. note:: There are two versions of ``setup.py`` - one for use when compiling the documentation
-  (``docs_setup.py``), which does not install any dependencies, and one for use when compiling the
-  package (``package_setup.py``), which installs dependencies and performs various checks (eg. that
-  Anaconda has the Python 3 ``.dll`` file in Windows). Before trying to compile, check that the
-  contents of ``setup.py`` are the same as the appropriate setup script.
-
 To compile the package and upload the new version to PyPI, run::
 
   python setup.py sdist upload
