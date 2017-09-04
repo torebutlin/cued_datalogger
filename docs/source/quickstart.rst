@@ -1,8 +1,19 @@
-======
-README
-======
+=================
+Quick start guide
+=================
 
-See the `documentation <http://cued_datalogger.readthedocs.io/en/latest/>`_
+Install the DataLogger by following the relevant instructions below.
+
+Then run the DataLogger from a command line using any of::
+
+    cued_datalogger_run
+
+    cued_datalogger_dbg
+
+    python -m cued_datalogger
+
+
+See the `documentation <http://cued-datalogger.readthedocs.io/en/latest/>`_
 for more information.
 
 
@@ -15,7 +26,7 @@ Installing on Windows
 
 #. Check that your Anaconda is using the latest version of ``pip``. In an Anaconda Prompt, type::
 
-   conda install pip
+    conda install pip
 
 #. Install ``cued_datalogger`` using ``pip``::
 

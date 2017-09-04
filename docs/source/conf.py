@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.abspath('../../cued_datalogger'))
 # ones.
 extensions = ['sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.mathjax',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     #'sphinx.ext.napoleon']
@@ -160,8 +160,7 @@ texinfo_documents = [
 ]
 
 #-----------Options put in by Theo--------------------------------------------
-#autodoc_mock_imports = ["pyaudio", 'scipy', 'PyQt5', 'pyqtgraph', 'matplotlib',
-#                        'pyDAQmx', 'numpy', 'cued_datalogger']
+autodoc_mock_imports = ['pyaudio', 'pyDAQmx']
 
 autodoc_default_flags = ['show-inheritance']
 autodoc_member_order = 'alphabetical'
