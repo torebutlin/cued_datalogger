@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGr
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtCore import QMetaObject,QSize,QCoreApplication, QTimer, pyqtSignal
 
+
 class InteractivePlotWidget(QWidget):
     """A QWidget containing a :class:`CustomPlotWidget` with mouse tracking
     crosshairs, a :class:`LinearRegionItem`, and spinboxes
@@ -88,10 +89,10 @@ class InteractivePlotWidget(QWidget):
 
         # # Set up the region controls
         control_layout = QHBoxLayout()
-        self.lower_box = pg.SpinBox(self, bounds=(0, None))
-        self.lower_box.valueChanged.connect(self.on_region_changed)
-        self.upper_box = pg.SpinBox(self, bounds=(0, None))
-        self.upper_box.valueChanged.connect(self.on_region_changed)
+        self.lower_box = pg.SpinBox(self, bounds=(None, None))
+        self.lower_box_proxy = pg.SignalProxy(self.lower_box.valueChanged, rateLimit=60, slot=self.on_region_changed)
+        self.upper_box = pg.SpinBox(self, bounds=(None, None))
+        self.upper_box_proxy = pg.SignalProxy(self.upper_box.valueChanged, rateLimit=60, slot=self.on_region_changed)
         self.zoom_btn = QPushButton('Zoom', self)
         self.zoom_btn.clicked.connect(self.zoomToRegion)
 
@@ -142,7 +143,8 @@ class InteractivePlotWidget(QWidget):
 
     def updateRegionFromBox(self):
         # Get the bounds of the region as defined by the spinboxes
-        region_bounds = [self.lower_box.value(), self.upper_box.value()]
+        region_bounds = [self.lower_box.value(),
+                         self.upper_box.value()]
         # Sort them so that the lower one is first
         region_bounds.sort()
         # Update the region
@@ -199,10 +201,11 @@ class InteractivePlotWidget(QWidget):
             #self.upper_box.setValue(0)
 
             # Set the limits of the PlotItem
-            self.PlotItem.setLimits(xMin=0, xMax=x.max())
+            self.PlotItem.setLimits(xMin=x.min(), xMax=x.max())
             self.PlotItem.setRange(xRange=(x.min(), x.max()),
                                    yRange=(y.min(), y.max()),
                                    padding=0.2)
+
 
     def getPlotItem(self):
         """Return the PlotItem (reimplemented from
@@ -245,12 +248,12 @@ class CustomPlotWidget(pg.PlotWidget):
     This is where you would implement options to modify the plots.
     For that, reimplement the ctrlMenu variable. Currently, only certain options
     are removed, rather than adding any new custom actions.
-    CustomPlotWidget bring out the PlotItem and ViewBox for easy access.
-    
+    Also, bring out the PlotItem and ViewBox for easy access.
+
     Attributes
     ----------
     PlotItem: PlotItem
-    
+
     ViewBox: ViewBox
     '''
     def __init__(self, *args, **kwargs):
@@ -307,7 +310,7 @@ class CustomViewBox(pg.ViewBox):
 
 class CustomViewMenu(QMenu):
     '''
-    A custom right click context menu. This is a complete implementation of the 
+    A custom right click context menu. This is a complete implementation of the
     original context menu. The purpose of these is to allow custom implementation
     of actions. In this case, there is extra options to toggle on/off the crosshair.
     Note that this context menu only affects the view, not the data, i.e. 'Plot Options'.
@@ -353,7 +356,7 @@ class CustomViewMenu(QMenu):
         self.display_menu.addAction(show_label_action)
 
         self.addMenu(self.display_menu)
-        
+
         # One-to-one reimplementation of the original options
         self.axes = []
         self.ctrl = []
@@ -580,8 +583,8 @@ class CustomViewMenu(QMenu):
 
 class CustomUITemplate(object):
     '''
-    A custom template for the X and Y Axis options in the right click context menu. 
-    This is a complete implementation of the original template. 
+    A custom template for the X and Y Axis options in the right click context menu.
+    This is a complete implementation of the original template.
     The purpose of these is to allow custom implementation of templates.
     Currently, it is a complete one-to-one copy of the original ones.
     '''

@@ -6,7 +6,7 @@ from cued_datalogger.api.channel import ChannelSet
 from cued_datalogger.api.workspace import Workspace
 from cued_datalogger.api.file_import import import_from_mat
 from cued_datalogger.api.toolbox import Toolbox
-from cued_datalogger.api.numpy_extensions import to_dB, sdof_modal_peak
+from cued_datalogger.api.numpy_extensions import from_dB, to_dB, sdof_modal_peak
 from cued_datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QFileDialog, QTreeWidget, QTreeWidgetItem, QRadioButton)
 
 import numpy as np
-from scipy.optimize import leastsq
+from scipy.optimize import leastsq, minimize
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -90,6 +90,7 @@ class CircleFitWidget(QWidget):
         self.w = np.zeros(1)
         self.tf = np.zeros(1)
         self.channels = []
+        self.current_peak = 0
 
         self.init_ui()
 
@@ -116,6 +117,10 @@ class CircleFitWidget(QWidget):
                                           'left': ("Im")})
 
         self.nyquist_plot = self.nyquist_plotwidget.getPlotItem()
+        self.nyquist_plot.setLimits(xMin=None, xMax=None,
+                                    yMin=None, yMax=None,
+                                    minXRange=None, maxXRange=None,
+                                    minYRange=None, maxYRange=None)
         self.nyquist_plot.setAspectLocked(lock=True, ratio=1)
         self.nyquist_plot.showGrid(x=True, y=True)
 
@@ -142,6 +147,7 @@ class CircleFitWidget(QWidget):
         self.results.sig_selected_peak_changed.connect(self.set_current_peak)
         self.results.sig_recalculate_fit.connect(self.update_from_region)
         self.results.sig_add_new_peak.connect(self.add_new_peak)
+        self.results.sig_manual_parameter_change.connect(self.update_from_table)
 
         # # Widget layout
         layout = QGridLayout()
@@ -171,7 +177,7 @@ class CircleFitWidget(QWidget):
         for i, channel in enumerate(self.channels):
             self.freq = channel.get_data("frequency")
             self.w = channel.get_data("omega")
-            self.tf = channel.get_data("spectrum")
+            self.tf = channel.get_data("TF")
             self.transfer_function_type = channel.transfer_function_type
 
             f_in_region = (self.freq >= region_lower_bound) \
@@ -190,39 +196,51 @@ class CircleFitWidget(QWidget):
             # Recalculate the parameters
             try:
                 wr, zr, cr, phi = self.sdof_get_parameters()
+
+                # Update the results table
+                self.results.set_omega(self.current_peak, i, wr)
+                self.results.set_damping(self.current_peak, i, zr)
+                self.results.set_amplitude(self.current_peak, i, cr)
+                self.results.set_phase_rad(self.current_peak, i, phi)
+
             except:
                 print("Error in calculating parameters.")
                 traceback.print_exc()
 
-            # Update the results table
-            self.results.set_parameter_values(self.current_peak,
-                                              i,
-                                              #{"frequency": wr / (2*np.pi),
-                                              {"frequency": wr,
-                                               #"Q": 1 / (2*zr),
-                                               "damping": zr,
-                                               #"amplitude": to_dB(cr),
-                                               "amplitude": cr,
-                                               #"phase": np.rad2deg(phi)})
-                                               "phase": phi})
+            wr = self.results.get_omega(self.current_peak, i)
+            zr = self.results.get_damping(self.current_peak, i)
+            cr = self.results.get_amplitude(self.current_peak, i)
+            phi = self.results.get_phase_rad(self.current_peak, i)
+
+            # Update the peak
+            peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+            self.peaks[i].setData(self.freq, to_dB(np.abs(peak)))
+            self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
             # Update what is displayed on the nyquist plot
             self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
             self.nyquist_plot.autoRange()
 
-        # Update the peak
-        #peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
-        #self.peaks[i].setData(self.w, peak)
-        #self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
-
     def update_from_table(self):
-        pass
+        for i, channel in enumerate(self.channels):
+            wr = self.results.get_omega(self.current_peak, i)
+            zr = self.results.get_damping(self.current_peak, i)
+            cr = self.results.get_amplitude(self.current_peak, i)
+            phi = self.results.get_phase_rad(self.current_peak, i)
+
+            # Update the peak
+            peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+            self.peaks[i].setData(self.freq, to_dB(np.abs(peak)))
+            self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
     def refresh_nyquist_plot(self):
         """Clear the nyquist plot and add the items back in."""
         self.nyquist_plotwidget.clear()
 
         for item in self.nyquist_plot_list:
+            self.nyquist_plot.addItem(item)
+
+        for item in self.nyquist_plot_peaks_list:
             self.nyquist_plot.addItem(item)
 
         self.nyquist_plot.autoRange()
@@ -255,7 +273,7 @@ class CircleFitWidget(QWidget):
             return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
                 -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
 
-    def residuals(self, parameters, w, tf):
+    def residuals(self, parameters):
         """The error function for least squares fitting."""
         wr = parameters[0]
         zr = parameters[1]
@@ -264,8 +282,9 @@ class CircleFitWidget(QWidget):
         if cr < 0:
             cr *= -1
             phi = (phi + np.pi) % np.pi
-        f = self.fitted_sdof_peak(w, wr, zr, cr, phi)
-        return np.append(tf.real, tf.imag) - np.append(f.real, f.imag)
+        f = self.tf_reg - self.fitted_sdof_peak(self.w_reg, wr, zr, cr, phi)
+        #return np.append(tf_real, tf_imag) - np.append(f.real, f.imag)
+        return float(np.sum(f*f.conj()))
 
     def sdof_get_parameters(self):
         """Fit a SDOF peak to the data with a least squares fit, using values
@@ -285,8 +304,9 @@ class CircleFitWidget(QWidget):
 
         # # Least squares fit
         parameters0 = [wr0, zr0, cr0, phi0]
-        wr, zr, cr, phi = leastsq(self.residuals, parameters0,
-                                  args=(self.w_reg, self.tf_reg))[0]
+        #wr, zr, cr, phi = leastsq(self.residuals, parameters0,
+        #                          args=(self.w_reg, self.tf_reg.real, self.tf_reg.imag))[0]
+        wr, zr, cr, phi = minimize(self.residuals, parameters0).x
 
         return wr, zr, cr, phi
 
@@ -302,14 +322,16 @@ class CircleFitWidget(QWidget):
         # # Populate the plot lists
         self.transfer_function_list = []
         self.nyquist_plot_list = []
+        self.peaks = []
+        self.nyquist_plot_peaks_list = []
         for channel in self.channels:
             transfer_function = pg.PlotDataItem(channel.get_data("frequency"),
-                                                to_dB(np.abs(channel.get_data("spectrum"))),
+                                                to_dB(np.abs(channel.get_data("TF"))),
                                                 pen=channel.colour)
             self.transfer_function_list.append(transfer_function)
 
-            nyquist_plot = pg.PlotDataItem(channel.get_data("spectrum").real,
-                                           channel.get_data("spectrum").imag,
+            nyquist_plot = pg.PlotDataItem(channel.get_data("TF").real,
+                                           channel.get_data("TF").imag,
                                            pen=None,
                                            symbol='o',
                                            symbolPen=None,
@@ -317,12 +339,14 @@ class CircleFitWidget(QWidget):
                                            symbolSize=7)
             self.nyquist_plot_list.append(nyquist_plot)
 
+            self.peaks.append(pg.PlotDataItem(pen='k'))
+            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen='k'))
+
         self.refresh_transfer_function_plot()
         self.refresh_nyquist_plot()
 
     def set_current_peak(self, current_peak):
         self.current_peak = current_peak
-
 
 class CircleFitResults(QGroupBox):
     """
@@ -337,11 +361,14 @@ class CircleFitResults(QGroupBox):
         Signal emitted when the fit is forced to be recalculated.
     sig_add_new_peak : pyqtSignal
         Signal emitted when a new peak is added.
+    sig_manual_parameter_change : pyqtSignal
+        Signal emitted when a parameter is changed by hand.
     """
 
     sig_selected_peak_changed = pyqtSignal(int)
     sig_recalculate_fit = pyqtSignal()
     sig_add_new_peak = pyqtSignal()
+    sig_manual_parameter_change = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__("Results", parent)
@@ -355,10 +382,10 @@ class CircleFitResults(QGroupBox):
         # # Tree for values
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Name",
-                                   "Frequency",
+                                   "Frequency (Hz)",
                                    "Damping ratio",
-                                   "Amplitude",
-                                   "Phase",
+                                   "Amplitude (dB)",
+                                   "Phase (deg)",
                                    "Select"])
 
         self.tree.setStyleSheet("QTreeWidget::item:has-children "
@@ -367,10 +394,10 @@ class CircleFitResults(QGroupBox):
         # # Tree for autofit parameters
         self.autofit_tree = QTreeWidget()
         self.autofit_tree.setHeaderLabels(["Name",
-                                           "Frequency",
+                                           "Frequency (Hz)",
                                            "Damping ratio",
-                                           "Amplitude",
-                                           "Phase",
+                                           "Amplitude (dB)",
+                                           "Phase (deg)",
                                            "Select"])
 
         self.autofit_tree.hide()
@@ -443,16 +470,20 @@ class CircleFitResults(QGroupBox):
         # Put spinboxes in the tree
         freq_spinbox = QDoubleSpinBox()
         freq_spinbox.setRange(0, 9e99)
+        freq_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
         self.tree.setItemWidget(peak_item, 1, freq_spinbox)
         damping_spinbox = QDoubleSpinBox()
         damping_spinbox.setRange(0, 9e99)
         damping_spinbox.setDecimals(5)
+        damping_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
         self.tree.setItemWidget(peak_item, 2, damping_spinbox)
         amp_spinbox = QDoubleSpinBox()
         amp_spinbox.setRange(0, 9e99)
+        amp_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
         self.tree.setItemWidget(peak_item, 3, amp_spinbox)
         phase_spinbox = QDoubleSpinBox()
-        phase_spinbox.setRange(-np.pi, np.pi)
+        phase_spinbox.setRange(-180, 180)
+        phase_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
         phase_spinbox.setWrapping(True)
         self.tree.setItemWidget(peak_item, 4, phase_spinbox)
 
@@ -476,20 +507,24 @@ class CircleFitResults(QGroupBox):
 
                 freq_spinbox = QDoubleSpinBox()
                 freq_spinbox.setRange(0, 9e99)
+                freq_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
                 freq_spinbox.valueChanged.connect(self.update_peak_average)
                 self.tree.setItemWidget(channel_item, 1, freq_spinbox)
                 damping_spinbox = QDoubleSpinBox()
                 damping_spinbox.setRange(0, 9e99)
                 damping_spinbox.setDecimals(5)
+                damping_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
                 damping_spinbox.valueChanged.connect(self.update_peak_average)
                 self.tree.setItemWidget(channel_item, 2, damping_spinbox)
                 amp_spinbox = QDoubleSpinBox()
                 amp_spinbox.setRange(0, 9e99)
+                amp_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
                 amp_spinbox.valueChanged.connect(self.update_peak_average)
                 self.tree.setItemWidget(channel_item, 3, amp_spinbox)
                 phase_spinbox = QDoubleSpinBox()
-                phase_spinbox.setRange(-np.pi, np.pi)
+                phase_spinbox.setRange(-180, 180)
                 phase_spinbox.setWrapping(True)
+                phase_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
                 phase_spinbox.valueChanged.connect(self.update_peak_average)
                 self.tree.setItemWidget(channel_item, 4, phase_spinbox)
 
@@ -567,34 +602,34 @@ class CircleFitResults(QGroupBox):
 
             if peak_item is not None:
                 # Find the average values of all the channels
-                avg_frequency = 0
+                avg_freq = 0
                 avg_damping = 0
-                avg_amplitude = 0
-                avg_phase = 0
+                avg_amplitude_dB = 0
+                avg_phase_deg = 0
 
                 for channel_number in range(len(self.channels)):
-                    avg_frequency += self.get_frequency(peak_number, channel_number)
+                    avg_freq += self.get_frequency(peak_number, channel_number)
                     avg_damping += self.get_damping(peak_number, channel_number)
-                    avg_amplitude += self.get_amplitude(peak_number, channel_number)
-                    avg_phase += self.get_phase(peak_number, channel_number)
+                    avg_amplitude_dB += self.get_amplitude_dB(peak_number, channel_number)
+                    avg_phase_deg += self.get_phase_deg(peak_number, channel_number)
 
-                avg_frequency /= len(self.channels)
+                avg_freq /= len(self.channels)
                 avg_damping /= len(self.channels)
-                avg_amplitude /= len(self.channels)
-                avg_phase /= len(self.channels)
+                avg_amplitude_dB /= len(self.channels)
+                avg_phase_deg /= len(self.channels)
 
                 # Set the peak item to display the averages
                 if self.autofit_tree.itemWidget(autofit_item, 1).currentText() == "Auto":
-                    self.tree.itemWidget(peak_item, 1).setValue(avg_frequency)
+                    self.tree.itemWidget(peak_item, 1).setValue(avg_freq)
                 if self.autofit_tree.itemWidget(autofit_item, 2).currentText() == "Auto":
                     self.tree.itemWidget(peak_item, 2).setValue(avg_damping)
                 if self.autofit_tree.itemWidget(autofit_item, 3).currentText() == "Auto":
-                    self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude)
+                    self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude_dB)
                 if self.autofit_tree.itemWidget(autofit_item, 4).currentText() == "Auto":
-                    self.tree.itemWidget(peak_item, 4).setValue(avg_phase)
+                    self.tree.itemWidget(peak_item, 4).setValue(avg_phase_deg)
 
     def get_frequency(self, peak_number, channel_number=None):
-        """Return the resonant frequency of the peak given by
+        """Return the resonant frequency (Hz) of the peak given by
         *peak_number*. If *channel_number* is given, return the resonant
         frequency of the given peak in the given channel."""
         peak_item = self.tree.topLevelItem(peak_number)
@@ -609,10 +644,45 @@ class CircleFitResults(QGroupBox):
         else:
             return 0
 
+    def get_omega(self, peak_number, channel_number=None):
+        """Return the resonant frequency (rads) of the peak given by
+        *peak_number*. If *channel_number* is given, return the resonant
+        frequency of the given peak in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 1)
+                return spinbox.value() * 2*np.pi
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 1)
+                return spinbox.value() * 2*np.pi
+        else:
+            return 0
+
     def get_damping(self, peak_number, channel_number=None):
         """Return the damping ratio of the peak given by *peak_number*. If
         *channel_number* is given, return the damping ratio of the given peak
         in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 2)
+                #return 1/(2*spinbox.value())
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 2)
+                #return 1/(2*spinbox.value())
+                return spinbox.value()
+        else:
+            return 0
+
+    """
+    def get_q(self, peak_number, channel_number=None):
+    """        """Return the Q factor of the peak given by *peak_number*. If
+        *channel_number* is given, return the damping ratio of the given peak
+        in the given channel.""""""
         peak_item = self.tree.topLevelItem(peak_number)
         if peak_item is not None:
             if channel_number is None:
@@ -624,8 +694,25 @@ class CircleFitResults(QGroupBox):
                 return spinbox.value()
         else:
             return 0
+    """
 
     def get_amplitude(self, peak_number, channel_number=None):
+        """Return the amplitude of the peak given by *peak_number*. If
+        *channel_number* is given, return the amplitude of the given peak in
+        the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 3)
+                return from_dB(spinbox.value())
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 3)
+                return from_dB(spinbox.value())
+        else:
+            return 0
+
+    def get_amplitude_dB(self, peak_number, channel_number=None):
         """Return the amplitude of the peak given by *peak_number*. If
         *channel_number* is given, return the amplitude of the given peak in
         the given channel."""
@@ -641,8 +728,8 @@ class CircleFitResults(QGroupBox):
         else:
             return 0
 
-    def get_phase(self, peak_number, channel_number=None):
-        """Return the phase of the peak given by *peak_number*. If
+    def get_phase_deg(self, peak_number, channel_number=None):
+        """Return the phase (deg) of the peak given by *peak_number*. If
         *channel_number* is given, return the phase of the given peak in the
         given channel."""
         peak_item = self.tree.topLevelItem(peak_number)
@@ -657,24 +744,24 @@ class CircleFitResults(QGroupBox):
         else:
             return 0
 
-    def get_parameter_values(self, peak_number, channel_number=None):
-        """Returns a dict of the parameter values of a peak. If
-        *channel_number* is given, return a dict of the parameter values of the
-        peak for the given channel."""
-        if channel_number is None:
-            return {"frequency": self.get_frequency(peak_number),
-                    "damping": self.get_damping(peak_number),
-                    "amplitude": self.get_amplitude(peak_number),
-                    "phase": self.get_phase(peak_number)}
+    def get_phase_rad(self, peak_number, channel_number=None):
+        """Return the phase (rad) of the peak given by *peak_number*. If
+        *channel_number* is given, return the phase of the given peak in the
+        given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 4)
+                return np.deg2rad(spinbox.value())
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 4)
+                return np.deg2rad(spinbox.value())
         else:
-            return \
-                {"frequency": self.get_frequency(peak_number, channel_number),
-                 "damping": self.get_damping(peak_number, channel_number),
-                 "amplitude": self.get_amplitude(peak_number, channel_number),
-                 "phase": self.get_phase(peak_number, channel_number)}
+            return 0
 
     def set_frequency(self, peak_number, channel_number=None, value=0):
-        """Set the frequency of a given peak to *value*. If *channel_number* is
+        """Set the frequency (Hz) of a given peak to *value*. If *channel_number* is
         given, set the frequency of the given peak in the given channel."""
         # Get the top level items
         peak_item = self.tree.topLevelItem(peak_number)
@@ -699,8 +786,60 @@ class CircleFitResults(QGroupBox):
                     spinbox = self.tree.itemWidget(peak_item, 1)
                     spinbox.setValue(value)
 
+    def set_omega(self, peak_number, channel_number=None, value=0):
+        """Set the frequency (rad) of a given peak to *value*. If *channel_number* is
+        given, set the frequency of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 1)
+                    spinbox.setValue(value / (2*np.pi))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 1)
+                    spinbox.setValue(value / (2*np.pi))
+
     def set_damping(self, peak_number, channel_number=None, value=0):
         """Set the damping ratio of a given peak to *value*. If *channel_number* is
+        given, set the damping ratio of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 2)
+                    spinbox.setValue(1/(2*value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 2)
+                    spinbox.setValue(1/(2*value))
+
+    def set_q(self, peak_number, channel_number=None, value=0):
+        """Set the q factor of a given peak to *value*. If *channel_number* is
         given, set the damping ratio of the given peak in the given channel."""
         # Get the top level items
         peak_item = self.tree.topLevelItem(peak_number)
@@ -743,6 +882,32 @@ class CircleFitResults(QGroupBox):
                     self.autofit_tree.itemWidget(autofit_channel_item, 3)
                 if combobox.currentText() == "Auto":
                     spinbox = self.tree.itemWidget(channel_item, 3)
+                    spinbox.setValue(to_dB(value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 3)
+                    spinbox.setValue(to_dB(value))
+
+    def set_amplitude_dB(self, peak_number, channel_number=None, value=0):
+        """Set the amplitude of a given peak to *value*. If *channel_number* is
+        given, set the amplitude of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 3)
                     spinbox.setValue(value)
             else:
                 # Set the value only if the combobox is set to autofit
@@ -751,7 +916,7 @@ class CircleFitResults(QGroupBox):
                     spinbox = self.tree.itemWidget(peak_item, 3)
                     spinbox.setValue(value)
 
-    def set_phase(self, peak_number, channel_number=None, value=0):
+    def set_phase_deg(self, peak_number, channel_number=None, value=0):
         """Set the phase of a given peak to *value*. If *channel_number* is
         given, set the phase of the given peak in the given channel."""
         # Get the top level items
@@ -777,23 +942,31 @@ class CircleFitResults(QGroupBox):
                     spinbox = self.tree.itemWidget(peak_item, 4)
                     spinbox.setValue(value)
 
-    def set_parameter_values(self, peak_number, channel_number=None,
-                             channel_values={}):
-        """Set the parameter values for a given peak to those given in
-        *channel_values*. If *channel_number* is given, set the values of the
-        given peak in the given channel."""
-        if "frequency" in channel_values.keys():
-            self.set_frequency(peak_number, channel_number,
-                               channel_values["frequency"])
-        if "damping" in channel_values.keys():
-            self.set_damping(peak_number, channel_number,
-                             channel_values["damping"])
-        if "amplitude" in channel_values.keys():
-            self.set_amplitude(peak_number, channel_number,
-                               channel_values["amplitude"])
-        if "phase" in channel_values.keys():
-            self.set_phase(peak_number, channel_number,
-                           channel_values["phase"])
+    def set_phase_rad(self, peak_number, channel_number=None, value=0):
+        """Set the phase of a given peak to *value*. If *channel_number* is
+        given, set the phase of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 4)
+                    spinbox.setValue(np.rad2deg(value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 4)
+                    spinbox.setValue(np.rad2deg(value))
 
 
 class CircleFitToolbox(Toolbox):

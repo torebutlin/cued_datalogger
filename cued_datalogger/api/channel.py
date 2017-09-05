@@ -23,16 +23,16 @@ class ChannelSet(object):
     ChannelSets can be initialised as empty, and channels added later,
     or initialised with a number of empty channels, to which DataSets can be
     added later. Channels are stored in a matlab-style list structure
-    (see :class:`MatlabList <cued_datalogger.api.numpy_extensions.MatlabList>`) 
-    which uses tuple indexing, eg. ``channelset.channels[1, 2, range(5,10)]``, 
-    so that multiple channels can be selected easily. 
-    
+    (see :class:`MatlabList <cued_datalogger.api.numpy_extensions.MatlabList>`)
+    which uses tuple indexing, eg. ``channelset.channels[1, 2, range(5,10)]``,
+    so that multiple channels can be selected easily.
+
 
     Attributes
     ----------
     channels : MatlabList
         A list of the channels in this set.
-        
+
     colormap : ColorMap
         A :class:`ColorMap` used for colouring the channels in this set.
     """
@@ -50,26 +50,26 @@ class ChannelSet(object):
         return len(self.channels)
 
     def get_info(self):
-        """Print the information about all of the Channels in this 
+        """Print the information about all of the Channels in this
         ChannelSet."""
         print("ChannelSet: \n Channels: \n")
-        
+
         for i, channel in enumerate(self.channels):
             print("--------------------\n"
                 + "{}    ".format(i))
             channel.get_info()
 
     def add_channels(self, num_channels=1):
-        """Add a number (*num_channels*) of new empty Channels to the end of 
+        """Add a number (*num_channels*) of new empty Channels to the end of
         the channel list."""
         for i in range(num_channels):
             self.channels.append(Channel())
-        
+
         self.update_channel_colours()
 
     def add_channel_dataset(self, channel_index, id_, data=None, units=None):
         """Add a DataSet with *id\_* to the Channel specified by
-        *channel_index*. DataSet can be initialised as empty (default) or with 
+        *channel_index*. DataSet can be initialised as empty (default) or with
         *data* and/or *units*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
@@ -85,7 +85,7 @@ class ChannelSet(object):
             self.set_channel_units(channel_index, id_, units)
 
     def set_channel_data(self, channel_index, id_, data):
-        """Set the data of DataSet with *id\_* to *data* in the Channel 
+        """Set the data of DataSet with *id\_* to *data* in the Channel
         specified by *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
@@ -96,7 +96,7 @@ class ChannelSet(object):
             self.channels[channel_index].set_data(id_, data)
 
     def set_channel_units(self, channel_index, id_, units):
-        """Set the units of DataSet with *id\_* to *units* in the Channel 
+        """Set the units of DataSet with *id\_* to *units* in the Channel
         specified by *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
@@ -119,7 +119,7 @@ class ChannelSet(object):
         else:
             # Get metadata from this channel
             self.channels[channel_index].set_metadata(metadata_dict)
-     
+
     def update_channel_colours(self):
         """Update the :attr:`colormap` so that the channels are mapped to
         the full range of colours, and update all the channel colours."""
@@ -129,18 +129,18 @@ class ChannelSet(object):
         green = [0, 255, 0, 255]
         colour_stops = [0, (len(self) - 1)//2, len(self) - 1]
         self.colormap = pg.ColorMap(colour_stops, [blue, green, red])
-        
+
         for i in range(len(self)):
             self.set_channel_colour(i)
-        
+
     def set_channel_colour(self, channel_index):
-        """Set the RGBA tuple specifying the colour of the Channel at 
+        """Set the RGBA tuple specifying the colour of the Channel at
         *channel_index* to a value determined by its index and the ChannelSet
         :attr:`colormap`."""
         self.channels[channel_index].colour = self.colormap.map(channel_index)
-    
+
     def get_channel_ids(self, channel_index):
-        """Return the ids of all the datasets in the Channel specified by 
+        """Return the ids of all the datasets in the Channel specified by
         *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
@@ -158,20 +158,20 @@ class ChannelSet(object):
             return self.channels[channel_index].get_ids()
 
     def get_channel_data(self, channel_index, id_):
-        """Return the data from the DataSet given by *id\_* in the Channel 
-        specified by *channel_index*."""        
+        """Return the data from the DataSet given by *id\_* in the Channel
+        specified by *channel_index*."""
         # If an tuple is given, indexing the channels will give an iterable,
         # otherwise it will give one result
         if isinstance(channel_index, tuple):
             #for channel in self.channels[channel_index]:
             #    return channel.get_data(id_)
-            return [channel.get_data(id_) 
+            return [channel.get_data(id_)
                     for channel in self.channels[channel_index]]
         else:
             return self.channels[channel_index].get_data(id_)
 
     def get_channel_units(self, channel_index, id_):
-        """Return the units from the DataSet given by *id\_* in the Channel 
+        """Return the units from the DataSet given by *id\_* in the Channel
         specified by *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
@@ -185,7 +185,7 @@ class ChannelSet(object):
 
     def get_channel_metadata(self, channel_index, metadata_id=None):
         """Return the metadata (either a specific item given by *metadata_id*
-        or the full dict of metadata) of the Channel specified by 
+        or the full dict of metadata) of the Channel specified by
         *channel_index*."""
         # If an int is given, indexing the channels will give one result,
         # otherwise it will give an iterable
@@ -201,7 +201,7 @@ class ChannelSet(object):
             return self.channels[channel_index].get_metadata(metadata_id)
 
     def get_channel_colour(self, channel_index):
-        """Get the RGBA tuple specifying the colour of the Channel at 
+        """Get the RGBA tuple specifying the colour of the Channel at
         *channel_index*."""
         return self.channels[channel_index].colour
 
@@ -210,8 +210,8 @@ class Channel(object):
     Contains a group of DataSets and associated metadata.
 
     Channels are the basic structure used throughout the CUED DataLogger. Channels
-    may contain many DataSets, but each must have a unique id\_ (ie. cannot 
-    have two 'time' DataSets). Typically a Channel will be initialised with 
+    may contain many DataSets, but each must have a unique id\_ (ie. cannot
+    have two 'time' DataSets). Typically a Channel will be initialised with
     just 'time_series' data, and other DataSets will be added as analysis is
     performed - eg. a Fourier Transform produces a 'spectrum' DataSet.
     Channels also contain metadata about the data.
@@ -221,27 +221,27 @@ class Channel(object):
     name : str
         A human-readable string identifying this channel
         (eg. ``'Input 0'``, or ``'Left Accelerometer'``).
-        
+
     datasets : list
         A list of this Channel's DataSets.
-        
+
     comments : str
         A string for any additional comments.
-        
+
     tags : list
-        A list of tags (eg. ['accelerometer', 'input']) for quick 
+        A list of tags (eg. ['accelerometer', 'input']) for quick
         selection and sorting.
-        
+
     sample_rate : float
         The rate (in Hz) that the data was sampled at.
-        
+
     calibration_factor : float
         #TODO#
-        
+
     transfer_function_type : str
-        Either 'None', 'displacement', 'velocity', or 'acceleration'- 
+        Either 'None', 'displacement', 'velocity', or 'acceleration'-
         indicates what type of transfer function is stored.
-        
+
     colour : tuple
         An RGBA tuple for this channel's colour - usually set
         by its parent ChannelSet
@@ -253,9 +253,9 @@ class Channel(object):
                  calibration_factor=1,
                  transfer_function_type="displacement",
                  colour=None):
-        """Create a new Channel. 
+        """Create a new Channel.
         Can be initialised as empty, or with given metadata and/or with given
-        DataSets.""" 
+        DataSets."""
 
         # Set the channel metadata
         self.name = name
@@ -279,7 +279,7 @@ class Channel(object):
         self.update_autogenerated_datasets()
 
     def get_info(self):
-        """Print this Channel's attributes, including DataSet ids 
+        """Print this Channel's attributes, including DataSet ids
         and metadata."""
         print("""Name: {}
         DataSets: {}
@@ -300,12 +300,12 @@ class Channel(object):
                     self.comments))
 
     def is_dataset(self, id_):
-        """Return a boolean of whether the dataset given by *id\_* 
+        """Return a boolean of whether the dataset given by *id\_*
         exists already."""
         return any([ds.id_ == id_ for ds in self.datasets])
 
     def add_dataset(self, id_, units=None, data=0):
-        """Create a new dataset in this channel with *id\_*, *units*, *data*, 
+        """Create a new dataset in this channel with *id\_*, *units*, *data*,
         unless a dataset given by *id\_* exists."""
         # Add as a new DataSet, unless it already exists
         if not self.is_dataset(id_):
@@ -336,7 +336,7 @@ class Channel(object):
         raise ValueError("No such DataSet '{}'".format(id_))
 
     def set_metadata(self, metadata_dict):
-        """Set the channel metadata to the metadata given in 
+        """Set the channel metadata to the metadata given in
         *metadata_dict*."""
         for metadata_name, metadata_value in metadata_dict.items():
             # If a permitted item of metadata is given, set metadata
@@ -375,8 +375,8 @@ class Channel(object):
         raise ValueError("No such DataSet {}".format(id_))
 
     def get_metadata(self, metadata_id=None):
-        """Return the value of this channel's metadata associated with 
-        *metadata_id*. If none given, returns all of this channel's 
+        """Return the value of this channel's metadata associated with
+        *metadata_id*. If none given, returns all of this channel's
         metadata in a dictionary."""
         metadata_dict = {"name": self.name,
                          "comments": self.comments,
@@ -393,21 +393,23 @@ class Channel(object):
 
     def update_autogenerated_datasets(self):
         """Regenerate the values in the automatically generated DataSets."""
-        if self.is_dataset("time_series"):
+        if self.is_dataset("time_series") or self.is_dataset("sonogram"):
             t = self.get_dataset("time")
             t.set_data(np.linspace(0, self.get_data("time_series").size / self.sample_rate, self.get_data("time_series").size))
         # Both TF and FFT requires frequency bins
-        if self.is_dataset("spectrum") or self.is_dataset("TF"):
-            f = self.get_dataset("frequency")
+        if self.is_dataset("spectrum") or self.is_dataset("TF") or self.is_dataset("sonogram"):
+            freq = self.get_dataset("frequency")
             #f.set_data(np.linspace(0, self.sample_rate, self.get_data("spectrum").size))
             # Theo: sample_rate is divided by 2 because rfft return half of the actual FFT
-            if self.is_dataset("spectrum"): 
-                fdata = self.get_data("spectrum")
+            if self.is_dataset("spectrum"):
+                dataset = self.get_data("spectrum")
             elif self.is_dataset("TF"):
-                fdata = self.get_data("TF")
-            f.set_data(np.linspace(0, self.sample_rate/2, fdata.size))
+                dataset = self.get_data("TF")
+            elif self.is_dataset("sonogram"):
+                dataset = self.get_data("sonogram")
+            freq.set_data(np.linspace(0, self.sample_rate/2, dataset.size))
             w = self.get_dataset("omega")
-            w.set_data(fdata * 2*np.pi)
+            w.set_data(freq.data * 2*np.pi)
 
 
 class DataSet(object):
@@ -419,40 +421,40 @@ class DataSet(object):
     id\_ : str
         A lower-case string containing the name of the data stored
         in the vector. See Notes for permitted values.
-        
+
     units : str
         The SI unit in which the data is measured.
-        
+
     data : ndarray
         A numpy array of data points associated with id\_.
-        
+
     Notes
     -----
-    Permitted values for the DataSet :attr:`id\_` are:  
-        
+    Permitted values for the DataSet :attr:`id\_` are:
+
     * ``"time_series"`` - The raw input time series data
-         
+
     * ``"time"``\*	- Calculated from the sample rate and number of samples
       (units ``'s'``)
-      
+
     * ``"frequency"``\* - Calculated from the sample rate and number of samples
       (units ``'Hz'``)
-      
-    * ``"omega"``\* - Angular frequency (units ``'rad'``), calculated from 
-      the sample rate and number of samples  
-              
-    * ``"spectrum"`` - The complex spectrum given by the Fourier Transform           
-        
+
+    * ``"omega"``\* - Angular frequency (units ``'rad'``), calculated from
+      the sample rate and number of samples
+
+    * ``"spectrum"`` - The complex spectrum given by the Fourier Transform
+
     * ``"sonogram"`` - The complex sonogram array, with shape (number of
-      FFTs, frequencies) 
-               
+      FFTs, frequencies)
+
     * ``"sonogram_frequency"``\* - The frequency bins (Hz) used in plotting the
-      sonogram. Calculated from the sonogram parameters.    
-            
-    * ``"sonogram_omega"``\* - The frequency bins (rad) used in plotting the 
       sonogram. Calculated from the sonogram parameters.
 
-    (\* indicates that this DataSet is auto-generated by the Channel)      
+    * ``"sonogram_omega"``\* - The frequency bins (rad) used in plotting the
+      sonogram. Calculated from the sonogram parameters.
+
+    (\* indicates that this DataSet is auto-generated by the Channel)
     """
     def __init__(self, id_, units=None, data=np.array(0)):
         """Create a new DataSet with unique *id_*. Can either be initialised as
@@ -482,18 +484,18 @@ class DataSet(object):
 class ChannelSelectWidget(QWidget):
     """
     A widget used in the Global Toolbox to select channels.
-    
+
     This widget is used as the master controller of what channels are selected.
-    It allows channel selection by checkboxes, an 'Invert Selection' button, 
+    It allows channel selection by checkboxes, an 'Invert Selection' button,
     a 'Select All' button, a 'Deselect All' button, and Matlab-style list
     indexing (eg. ``1:10:2, 4`` selects all the odd channels between 1 and 10
     and channel 4). Possible additional features to be implemented include
     selection by tag and by other channel metadata.
-    
+
     When the channel selection is changed it emits a signal containing the
-    list of currently selected channels. Widgets can be set to receive this 
+    list of currently selected channels. Widgets can be set to receive this
     signal and set the channels that they are displaying to that list.
-    
+
     Attributes
     ----------
     sig_channel_selection_changed : pyqtSignal
@@ -505,7 +507,7 @@ class ChannelSelectWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-                
+
         self.init_ui()
 
     def init_ui(self):
@@ -573,7 +575,7 @@ class ChannelSelectWidget(QWidget):
         string = self.text_select_box.text()
         #print("Selecting by " + string)
 
-        selected_list = [] 
+        selected_list = []
 
         # Split the string by commas
         index_list = string.split(",")
@@ -616,12 +618,12 @@ class ChannelSelectWidget(QWidget):
         # that are currently selected
         print("Currently selected channels: {}".format(self.selected_channels_index()))
         self.sig_channel_selection_changed.emit(self.selected_channels())
-        
+
     def set_channel_name(self):
         for i, channel in enumerate(self.cs.channels):
             # Create a checkbox for this channel
             self.checkbox_list[i].setText("{}: {}".format(i, channel.name))
-        
+
     def set_channel_set(self, channel_set):
         """Set the :class:`ChannelSet` used by this widget."""
         self.cs = channel_set
@@ -642,12 +644,12 @@ class ChannelSelectWidget(QWidget):
             self.checkbox_list.append(checkbox)
             # Add it to the layout
             self.viewbox_layout.addWidget(self.checkbox_list[i])
-            
+
         # Send out a signal with the updated channels
         self.on_channel_selection_change()
 
     def selected_channels_index(self):
-        """Return a list of channel numbers of all currently selected 
+        """Return a list of channel numbers of all currently selected
         channels."""
         selected_list = []
 
@@ -656,7 +658,7 @@ class ChannelSelectWidget(QWidget):
                 selected_list.append(i)
 
         return selected_list
-    
+
     def selected_channels(self):
         """Return a list of all the currently selected :class:`Channel`
         objects."""
@@ -671,7 +673,7 @@ class ChannelSelectWidget(QWidget):
 
 class ChannelMetadataWidget(QWidget):
     metadataChange = pyqtSignal(ChannelSet)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.init_ui()
@@ -768,7 +770,7 @@ class ChannelMetadataWidget(QWidget):
                 units = dataset_item.data(2, Qt.DisplayRole)
                 # Set the dataset units
                 self.cs.set_channel_units(channel_number, id_, units)
-        
+
         self.metadataChange.emit(self.cs)
         print("Done.")
 
