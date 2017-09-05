@@ -16,7 +16,8 @@ from cued_datalogger.api.numpy_extensions import to_dB
 def export_to_mat(file,order, channel_set=None,back_comp = False):
     """
     Export data and metadata from ChannelsSet to a mat file.
-    Support backward compatibility with the oldlogger
+    Support backward compatibility with the old logger.
+    Still in alpha stage.
     
     Parameters
     ----------
@@ -57,7 +58,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
         if new_channel_set:
             return channel_set
     else:
-        # Save as the old format
+        # Save as the old format, with individual MAT file for each type of data
         sampling_rate = channel_set.get_channel_metadata(0,'sample_rate')
         calibration_factor = channel_set.get_channel_metadata(0,'calibration_factor')
         # Save Time Series
@@ -104,7 +105,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
 class DataExportWidget(QWidget):
     """
     A proof-of-concept widget to show that exporting data is possible.
-    Currently, it saves all of the available variables.
+    Currently, it saves all of the available variables. Alpha stage.
     
     Attributes
     ----------
@@ -120,6 +121,9 @@ class DataExportWidget(QWidget):
         self.init_UI()
         
     def init_UI(self):
+        """
+        Construct the UI
+        """
         layout = QVBoxLayout(self)
         
         self.channel_listview = QListWidget(self)
@@ -143,12 +147,23 @@ class DataExportWidget(QWidget):
         layout.addWidget(self.mat_export_btn)
         
     def set_channel_set(self, channel_set):
+        """
+        Set the ChannelSet reference
+        """
         self.cs = channel_set
         self.order = list(range(len(self.cs)))
         self.update_list()
         self.channel_listview.setCurrentRow(0)
     
     def shift_list(self,mode):
+        """
+        Shift the channel saving order
+        
+        Parameter
+        ---------
+        mode : str
+            either 'up' or 'down', indicating the shifting direction
+        """
         ind = self.channel_listview.currentRow()
         if mode == 'up':
             if not ind == 0:
@@ -162,13 +177,18 @@ class DataExportWidget(QWidget):
         self.channel_listview.setCurrentRow(ind)
     
     def update_list(self):
+        """
+        Update the list with the current saving order
+        """
         self.channel_listview.clear()
         names = self.cs.get_channel_metadata(tuple(self.order),'name')
         full_names = [str(self.order[i])+' : '+names[i] for i in range(len(names))]
         self.channel_listview.addItems(full_names)
         
     def export_files(self):
-        # Get save URL from QFileDialog
+        """
+        Export the file to the url selected
+        """
         url = QFileDialog.getSaveFileName(self, "Export Data", "",
                                            "MAT Files (*.mat)")[0]
         if url:
