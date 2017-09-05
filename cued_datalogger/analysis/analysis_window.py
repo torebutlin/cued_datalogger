@@ -22,7 +22,6 @@ from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 from cued_datalogger.acquisition import acquisition_window as lpUI
 from cued_datalogger.acquisition.RecordingUIs import DevConfigUI
 
-
 class AnalysisDisplayTabWidget(QTabWidget):
     """This is the central widget for the AnalysisWindow, where graphs, data,
     and results are displayed. In general the user does not interact explicitly
@@ -172,10 +171,10 @@ class AnalysisWindow(QMainWindow):
 
         # # Acquisition Window
         self.liveplot = None
-        dev_configUI = DevConfigUI()
-        dev_configUI.config_button.setText('Open Oscilloscope')
-        dev_configUI.config_button.clicked.connect(self.open_liveplot)
-        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
+        self.dev_configUI = DevConfigUI()
+        self.dev_configUI.config_button.setText('Open Oscilloscope')
+        self.dev_configUI.config_button.clicked.connect(self.open_liveplot)
+        self.global_toolbox.addTab(self.dev_configUI,'Oscilloscope')
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
@@ -261,7 +260,11 @@ class AnalysisWindow(QMainWindow):
 
     def open_liveplot(self):
         if not self.liveplot:
-            self.liveplot = lpUI.LiveplotApp(self)
+            recType,configs = self.dev_configUI.read_device_config()
+            if not any([not c for c in configs]):
+                self.liveplot = lpUI.LiveplotApp(self,recType,configs)
+            else:
+                self.liveplot = lpUI.LiveplotApp(self)
             self.liveplot.done.connect(self.done_liveplot)
             self.liveplot.dataSaved.connect(self.receive_data)
             self.liveplot.show()

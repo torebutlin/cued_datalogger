@@ -99,7 +99,7 @@ class LiveplotApp(QMainWindow):
     dataSaved = pyqtSignal(int)
     done = pyqtSignal()
    
-    def __init__(self,parent = None):
+    def __init__(self,parent = None,recType = mR,configs = ['',44100,2,1024,6]):
         """
         Initialise and construct the window application.
         
@@ -120,9 +120,11 @@ class LiveplotApp(QMainWindow):
         
         # Set recorder object
         self.playing = False
-        self.rec = mR.Recorder(channels = 2,
-                                num_chunk = 6,
-                                device_name = 'Line (U24XL with SPDIF I/O)')
+        self.rec = recType.Recorder(rate = configs[1],
+                                    channels = configs[2],
+                                    chunk_size = configs[3],
+                                    num_chunk = configs[4],
+                                    device_name = configs[0])
         # Set up the TimeSeries and FreqSeries
         self.timedata = None 
         self.freqdata = None
@@ -610,10 +612,7 @@ class LiveplotApp(QMainWindow):
             # Get Input from the Device Configuration UI
             Rtype, settings = self.devconfig_UI.read_device_config()
             # Reinitialise the recording object
-            if Rtype[0]:
-                self.rec = mR.Recorder()
-            elif Rtype[1]:
-                self.rec = NIR.Recorder()
+            self.rec = Rtype.Recorder()
             # Set the recorder parameters
             dev_name = self.rec.available_devices()[0]
             sel_ind = min(settings[0],len(dev_name)-1)

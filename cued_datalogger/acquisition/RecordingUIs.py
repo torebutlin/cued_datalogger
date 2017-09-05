@@ -492,6 +492,7 @@ class DevConfigUI(BaseWidget):
         """
         Reimplemented from BaseWidget.
         """
+        self.rec = None
          # Set the device settings form
         config_form = QFormLayout(self)
         config_form.setSpacing(2)
@@ -503,7 +504,7 @@ class DevConfigUI(BaseWidget):
         NI_button = QRadioButton('NI',self.typegroup)
         typelbox.addWidget(pyaudio_button)
         typelbox.addWidget(NI_button)
-
+        pyaudio_button.setChecked(True)
         # Set that to the layout of the group
         self.typegroup.setLayout(typelbox)
 
@@ -557,17 +558,18 @@ class DevConfigUI(BaseWidget):
             The reference of the Recorder object
         """
         rb = self.typegroup.findChildren(QRadioButton)
-        if type(self.rec) == mR.Recorder:
-            rb[0].setChecked(True)
-        elif type(self.rec) == NIR.Recorder:
-            rb[1].setChecked(True)
-
-        self.display_sources()
-
-        info = [self.rec.rate,self.rec.channels,
+        if not self.rec == None:
+            if type(self.rec) == mR.Recorder:
+                rb[0].setChecked(True)
+            elif type(self.rec) == NIR.Recorder:
+                rb[1].setChecked(True)
+                
+            info = [self.rec.rate,self.rec.channels,
                 self.rec.chunk_size,self.rec.num_chunk]
         for cbox,i in zip(self.configboxes[1:],info):
             cbox.setText(str(i))
+            
+        self.display_sources()
 
     def display_sources(self):
         """
@@ -600,8 +602,9 @@ class DevConfigUI(BaseWidget):
         except Exception as e:
             print(e)
             source_box.addItems(selR.available_devices()[0])
-
-        source_box.setCurrentText(self.rec.device_name)
+            
+        if not self.rec == None:
+            source_box.setCurrentText(self.rec.device_name)
         del selR
 
     def read_device_config(self):
@@ -625,9 +628,15 @@ class DevConfigUI(BaseWidget):
                 configs.append(cbox.currentIndex())
             else:
                 config_input = cbox.text().strip(' ')
-                configs.append(int(float(config_input)))
-
+                try:
+                    configs.append(int(float(config_input)))
+                except:
+                    configs.append(None)
         print(recType,configs)
+        if recType[0]:
+            recType = mR
+        elif recType[1]:
+            recType = NIR
         return(recType, configs)
 
 #-----------------------------STATUS WIDGET-------------------------------
