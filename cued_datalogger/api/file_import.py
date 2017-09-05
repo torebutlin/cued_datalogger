@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)
 from PyQt5.QtCore import  Qt
-
+import pickle
 
 def import_from_mat(file, channel_set=None):
     """
@@ -129,8 +129,10 @@ class DataImportWidget(QWidget):
         
         self.import_btn = QPushButton('Import Mat Files',self)
         self.import_btn.clicked.connect(self.import_files)
+        self.pickle_btn = QPushButton('Import Pickle Files',self)
+        self.pickle_btn.clicked.connect(self.load_pickle)
         layout.addWidget(self.import_btn)
-        
+        layout.addWidget(self.pickle_btn)
         layout.addWidget(QLabel('New ChannelSet Preview',self))
         
         self.tree = QTreeWidget(self)
@@ -191,7 +193,14 @@ class DataImportWidget(QWidget):
             return
     
         self.set_channel_set(self.new_cs)
-        
+    
+    def load_pickle(self):
+        url = QFileDialog.getOpenFileName(self, "Load Channel Set", "addons",
+                                               "Pickle Files (*.pickle)")[0]
+        with open(url,'rb') as f:
+            self.new_cs = pickle.load(f)
+        self.set_channel_set(self.new_cs)
+    
     def clear(self):
         self.new_cs = ChannelSet()
         self.set_channel_set(self.new_cs)

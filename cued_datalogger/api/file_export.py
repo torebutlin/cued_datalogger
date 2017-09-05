@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QListWidget
                              QTreeWidgetItem,QHBoxLayout,QFileDialog,QCheckBox)
 from PyQt5.QtCore import  Qt
 from cued_datalogger.api.numpy_extensions import to_dB
+import pickle
 
 def export_to_mat(file,order, channel_set=None,back_comp = False):
     """
@@ -135,6 +136,8 @@ class DataExportWidget(QWidget):
         shift_down_btn.clicked.connect(lambda: self.shift_list('down'))
         shift_btn_layout.addWidget(shift_up_btn )
         shift_btn_layout.addWidget(shift_down_btn )
+        self.pickle_export_btn = QPushButton('Export as Pickle',self)
+        self.pickle_export_btn.clicked.connect(self.pickle_file)
         self.back_comp_btn = QCheckBox('Backward Compatibility?',self)
         self.mat_export_btn = QPushButton('Export as MAT',self)
         self.mat_export_btn.clicked.connect(self.export_files)
@@ -143,6 +146,7 @@ class DataExportWidget(QWidget):
         layout.addWidget(QLabel('ChannelSet Saving Order',self))
         layout.addWidget(self.channel_listview)
         layout.addLayout(shift_btn_layout)
+        layout.addWidget(self.pickle_export_btn)
         layout.addWidget(self.back_comp_btn)
         layout.addWidget(self.mat_export_btn)
         
@@ -196,7 +200,17 @@ class DataExportWidget(QWidget):
                 export_to_mat(url,tuple(self.order), self.cs,back_comp = True)
             else:
                 export_to_mat(url,tuple(self.order), self.cs)
-        
+      
+    def pickle_file(self):
+        url = QFileDialog.getSaveFileName(self, "Export Data", "",
+                                           "Pickle Files (*.pickle)")[0]
+        if url:
+            saved_cs = ChannelSet(len(self.order))
+            for i,n in enumerate(self.order):
+                saved_cs.channels[i] = self.cs.channels[n]
+            with open(url,'wb') as f:
+                pickle.dump(saved_cs,f)
+    
 if __name__ == '__main__':
     cs = ChannelSet(4)
     cs.add_channel_dataset((0,1,2,3),'time_series',np.random.rand(5,1))
