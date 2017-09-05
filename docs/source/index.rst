@@ -11,6 +11,8 @@ CUED DataLogger Documentation
 
   quickstart
 
+  using
+
   information_for_developers/information_for_developers
 
   api_reference/api_reference
