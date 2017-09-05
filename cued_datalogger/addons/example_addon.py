@@ -1,9 +1,16 @@
 #cued_datalogger_addon
+
+#------------------------------------------------------------------------------
+# Put metadata about this addon here
+#------------------------------------------------------------------------------
 addon_metadata = {"name": "Example Addon",
 "author": "John Smith",
 "category": "Plotting",
 "description": "This example draws a sine curve in matplotlib, prints to the console, and draws a sine curve in the time domain window.~This is an extra line~"}
 
+#------------------------------------------------------------------------------
+# Master run function - put your code in this function
+#------------------------------------------------------------------------------
 def run(parent_window):
 	#------------------------------------------------------------------------------
 	# Your addon functions

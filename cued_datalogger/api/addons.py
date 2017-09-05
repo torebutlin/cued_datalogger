@@ -58,6 +58,9 @@ class AddonManager(QWidget):
 
 
     def init_ui(self):
+        '''
+        Initialise the UI components
+        '''
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
@@ -247,6 +250,15 @@ class TextReceiver(QObject):
                 #break
 
 class AddonWriter(QWidget):
+    '''
+    Opens a window to write an addon, following the template. Still in alpha stage.
+    The window is also able to load an addon for editting.
+
+    Attributes
+    ----------
+    done: pyqtsignal
+        Emits when the window is closed
+    '''
     done = pyqtSignal()
     def __init__(self):
         super().__init__()
@@ -256,6 +268,9 @@ class AddonWriter(QWidget):
         self.show()
 
     def init_UI(self):
+        '''
+        Construct the window
+        '''
         main_layout = QVBoxLayout(self)
 
         btn_layout = QHBoxLayout()
@@ -318,11 +333,17 @@ class AddonWriter(QWidget):
         self.tabs.addTab(code_widget,'Code')
 
     def closeEvent(self,event):
+        '''
+        Reimplemented from QWidget to emit the done signal
+        '''
         self.done.emit()
         event.accept()
         self.deleteLater()
 
     def create_addon(self):
+        '''
+        Create the addon in the given template
+        '''
         file_name = self.meta_configs[0].text().replace(' ','')
         if not file_name:
             print('Please give a file name')
@@ -346,10 +367,12 @@ class AddonWriter(QWidget):
             file.write(full_code)
 
     def read_addon(self):
+        '''
+        Read the addon
+        '''
         url_list = QFileDialog.getOpenFileNames(self, "Load addon", "addons",
                                                "DataLogger Addons (*.py)")[0][0]
-
-        #print(url_list)
+        
         if url_list:
             f = QFileInfo(url_list)
             self.meta_configs[0].setText(f.fileName().strip('.py'))
@@ -367,7 +390,6 @@ class AddonWriter(QWidget):
                 addon_global_vars = {}
                 with open(url_list) as file:
                     exec(file.read(), addon_local_vars, addon_global_vars)
-                metadata = addon_global_vars["addon_metadata"]
             except:
                 print('Error detected in code!')
                 t,v,tb = sys.exc_info()
@@ -375,8 +397,8 @@ class AddonWriter(QWidget):
                 print(v)
                 print(traceback.format_tb(tb))
                 return
-
-
+            
+            metadata = addon_global_vars["addon_metadata"]
             # Extract the metadata
             self.meta_configs[1].setText(metadata["name"])
             self.meta_configs[2].setText(metadata["author"])
@@ -386,7 +408,7 @@ class AddonWriter(QWidget):
         else:
             print('No data')
 
-
+'''
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
@@ -397,3 +419,4 @@ if __name__ == '__main__':
     w.show()
 
     sys.exit(app.exec_())
+'''
