@@ -37,8 +37,7 @@ def run():
     w = AnalysisWindow()
 
     # Connect the window to the workspace
-    w.CurrentWorkspace = CurrentWorkspace
-    w.CurrentWorkspace.configure()
+    CurrentWorkspace.set_parent_window(w)
 
     w.addon_widget.discover_addons(w.CurrentWorkspace.path + "/addons/")
 

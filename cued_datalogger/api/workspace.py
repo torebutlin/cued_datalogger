@@ -3,6 +3,7 @@ import re
 
 from pathlib import Path
 
+from cued_datalogger.analysis import analysis_window
 
 class Workspace(object):
     """
@@ -47,6 +48,7 @@ class Workspace(object):
         self.pyqtgraph_inverted = 0
         self.pyqtgraph_antialias = 1
         self.default_pen = None
+        self.parent = None
 
         self.configure()
 
@@ -122,6 +124,12 @@ class Workspace(object):
         # # Set other settings
         # <code>
 
+        # Set window settings
+        if self.parent is not None:
+            if isinstance(self.parent, analysis_window.AnalysisWindow):
+                if not self.add_ons_enabled:
+                    self.parent.global_toolbox.removeTab("Addon Manager")
+
         # # Set PyQtGraph settings
         if self.default_pen is None:
             if self.pyqtgraph_inverted:
@@ -143,3 +151,8 @@ class Workspace(object):
             pg.setConfigOption('antialias', False)
 
         print("Done.")
+
+    def set_parent_window(self, parent_window):
+        self.parent = parent_window
+        self.parent.CurrentWorkspace = self
+        self.configure()
