@@ -1,7 +1,7 @@
 from cued_datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 from cued_datalogger.api.toolbox import Toolbox
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
 import pyqtgraph as pg
@@ -52,15 +52,17 @@ class TimeToolbox(Toolbox):
 
     def init_ui(self):
         self.convert_tab = QWidget(self)
-        convert_tab_layout = QVBoxLayout()
+        convert_tab_layout = QGridLayout()
 
         self.fft_btn = QPushButton("Convert to FFT")
         self.fft_btn.clicked.connect(self.compute_fft)
-        convert_tab_layout.addWidget(self.fft_btn)
+        convert_tab_layout.addWidget(self.fft_btn, 0, 0)
 
         self.sonogram_btn = QPushButton("Convert to Sonogram")
         self.sonogram_btn.clicked.connect(self.sig_convert_to_sonogram.emit)
-        convert_tab_layout.addWidget(self.sonogram_btn)
+        convert_tab_layout.addWidget(self.sonogram_btn, 1, 0)
+
+        convert_tab_layout.setRowStretch(2, 1)
 
         self.convert_tab.setLayout(convert_tab_layout)
 
