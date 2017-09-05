@@ -195,6 +195,13 @@ class DataImportWidget(QWidget):
         self.set_channel_set(self.new_cs)
     
     def load_pickle(self):
+        '''
+        This is probably a temporary solution to loading data.
+        Probably have to write a better way of storing data.
+        PLEASE DO NOT OPEN ANY UNTRUSTED PICKLE FILES.
+        UNPICKLING A FILE CAN EXECUTE ARBITRARY CODE, WHICH IS DANGEROUS TO YOUR COMPUTER.
+        
+        '''
         url = QFileDialog.getOpenFileName(self, "Load Channel Set", "addons",
                                                "Pickle Files (*.pickle)")[0]
         with open(url,'rb') as f:

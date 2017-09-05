@@ -202,6 +202,12 @@ class DataExportWidget(QWidget):
                 export_to_mat(url,tuple(self.order), self.cs)
       
     def pickle_file(self):
+        '''
+        This is probably a temporary solution to saving data.
+        The pickle file is only intended for internal use only.
+        Please make sure no one tampers with the files.
+        Also, only open files that YOU have pickled.
+        '''
         url = QFileDialog.getSaveFileName(self, "Export Data", "",
                                            "Pickle Files (*.pickle)")[0]
         if url:
