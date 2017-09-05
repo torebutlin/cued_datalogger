@@ -57,6 +57,10 @@ class AnalysisDisplayTabWidget(QTabWidget):
 
 
 class ProjectMenu(QMenu):
+    '''
+    A simple drop-down menu for demonstration purposes. 
+    Currently does not do anything.
+    '''
     def __init__(self,parent):
         super().__init__('Project',parent)
         self.parent = parent
@@ -214,6 +218,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_select_widget.set_channel_name()
 
     def init_ui(self):
+        # Add the drop-down menu
         self.menubar = self.menuBar()
         self.menubar.addMenu(ProjectMenu(self))
 
