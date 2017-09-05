@@ -233,7 +233,7 @@ class Recorder(RecorderParent):
                 self.audio_stream.CfgSampClkTiming("",self.rate,
                                       pdaq.DAQmx_Val_Rising,pdaq.DAQmx_Val_ContSamps,
                                       self.chunk_size)
-                self.audio_stream.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_into_Buffer,
+                self.audio_stream.AutoRegisterEveryNSamplesEvent(pdaq.DAQmx_Val_Acquired_Into_Buffer,
                                                     1000,0,name = 'stream_audio_callback')
                 
                 self.stream_start()
