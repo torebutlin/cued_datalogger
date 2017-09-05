@@ -115,6 +115,9 @@ class InteractivePlotWidget(QWidget):
         self.sig_region_changed.emit(lower, upper)
 
     def mouseMoved(self, mouse_moved_event):
+        """
+        Update the mouse position with crosshair
+        """
         mouse_position = mouse_moved_event[0]  ## using signal proxy turns original arguments into a tuple
         # If the mouse is in the PlotItem
         if self.PlotItem.sceneBoundingRect().contains(mouse_position):
@@ -242,7 +245,7 @@ class CustomPlotWidget(pg.PlotWidget):
     This is where you would implement options to modify the plots.
     For that, reimplement the ctrlMenu variable. Currently, only certain options
     are removed, rather than adding any new custom actions.
-    Also, bring out the PlotItem and ViewBox for easy access.
+    CustomPlotWidget bring out the PlotItem and ViewBox for easy access.
     
     Attributes
     ----------
@@ -283,7 +286,7 @@ class CustomPlotWidget(pg.PlotWidget):
 
 class CustomViewBox(pg.ViewBox):
     '''
-    A custom ViewBox, reimplemented to allow custom right context menu
+    A custom ViewBox, reimplemented to allow custom right click context menu
     '''
     def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
