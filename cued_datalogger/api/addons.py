@@ -1,7 +1,6 @@
 import sys
 if __name__ == '__main__':
     sys.path.append('../')
-    from analysis_window_testing import AnalysisWindow
 
 from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal,QFileInfo
 from PyQt5.QtWidgets import (QWidget, QApplication, QVBoxLayout, QTreeWidget,
@@ -17,7 +16,7 @@ if sys.version[0] == '2':
     from Queue import Queue
 else:
     from queue import Queue
-    
+
 import os,traceback,sys
 
 import re
@@ -34,7 +33,7 @@ class AddonManager(QWidget):
 
         self.addon_local_vars = {}
         self.addon_global_vars = {}
-        
+
         self.addon_writer = None
         self.init_ui()
 
@@ -48,7 +47,7 @@ class AddonManager(QWidget):
         # Create the object that writes to the textedit
         self.text_receiver = TextReceiver(self.stdout_buffer)
         self.text_receiver.sig_text_received.connect(self.output.append)
-        
+
         ### Should just create a Thread once???
         # Create a thread for the receiver
         self.receiver_thread = QThread()
@@ -56,16 +55,19 @@ class AddonManager(QWidget):
         self.receiver_thread.started.connect(self.text_receiver.run)
         # Move the receiver to the thread
         self.text_receiver.moveToThread(self.receiver_thread)
-       
-        
+
+
     def init_ui(self):
+        '''
+        Initialise the UI components
+        '''
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-        
+
         writer_btn = QPushButton("Open Addon Writer")
         writer_btn.clicked.connect(self.open_writer)
         self.layout.addWidget(writer_btn)
-        
+
         search_hbox = QHBoxLayout()
         search_label = QLabel("Search:")
         search_hbox.addWidget(search_label)
@@ -99,20 +101,36 @@ class AddonManager(QWidget):
         self.output = QTextEdit(self)
         self.output.setReadOnly(True)
         self.layout.addWidget(self.output)
-        
-        
+
 
     def discover_addons(self, path):
         """Find any addons contained in path and load them"""
         print("Discovering addons...")
-        print("\t Found:")
-        for file in os.listdir(path):
+        if os.path.exists(path):
+            path_to_search = path
+        elif os.path.exists('./addons/'):
+            print("Path does not exist. Searching ./addons instead.")
+            path_to_search = './addons/'
+        else:
+            print("Path does not exist. Searching current directory instead.")
+            path_to_search = './'
+
+        addon_list = []
+
+        for file in os.listdir(path_to_search):
             if file.endswith(".py"):
-                with open(path + file, 'r') as f:
+                with open(path_to_search + file, 'r') as f:
                     line1 = f.readline()
                 if line1 == "#cued_datalogger_addon\n":
-                    print("\t {}".format(path+file))
-                    self.add_addon(path + file)
+                    addon_list.append(path_to_search+file)
+
+        if addon_list:
+            print("\t Found:")
+            for addon in addon_list:
+                print("\t\t " + addon)
+                self.add_addon(addon)
+        else:
+            print("None found.")
 
     def load_new(self):
         # Get a list of URLs from a QFileDialog
@@ -138,7 +156,7 @@ class AddonManager(QWidget):
             print(v)
             print(traceback.format_tb(tb))
             return
-        
+
         # Extract the metadata
         metadata = self.addon_global_vars["addon_metadata"]
 
@@ -168,7 +186,7 @@ class AddonManager(QWidget):
         # Redirect stdout to the writestream
         stdout_old = sys.stdout
         sys.stdout = self.writestream
-        
+
         # Start the receiver
         self.start_receiver_thread()
 
@@ -202,7 +220,7 @@ class AddonManager(QWidget):
     def done_writer(self):
         self.addon_writer.done.disconnect()
         self.addon_writer = None
-        
+
 class WriteStream(object):
     """A simple object that writes to a queue - replace stdout with this"""
     def __init__(self, queue):
@@ -228,10 +246,19 @@ class TextReceiver(QObject):
             # Blocking actually crashes the program :(
             stdout_text = self.stdout_buffer.get(block = False)
             self.sig_text_received.emit(stdout_text)
-            
+
                 #break
-            
+
 class AddonWriter(QWidget):
+    '''
+    Opens a window to write an addon, following the template. Still in alpha stage.
+    The window is also able to load an addon for editting.
+
+    Attributes
+    ----------
+    done: pyqtsignal
+        Emits when the window is closed
+    '''
     done = pyqtSignal()
     def __init__(self):
         super().__init__()
@@ -239,10 +266,13 @@ class AddonWriter(QWidget):
         self.setWindowTitle('AddonWriter')
         self.init_UI()
         self.show()
-        
+
     def init_UI(self):
+        '''
+        Construct the window
+        '''
         main_layout = QVBoxLayout(self)
-        
+
         btn_layout = QHBoxLayout()
         save_btn = QPushButton('Save',self)
         save_btn.clicked.connect(self.create_addon)
@@ -256,18 +286,18 @@ class AddonWriter(QWidget):
         clear_btn = QPushButton('Clear',self)
         clear_btn.setDisabled(True)
         btn_layout.addWidget(clear_btn)
-           
+
         main_layout.addLayout(btn_layout)
-        
+
         self.tabs = QTabWidget(self)
         main_layout.addWidget(self.tabs)
-        
+
         metadata_widget = QWidget(self)
         m_widget_layout = QVBoxLayout(metadata_widget)
         title_label = QLabel('Code Metadata')
         m_widget_layout.addWidget(title_label)
         metadata_layout = QFormLayout()
-        
+
         self.meta_configs = []
         for mdata in ("File Name","Name","Author","Category"):
             if mdata == "Category":
@@ -277,37 +307,43 @@ class AddonWriter(QWidget):
                 cbox = QLineEdit(metadata_widget)
             metadata_layout.addRow(QLabel(mdata,metadata_widget),cbox)
             self.meta_configs.append(cbox)
-        m_widget_layout.addLayout(metadata_layout)        
-                
+        m_widget_layout.addLayout(metadata_layout)
+
         desc_label = QLabel('Description')
         m_widget_layout.addWidget(desc_label)
-        
+
         desc_box = QTextEdit(metadata_widget)
         m_widget_layout.addWidget(desc_box)
         self.meta_configs.append(desc_box)
-        
+
         code_widget = QWidget(self)
         c_widget_layout = QVBoxLayout(code_widget)
-        
+
         font_metrics = QFontMetrics(QFont())
         w = font_metrics.width(' ')
-        
+
         main_code_label = QLabel('Run Code',code_widget)
         self.main_code_text = QTextEdit(code_widget)
-        self.main_code_text.setTabStopWidth(w*4) 
-        
+        self.main_code_text.setTabStopWidth(w*4)
+
         c_widget_layout.addWidget(main_code_label)
         c_widget_layout.addWidget(self.main_code_text)
-        
+
         self.tabs.addTab(metadata_widget,'Metadata')
         self.tabs.addTab(code_widget,'Code')
-    
+
     def closeEvent(self,event):
+        '''
+        Reimplemented from QWidget to emit the done signal
+        '''
         self.done.emit()
         event.accept()
         self.deleteLater()
-        
+
     def create_addon(self):
+        '''
+        Create the addon in the given template
+        '''
         file_name = self.meta_configs[0].text().replace(' ','')
         if not file_name:
             print('Please give a file name')
@@ -318,10 +354,10 @@ class AddonWriter(QWidget):
                     self.meta_configs[4].toPlainText()]
         metadata[3] = metadata[3].replace("\n"," ")
         metadata = ["\"" + md + "\""  for md in metadata]
-        
-        with open("./addons/%s.py" % file_name,'w',encoding='ASCII') as file: 
+
+        with open("./addons/%s.py" % file_name,'w',encoding='ASCII') as file:
             file.write('#cued_datalogger_addon\n')
-            file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" % 
+            file.write("""addon_metadata = {"name": %s,\n"author": %s,\n"category": %s,\n"description": %s}\n\n""" %
                        tuple(metadata))
             main_code = self.main_code_text.toPlainText()
             if not main_code:
@@ -329,12 +365,14 @@ class AddonWriter(QWidget):
             full_code = "def run(parent_window):\n" + main_code
             full_code = full_code.replace('\n','\n\t')
             file.write(full_code)
-            
+
     def read_addon(self):
+        '''
+        Read the addon
+        '''
         url_list = QFileDialog.getOpenFileNames(self, "Load addon", "addons",
                                                "DataLogger Addons (*.py)")[0][0]
         
-        #print(url_list)
         if url_list:
             f = QFileInfo(url_list)
             self.meta_configs[0].setText(f.fileName().strip('.py'))
@@ -346,13 +384,12 @@ class AddonWriter(QWidget):
             indentRE = re.compile(r'(\s){4}|\t')
             for line in data[func_search+1:]:
                 self.main_code_text.append(indentRE.sub('',line.strip('\n'),1))
-            
+
             try:
                 addon_local_vars = {}
                 addon_global_vars = {}
                 with open(url_list) as file:
                     exec(file.read(), addon_local_vars, addon_global_vars)
-                metadata = addon_global_vars["addon_metadata"]
             except:
                 print('Error detected in code!')
                 t,v,tb = sys.exc_info()
@@ -360,8 +397,8 @@ class AddonWriter(QWidget):
                 print(v)
                 print(traceback.format_tb(tb))
                 return
-        
             
+            metadata = addon_global_vars["addon_metadata"]
             # Extract the metadata
             self.meta_configs[1].setText(metadata["name"])
             self.meta_configs[2].setText(metadata["author"])
@@ -370,8 +407,8 @@ class AddonWriter(QWidget):
 
         else:
             print('No data')
-        
 
+'''
 if __name__ == '__main__':
     app = 0
     app = QApplication(sys.argv)
@@ -382,3 +419,4 @@ if __name__ == '__main__':
     w.show()
 
     sys.exit(app.exec_())
+'''

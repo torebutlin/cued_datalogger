@@ -83,6 +83,13 @@ class Toolbox(QWidget):
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
 
+    def removeTab(self, title):
+        """Remove the tab with title *title*."""
+        for tab_num in range(self.tabBar.count()):
+            if self.tabBar.tabText(tab_num) == title:
+                self.tabBar.removeTab(tab_num)
+                self.tabPages.removeWidget(self.tabPages.widget(tab_num))
+
     def toggle_collapse(self):
         """If collapsed, expand the widget so the pages are visible. If not
         collapsed, collapse the widget so that only the tabBar is showing."""

@@ -16,11 +16,11 @@ from cued_datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
 from cued_datalogger.api.addons import AddonManager
 from cued_datalogger.api.channel import ChannelSet, ChannelSelectWidget, ChannelMetadataWidget
 from cued_datalogger.api.file_import import DataImportWidget
+from cued_datalogger.api.file_export import DataExportWidget
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
-import cued_datalogger.acquisition_window as lpUI
+from cued_datalogger.acquisition import acquisition_window as lpUI
 from cued_datalogger.acquisition.RecordingUIs import DevConfigUI
-
 
 class AnalysisDisplayTabWidget(QTabWidget):
     """This is the central widget for the AnalysisWindow, where graphs, data,
@@ -57,6 +57,10 @@ class AnalysisDisplayTabWidget(QTabWidget):
 
 
 class ProjectMenu(QMenu):
+    '''
+    A simple drop-down menu for demonstration purposes. 
+    Currently does not do anything.
+    '''
     def __init__(self,parent):
         super().__init__('Project',parent)
         self.parent = parent
@@ -128,6 +132,7 @@ class AnalysisWindow(QMainWindow):
         self.show()
 
     def init_toolbox(self):
+        """Create the master toolbox"""
         self.toolbox = MasterToolbox(self)
 
         # # Time toolbox
@@ -170,10 +175,10 @@ class AnalysisWindow(QMainWindow):
 
         # # Acquisition Window
         self.liveplot = None
-        dev_configUI = DevConfigUI()
-        dev_configUI.config_button.setText('Open Oscilloscope')
-        dev_configUI.config_button.clicked.connect(self.open_liveplot)
-        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
+        self.dev_configUI = DevConfigUI()
+        self.dev_configUI.config_button.setText('Open Oscilloscope')
+        self.dev_configUI.config_button.clicked.connect(self.open_liveplot)
+        self.global_toolbox.addTab(self.dev_configUI,'Oscilloscope')
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
@@ -201,15 +206,19 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
 
+        # # Export
+        self.export_widget = DataExportWidget(self)
+        self.global_toolbox.addTab(self.export_widget, 'Export Files')
+
         self.global_master_toolbox.add_toolbox(self.global_toolbox)
 
     def update_cs(self, cs):
-        """Set the ChannelSet of the AnalysisWindow."""
         self.cs = cs
         self.channel_select_widget.cs = self.cs
         self.channel_select_widget.set_channel_name()
 
     def init_ui(self):
+        # Add the drop-down menu
         self.menubar = self.menuBar()
         self.menubar.addMenu(ProjectMenu(self))
 
@@ -246,17 +255,21 @@ class AnalysisWindow(QMainWindow):
 
     def create_test_channelset(self):
         self.cs = ChannelSet(5)
-        t = np.arange(1000)/44100
+        t = np.arange(0,0.5,1/5000)
         for i, channel in enumerate(self.cs.channels):
+            self.cs.set_channel_metadata(i,{'sample_rate': 5000})
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
             self.cs.add_channel_dataset(i,'spectrum', [])
-
         self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
         self.cs.add_channel_dataset(i,'spectrum', [])
 
     def open_liveplot(self):
         if not self.liveplot:
-            self.liveplot = lpUI.LiveplotApp(self)
+            recType,configs = self.dev_configUI.read_device_config()
+            if not any([not c for c in configs]):
+                self.liveplot = lpUI.LiveplotApp(self,recType,configs)
+            else:
+                self.liveplot = lpUI.LiveplotApp(self)
             self.liveplot.done.connect(self.done_liveplot)
             self.liveplot.dataSaved.connect(self.receive_data)
             self.liveplot.show()
@@ -279,6 +292,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_metadata_widget.set_channel_set(self.cs)
         self.time_toolbox.set_channel_set(self.cs)
         self.frequency_toolbox.set_channel_set(self.cs)
+        self.export_widget.set_channel_set(self.cs)
 
     def plot_time_series(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)

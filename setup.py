@@ -20,10 +20,10 @@ def readme():
 # Check for Anaconda
 print("Checking for Anaconda installation...")
 if "Anaconda" in sys.version or "Continuum" in sys.version:
-    print("Anaconda installation found.\n")
+    print("\t Anaconda installation found.\n")
     use_anaconda = True
 else:
-    print("Anaconda not found. [OK]")
+    print("\t Anaconda not found. [OK]\n")
     use_anaconda = False
 
 
@@ -41,14 +41,28 @@ print("Operating system: {}.\n".format(operating_system))
 
 if operating_system == "unable to detect operating system" and use_anaconda:
     print("[WARNING] The DataLogger has not been configured for this operating"
-          " system. \n The installation may not work correctly.")
+          " system. \n The installation may not work correctly.\n")
 
 
 # Do some OS / Anaconda specific config
-if use_anaconda and operating_system != "windows":
-    # Find conda
-    conda_executable = subprocess.check_output(['which', 'conda']).decode("utf-8").split()[0]
-    print("Conda executable found at {}".format(conda_executable))
+if operating_system != "windows":
+    # Find portaudio:
+    print("Searching for portaudio...")
+    portaudio = subprocess.check_output(['whereis', 'portaudio']).decode("utf-8").split()
+    if len(portaudio) > 1:
+        print("\t Portaudio found at {}".format(portaudio[1]))
+    else:
+        print("\t Portaudio not installed - please install it manually using the "
+              "appropriate package manager for your system: \n"
+              "\t \t OS X: brew install portaudio \n"
+              "\t \t Ubuntu/Debian: sudo apt install libportaudio2 portaudio19-dev \n"
+              "\t \t CentOS: yum install portaudio portaudio-devel")
+        sys.exit(1)
+
+    if use_anaconda:
+        # Find conda
+        conda_executable = subprocess.check_output(['which', 'conda']).decode("utf-8").split()[0]
+        print("Conda executable found at {}".format(conda_executable))
 
 if use_anaconda and operating_system == "windows":
     # Find conda
@@ -62,7 +76,7 @@ if use_anaconda and operating_system == "windows":
 
     # Check for python3.dll
     print("Searching for python3.dll...")
-    print("(In Anaconda on Windows, this dll is required for the DataLogger"
+    print("\t(In Anaconda on Windows, this dll is required for the DataLogger"
           " UI)")
 
     python_dll_found = False
@@ -91,11 +105,11 @@ if use_anaconda and operating_system == "windows":
             break
 
     if python_dll_found:
-        print("python3.dll file found, so DataLogger will work "
+        print("\t python3.dll file found, so DataLogger will work "
               "with this Anaconda installation.\n")
     else:
-        user_input = input("No python3.dll file found. "
-                           "Do you want to download it? [y]/n: ")
+        user_input = input("\tNo python3.dll file found. "
+                           "\tDo you want to download it? [y]/n: ")
         if user_input is '' or 'y':
             dll_url = ("https://github.com/torebutlin/cued_datalogger/tree/"
                        "master/lib/python3.dll")
@@ -133,15 +147,15 @@ else:
                        'pydaqmx',
                        'pyqt5',
                        'pyqtgraph']
-print("Dependencies: ")
+print("\tDependencies: ")
 for package in dependency_list:
-    print(package)
+    print("\t \t " + package)
 if use_anaconda:
     for item in conda_dependency_list:
-        print(item + (" (conda version)"))
+        print("\t \t " + item + (" (conda version)"))
 
 
-print("Installing dependencies...")
+print("\nInstalling dependencies...")
 
 if use_anaconda:
     # Install anaconda dependencies
@@ -165,7 +179,7 @@ for package in dependency_list:
     pip.main(['install', package])
 
 
-print("Continuing to setup...\n")
+print("\nContinuing to setup...\n")
 
 setup(name='cued_datalogger',
       version=version(),
@@ -182,9 +196,9 @@ setup(name='cued_datalogger',
       install_requires=None,#dependency_list,
       entry_points={
         'console_scripts': ['cued_datalogger_dbg ='
-                            ' cued_datalogger.__main__:run_full'],
-        'gui_scripts': ['cued_datalogger_run = '
-                        'cued_datalogger.__main__:run_full']},
+                            ' cued_datalogger.__main__:run'],
+        'gui_scripts': ['cued_datalogger = '
+                        'cued_datalogger.__main__:run']},
       zip_safe=True,
       include_package_data=True)
 
