@@ -2,7 +2,7 @@
 Information For Developers
 ==========================
 
-This section contains information for people who are involved in continuing the development of the 
+This section contains information for people who are involved in continuing the development of the
 DataLogger.
 
 .. toctree::
@@ -13,5 +13,7 @@ DataLogger.
   style
 
   package_management
+
+  package_structure
 
   docs

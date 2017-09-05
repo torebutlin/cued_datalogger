@@ -1,7 +1,8 @@
 from cued_datalogger import api
 from cued_datalogger import analysis
 from cued_datalogger import acquisition
-from cued_datalogger import analysis_window, acquisition_window
+from cued_datalogger.analysis import analysis_window as analysis_window
+from cued_datalogger.acquisition import acquisition_window as acquisition_window
 from cued_datalogger.api import workspace as workspace
 
 import os.path as _path

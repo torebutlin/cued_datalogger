@@ -19,7 +19,7 @@ from cued_datalogger.api.file_import import DataImportWidget
 from cued_datalogger.api.file_export import DataExportWidget
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
-import cued_datalogger.acquisition_window as lpUI
+from cued_datalogger.acquisition import acquisition_window as lpUI
 from cued_datalogger.acquisition.RecordingUIs import DevConfigUI
 
 
@@ -202,7 +202,7 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
-        
+
         # # Export
         self.export_widget = DataExportWidget(self)
         self.global_toolbox.addTab(self.export_widget, 'Export Files')
