@@ -8,6 +8,11 @@ Then run the DataLogger from a command line using::
 
     cued_datalogger
 
+
+To specify a Workspace when running the DataLogger, use::
+
+    cued_datalogger -w /path/to/workspace.wsp
+
 For further options type::
 
     cued_datalogger --help
