@@ -339,8 +339,8 @@ class CircleFitWidget(QWidget):
                                            symbolSize=7)
             self.nyquist_plot_list.append(nyquist_plot)
 
-            self.peaks.append(pg.PlotDataItem(pen=channel.colour))
-            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen=channel.colour))
+            self.peaks.append(pg.PlotDataItem(pen='k'))
+            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen='k'))
 
         self.refresh_transfer_function_plot()
         self.refresh_nyquist_plot()
