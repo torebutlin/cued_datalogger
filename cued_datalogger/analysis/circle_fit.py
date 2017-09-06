@@ -725,8 +725,8 @@ if __name__ == '__main__':
     
     #c.load_tf(cs)
     import_from_mat("../../tests/transfer_function_clean.mat", cs)
-    a = cs.get_channel_data(0, "spectrum")
+    a = cs.channel_data(0, "spectrum")
     c.transfer_function_type = 'acceleration'
-    c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)
+    c.set_data(np.linspace(0, cs.channel_metadata(0, "sample_rate"), a.size), a)
     #"""
     sys.exit(app.exec_())

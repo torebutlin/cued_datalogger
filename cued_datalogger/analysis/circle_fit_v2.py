@@ -280,13 +280,13 @@ class CircleFitWidget(QWidget):
         self.peaks = []
         self.nyquist_plot_peaks_list = []
         for channel in self.channels:
-            transfer_function = pg.PlotDataItem(channel.get_data("frequency"),
-                                                to_dB(np.abs(channel.get_data("TF"))),
+            transfer_function = pg.PlotDataItem(channel.data("frequency"),
+                                                to_dB(np.abs(channel.data("TF"))),
                                                 pen=channel.colour)
             self.transfer_function_list.append(transfer_function)
 
-            nyquist_plot = pg.PlotDataItem(channel.get_data("TF").real,
-                                           channel.get_data("TF").imag,
+            nyquist_plot = pg.PlotDataItem(channel.data("TF").real,
+                                           channel.data("TF").imag,
                                            pen=None,
                                            symbol='o',
                                            symbolPen=None,

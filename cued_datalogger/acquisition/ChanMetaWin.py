@@ -63,7 +63,7 @@ class ChanMetaWin(QDialog):
 
         self.all_info = []
         for i in range(len(self.livewin.live_chanset)):
-                self.all_info.append(self.livewin.live_chanset.get_channel_metadata(i))
+                self.all_info.append(self.livewin.live_chanset.channel_metadata(i))
         
         for i in range(len(self.all_info)):
             self.channel_listview.addItem(self.all_info[i]['name'])

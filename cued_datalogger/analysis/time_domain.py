@@ -29,9 +29,9 @@ class TimeDomainWidget(InteractivePlotWidget):
     def update_plot(self):
         self.clear()
         for channel in self.channels:
-            time_series = channel.get_data("time_series")
+            time_series = channel.data("time_series")
             if not time_series.shape[0] == 0:
-                self.plot(channel.get_data("time"),
+                self.plot(channel.data("time"),
                           time_series,
                           pen=channel.colour)
 
@@ -75,7 +75,7 @@ class TimeToolbox(Toolbox):
         # If no spectrum exists, calculate one
         print("Calculating spectrum...")
         for i in range(len(self.cs)):
-            time_sig = self.cs.get_channel_data(i,"time_series")
+            time_sig = self.cs.channel_data(i,"time_series")
             if not time_sig.shape[0] == 0:
                 #window = np.hanning(len(time_sig))
                 cycle=np.linspace(0,2*np.pi,time_sig.shape[0])
