@@ -37,24 +37,24 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
     def update_plot(self):
         """Redraw the sonogram on the canvas."""
         if self.channel is not None:
-            self.F_bins, self.T_bins = np.meshgrid(self.channel.get_data("sonogram_frequency"),
-                                                   self.channel.get_data("sonogram_time"))
+            self.F_bins, self.T_bins = np.meshgrid(self.channel.data("sonogram_frequency"),
+                                                   self.channel.data("sonogram_time"))
 
             self.axes.clear()
 
             self.update_contour_sequence()
 
             self.axes.contour(self.F_bins, self.T_bins,
-                              to_dB(np.abs(self.channel.get_data("sonogram"))),
+                              to_dB(np.abs(self.channel.data("sonogram"))),
                               self.contour_sequence)
 
             self.axes.set_xlabel('Freq (Hz)')
             self.axes.set_ylabel('Time (s)')
 
-            self.axes.set_xlim(self.channel.get_data("sonogram_frequency").min(),
-                               self.channel.get_data("sonogram_frequency").max())
-            self.axes.set_ylim(self.channel.get_data("sonogram_time").min(),
-                               self.channel.get_data("sonogram_time").max())
+            self.axes.set_xlim(self.channel.data("sonogram_frequency").min(),
+                               self.channel.data("sonogram_frequency").max())
+            self.axes.set_ylim(self.channel.data("sonogram_time").min(),
+                               self.channel.data("sonogram_time").max())
 
             self.draw()
 
@@ -62,8 +62,8 @@ class MatplotlibSonogramContourWidget(MatplotlibCanvas):
         """Update the array which says where to plot contours, how many etc."""
         if self.channel is not None:
             # Create a vector with the right spacing from min to max value
-            self.contour_sequence = np.arange(to_dB(np.abs(self.channel.get_data("sonogram"))).min(),
-                                              to_dB(np.abs(self.channel.get_data("sonogram"))).max(),
+            self.contour_sequence = np.arange(to_dB(np.abs(self.channel.data("sonogram"))).min(),
+                                              to_dB(np.abs(self.channel.data("sonogram"))).max(),
                                               self.contour_spacing_dB)
             # Take the appropriate number of contours
             self.contour_sequence = self.contour_sequence[-self.num_contours:]
@@ -138,9 +138,9 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
 
         (self.freqs,
          self.times,
-         self.FT) = scipy.signal.spectrogram(self.channel.get_data("time_series"),
-                                           self.channel.get_metadata("sample_rate"),
                                            window=scipy.signal.get_window('hann', self.window_width),
+         self.FT) = scipy.signal.spectrogram(self.channel.data("time_series"),
+                                           self.channel.metadata("sample_rate"),
                                            nperseg=self.window_width,
                                            noverlap=self.window_width // self.window_overlap_fraction,
                                            return_onesided=False,
@@ -169,9 +169,9 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
             if self.channel.is_dataset("time_series"):
                 self.calculate_sonogram()
                 self.clear()
-                self.plot_colormap(self.channel.get_data("sonogram_frequency"),
-                                   self.channel.get_data("sonogram_time"),
-                                   to_dB(np.abs(self.channel.get_data("sonogram"))),
+                self.plot_colormap(self.channel.data("sonogram_frequency"),
+                                   self.channel.data("sonogram_time"),
+                                   to_dB(np.abs(self.channel.data("sonogram"))),
                                    num_contours=self.num_contours,
                                    contour_spacing_dB=self.contour_spacing_dB)
         else:

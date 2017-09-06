@@ -105,7 +105,7 @@ def import_from_mat(file, channel_set=None):
                                                 "spectrum",
                                                  spectrum[i],
                                                  'Hz')
-            print(channel_set.channels[i].get_data("frequency"))
+            print(channel_set.channels[i].data("frequency"))
             
         if i < num_sonogram_datasets:
             channel_set.add_channel_dataset(i,
@@ -217,5 +217,5 @@ if __name__ == '__main__':
     import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat",
                     cs)
         
-    print(cs.get_channel_ids(0))
+    print(cs.channel_ids(0))
 

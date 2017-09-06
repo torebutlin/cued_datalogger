@@ -40,18 +40,18 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
         new_channel_set = False
     
     # Obtain the ids and metadata names
-    data_ids = channel_set.get_channel_ids(order)
+    data_ids = channel_set.channel_ids(order)
     var_names = set([y for x in data_ids for y in x])
-    meta_names = channel_set.get_channel_metadata(0)
+    meta_names = channel_set.channel_metadata(0)
         
     if not back_comp:
         # Save all the variable names and metadata names as dicts
         variables = {}
         for name in var_names:
-            data = channel_set.get_channel_data(order,name)
+            data = channel_set.channel_data(order,name)
             variables[name] = data
         for mname in meta_names:
-            mdata = channel_set.get_channel_metadata(order,mname)
+            mdata = channel_set.channel_metadata(order,mname)
             variables[mname] = mdata    
         # Save the dict as matlab file 
         sio.savemat(file,variables,appendmat = False)
@@ -60,11 +60,11 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             return channel_set
     else:
         # Save as the old format, with individual MAT file for each type of data
-        sampling_rate = channel_set.get_channel_metadata(0,'sample_rate')
-        calibration_factor = channel_set.get_channel_metadata(0,'calibration_factor')
+        sampling_rate = channel_set.channel_metadata(0,'sample_rate')
+        calibration_factor = channel_set.channel_metadata(0,'calibration_factor')
         # Save Time Series
         if 'time_series' in var_names:
-            time_series_data = np.array(channel_set.get_channel_data(order,'time_series'))
+            time_series_data = np.array(channel_set.channel_data(order,'time_series'))
             n_samples = time_series_data[0].shape[0]
             variables = {'indata':np.transpose(time_series_data),'freq':float(sampling_rate),
                          'dt2' :[float(len(order)),0,0],'buflen':float(n_samples),
@@ -73,7 +73,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             sio.savemat(time_series_fname,variables,appendmat = False)
         # Save FFT
         if 'spectrum' in var_names:
-            fft_data = np.array(channel_set.get_channel_data(order,'spectrum'))
+            fft_data = np.array(channel_set.channel_data(order,'spectrum'))
             n_samples = fft_data[0].shape[0]
             variables = {'yspec':np.transpose(fft_data),'freq':float(sampling_rate),
                          'dt2' :[0,float(len(order)),0],'npts':float((n_samples-1)*2),
@@ -82,7 +82,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             sio.savemat(time_series_fname,variables,appendmat = False)
         # Save TF
         if 'TF' in var_names:
-            TF_data = np.array(channel_set.get_channel_data(order,'TF'))
+            TF_data = np.array(channel_set.channel_data(order,'TF'))
             TF_data = [data for data in TF_data if not data.shape[0] == 0]
             n_samples = TF_data[0].shape[0]
             variables = {'yspec':np.transpose(TF_data),'freq':float(sampling_rate),
@@ -92,10 +92,10 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             sio.savemat(time_series_fname,variables,appendmat = False)
         # Save Sonogram
         if 'sonogram' in var_names:
-            sono_data = channel_set.get_channel_data(order[0],'sonogram')
+            sono_data = channel_set.channel_data(order[0],'sonogram')
             if not sono_data.shape[0] == 0:
-                sono_phase = channel_set.get_channel_data(order[0],'sonogram_phase')
-                sono_step = channel_set.get_channel_data(order[0],'sonogram_step')
+                sono_phase = channel_set.channel_data(order[0],'sonogram_phase')
+                sono_step = channel_set.channel_data(order[0],'sonogram_step')
                 n_samples = sono_data[0].shape[0]
                 variables = {'yson':to_dB(np.abs(sono_data)),'freq':float(sampling_rate),
                              'dt2' :[0,0,1],'npts':float((n_samples-1)*2),
@@ -185,7 +185,7 @@ class DataExportWidget(QWidget):
         Update the list with the current saving order
         """
         self.channel_listview.clear()
-        names = self.cs.get_channel_metadata(tuple(self.order),'name')
+        names = self.cs.channel_metadata(tuple(self.order),'name')
         full_names = [str(self.order[i])+' : '+names[i] for i in range(len(names))]
         self.channel_listview.addItems(full_names)
         

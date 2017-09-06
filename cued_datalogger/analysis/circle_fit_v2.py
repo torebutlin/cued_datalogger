@@ -19,6 +19,8 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
 import numpy as np
 from scipy.optimize import leastsq, minimize
 
+from multiprocessing import Pool
+
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
 defaultpen='k'
@@ -173,17 +175,22 @@ class CircleFitWidget(QWidget):
         self.update_from_region(lower, upper)
 
     def update_from_region(self, region_lower_bound, region_upper_bound):
-        for i, channel in enumerate(self.channels):
-            self.freq = channel.get_data("frequency")
-            self.w = channel.get_data("omega")
-            self.tf = channel.get_data("TF")
-            self.transfer_function_type = channel.transfer_function_type
+        for channel_dict in self.channel_info:
+            channel_dict["region_lower_bound"] = region_lower_bound
+            channel_dict["region_upper_bound"] = region_upper_bound
 
-            f_in_region = (self.freq >= region_lower_bound) \
-                              & (self.freq <= region_upper_bound)
+        # Recalculate for each channel (multithreaded)
+        with Pool(len(self.channels)) as pool:
+            self.parameters = pool.map(calculate_parameters, self.channel_info)
 
-            self.w_reg = np.extract(f_in_region, self.w)
-            self.tf_reg = np.extract(f_in_region, self.tf)
+        for i, channel_params in enumerate(self.parameters):
+            wr, zr, cr, phi = channel_params
+            # Update the results table, only changing the value if the
+            # parameter is set to auto
+            self.results.set_omega(self.current_peak, i, wr)
+            self.results.set_damping(self.current_peak, i, zr)
+            self.results.set_amplitude(self.current_peak, i, cr)
+            self.results.set_phase_rad(self.current_peak, i, phi)
 
             try:
                 # Recalculate the geometric circle fit
@@ -197,28 +204,28 @@ class CircleFitWidget(QWidget):
                 wr, zr, cr, phi = self.sdof_get_parameters()
 
                 # Update the results table
-                self.results.set_omega(self.current_peak, i, wr)
-                self.results.set_damping(self.current_peak, i, zr)
-                self.results.set_amplitude(self.current_peak, i, cr)
-                self.results.set_phase_rad(self.current_peak, i, phi)
-
+                self.results.set_parameter_values(self.current_peak,
+                                                  i,
+                                                  #{"frequency": wr / (2*np.pi),
+                                                  {"frequency": wr,
+                                                   #"Q": 1 / (2*zr),
+                                                   "damping": zr,
+                                                   #"amplitude": to_dB(cr),
+                                                   "amplitude": cr,
+                                                   #"phase": np.rad2deg(phi)})
+                                                   "phase": phi})
             except:
                 print("Error in calculating parameters.")
                 traceback.print_exc()
 
-            wr = self.results.get_omega(self.current_peak, i)
-            zr = self.results.get_damping(self.current_peak, i)
-            cr = self.results.get_amplitude(self.current_peak, i)
-            phi = self.results.get_phase_rad(self.current_peak, i)
-
-            # Update the peak
-            peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
-            self.peaks[i].setData(self.freq, to_dB(np.abs(peak)))
-            self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
             # Update what is displayed on the nyquist plot
-            self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
-            self.nyquist_plot.autoRange()
+            #self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
+
+        # Update the peak
+        peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+        self.peaks[i].setData(self.w, peak)
+        self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
     def update_from_table(self):
         for i, channel in enumerate(self.channels):
@@ -228,8 +235,8 @@ class CircleFitWidget(QWidget):
             phi = self.results.get_phase_rad(self.current_peak, i)
 
             # Update the peak
-            peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
-            self.peaks[i].setData(self.freq, to_dB(np.abs(peak)))
+            peak = sdof_modal_peak(self.channels[i].get_data("omega"), wr, zr, cr, phi)
+            self.peaks[i].setData(self.channels[i].get_data("frequency"), to_dB(np.abs(peak)))
             self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
     def refresh_nyquist_plot(self):
@@ -258,57 +265,6 @@ class CircleFitWidget(QWidget):
 
         self.transfer_function_plot.autoRange()
 
-    def fitted_sdof_peak(self, w, wr, zr, cr, phi):
-        """An SDOF modal peak fitted to the data using the geometric circle."""
-        if self.transfer_function_type == 'displacement':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-                + sdof_modal_peak(w, wr, zr, cr, phi)
-
-        if self.transfer_function_type == 'velocity':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*phi)\
-                + 1j*w*sdof_modal_peak(w, wr, zr, cr, phi)
-
-        if self.transfer_function_type == 'acceleration':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
-                -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
-
-    def residuals(self, parameters):
-        """The error function for least squares fitting."""
-        wr = parameters[0]
-        zr = parameters[1]
-        cr = parameters[2]
-        phi = parameters[3]
-        if cr < 0:
-            cr *= -1
-            phi = (phi + np.pi) % np.pi
-        f = self.tf_reg - self.fitted_sdof_peak(self.w_reg, wr, zr, cr, phi)
-        #return np.append(tf_real, tf_imag) - np.append(f.real, f.imag)
-        return float(np.sum(f*f.conj()))
-
-    def sdof_get_parameters(self):
-        """Fit a SDOF peak to the data with a least squares fit, using values
-        from the current peak as a first guess."""
-        # # Find initial parameters for curve fitting
-        # Find where the peak is - the maximum magnitude of the amplitude
-        # within the region
-        i = np.where(np.abs(self.tf_reg) == np.abs(self.tf_reg).max())[0][0]
-        # Take the frequency at the max amplitude as a
-        # first resonant frequency guess
-        wr0 = self.w_reg[i]
-        # Take the max amplitude as a first guess for the modal constant
-        cr0 = np.abs(self.tf_reg[i])
-        phi0 = np.angle(self.tf_reg[i])
-        # First guess of damping factor of 1% (Q of 100)
-        zr0 = 0.01
-
-        # # Least squares fit
-        parameters0 = [wr0, zr0, cr0, phi0]
-        #wr, zr, cr, phi = leastsq(self.residuals, parameters0,
-        #                          args=(self.w_reg, self.tf_reg.real, self.tf_reg.imag))[0]
-        wr, zr, cr, phi = minimize(self.residuals, parameters0).x
-
-        return wr, zr, cr, phi
-
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted."""
         # If no channel list is given
@@ -324,13 +280,13 @@ class CircleFitWidget(QWidget):
         self.peaks = []
         self.nyquist_plot_peaks_list = []
         for channel in self.channels:
-            transfer_function = pg.PlotDataItem(channel.get_data("frequency"),
-                                                to_dB(np.abs(channel.get_data("TF"))),
+            transfer_function = pg.PlotDataItem(channel.data("frequency"),
+                                                to_dB(np.abs(channel.data("TF"))),
                                                 pen=channel.colour)
             self.transfer_function_list.append(transfer_function)
 
-            nyquist_plot = pg.PlotDataItem(channel.get_data("TF").real,
-                                           channel.get_data("TF").imag,
+            nyquist_plot = pg.PlotDataItem(channel.data("TF").real,
+                                           channel.data("TF").imag,
                                            pen=None,
                                            symbol='o',
                                            symbolPen=None,
@@ -338,8 +294,8 @@ class CircleFitWidget(QWidget):
                                            symbolSize=7)
             self.nyquist_plot_list.append(nyquist_plot)
 
-            self.peaks.append(pg.PlotDataItem(pen='k'))
-            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen='k'))
+            self.peaks.append(pg.PlotDataItem(pen=channel.colour))
+            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen=channel.colour))
 
         self.refresh_transfer_function_plot()
         self.refresh_nyquist_plot()

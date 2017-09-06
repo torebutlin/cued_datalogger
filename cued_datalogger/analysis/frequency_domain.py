@@ -61,34 +61,34 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         print("Plotting %s %s." % (self.current_plot_type,self.current_plot))
         for channel in self.channels:
 
-            data = channel.get_data(self.current_plot)
+            data = channel.data(self.current_plot)
             if data.shape[0] == 0:
                 print('No %s to plot' % self.current_plot)
                 continue
 
             # Plot
             if self.current_plot_type == 'Linear Magnitude':
-                self.plot(channel.get_data("frequency"),
+                self.plot(channel.data("frequency"),
                           np.abs(data),
                           pen=pg.mkPen(channel.colour))
 
             elif self.current_plot_type == 'Log Magnitude':
-                self.plot(channel.get_data("frequency"),
+                self.plot(channel.data("frequency"),
                           to_dB(np.abs(data)),
                           pen=pg.mkPen(channel.colour))
 
             elif self.current_plot_type == 'Phase':
-                self.plot(channel.get_data("frequency"),
+                self.plot(channel.data("frequency"),
                           np.angle(data,deg=True),
                           pen=pg.mkPen(channel.colour))
 
             elif self.current_plot_type == 'Real Part':
-                self.plot(channel.get_data("frequency"),
+                self.plot(channel.data("frequency"),
                           np.real(data),
                           pen=pg.mkPen(channel.colour))
 
             elif self.current_plot_type == 'Imaginary Part':
-                self.plot(channel.get_data("frequency"),
+                self.plot(channel.data("frequency"),
                           np.imag(data),
                           pen=pg.mkPen(channel.colour))
 
@@ -98,9 +98,9 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                           pen=pg.mkPen(channel.colour))
 
             if self.current_plot == "TF" and self.coherence_plot:
-                cor = channel.get_data("coherence")
+                cor = channel.data("coherence")
                 if cor.shape[0]:
-                    self.plot(channel.get_data("frequency"),
+                    self.plot(channel.data("frequency"),
                           cor,
                           pen=pg.mkPen('k'))
 
@@ -173,7 +173,7 @@ class FrequencyToolbox(Toolbox):
     def compute_tf(self):
         # If no TF exists, calculate one
         print("Calculating TF...")
-        fdata = self.cs.get_channel_data(tuple(range(len(self.cs))),"spectrum")
+        fdata = self.cs.channel_data(tuple(range(len(self.cs))),"spectrum")
         chans = list(range(len(self.cs)))
         in_chan = 0
         chans.remove(in_chan)
