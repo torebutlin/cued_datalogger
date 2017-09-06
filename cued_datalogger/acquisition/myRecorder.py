@@ -39,11 +39,15 @@ try:
     import pyaudio
 except ImportError:
     # If pyaudio doesn't work, create mock version of it
-    from mock import Mock
-    class MockModule(Mock):
+    # If PyDAQmx doesn't work, create mock version of it
+    if sys.version_info >= (3,):
+        from unittest.mock import MagicMock
+    else:
+        from mock import Mock as MagicMock
+    class MockModule(MagicMock):
         @classmethod
         def __getattr__(cls, name):
-                return Mock()
+                return MagicMock()
 
     sys.modules['pyaudio'] = MockModule()
     import pyaudio
@@ -64,30 +68,30 @@ class Recorder(RecorderParent):
     max_value: float
         Maximum value of recorded data
     """
-        
+
 #---------------- INITIALISATION METHODS -----------------------------------
     def __init__(self,channels = 1,rate = 44100, chunk_size = 1024,
                  num_chunk = 4,device_name = None):
         """
          Re-implemented from RecorderParent
         """
-        
-        super().__init__(channels = channels,rate = rate, 
+
+        super().__init__(channels = channels,rate = rate,
              chunk_size = chunk_size,num_chunk = num_chunk)
-        
+
         print('You are using pyAudio for recording')
         self.p = None
         self.format = pyaudio.paInt16
         self.device_index = None;
         self.device_name = device_name
-        
+
         self.open_recorder()
         self.set_device_by_name(str(device_name))
-        
+
         self.trigger_init()
-        
+
         self.max_value = 1;
-        
+
     def open_recorder(self):
         """
          Re-implemented from RecorderParent. Prepare the PyAudio Object too.
@@ -96,7 +100,7 @@ class Recorder(RecorderParent):
         if self.p == None:
             self.p = pyaudio.PyAudio()
 
-#---------------- DESTRUCTOR METHODS -----------------------------------       
+#---------------- DESTRUCTOR METHODS -----------------------------------
     def close(self):
         """
          Re-implemented from RecorderParent, but terminate the PyAudio Object too.
@@ -106,13 +110,13 @@ class Recorder(RecorderParent):
         if not self.p:
             self.p.terminate()
             self.p = None
-            
-#---------------- DEVICE SETTING METHODS -----------------------------------            
+
+#---------------- DEVICE SETTING METHODS -----------------------------------
     def set_device_by_name(self, name):
         """
-        Set the recording audio device by name. 
+        Set the recording audio device by name.
         Revert to default if no such device found
-                
+
         Parameters
         ----------
         name: str
@@ -122,7 +126,7 @@ class Recorder(RecorderParent):
         if not dev_name:
             print("Seems like you don't have any input devices")
             return
-        
+
         try:
             self._set_device_by_index(dev_index[dev_name.index(name)])
         except ValueError:
@@ -138,11 +142,11 @@ class Recorder(RecorderParent):
                     print('No Device can be set')
         except IOError:
             print('Device chosen cannot be found!')
-                    
+
     def available_devices(self):
         """
         Searches for any available input devices
-        
+
         Returns
         ----------
         names: List
@@ -153,13 +157,13 @@ class Recorder(RecorderParent):
         names = [self.p.get_device_info_by_index(i)['name']
                   for i in range(self.p.get_device_count())
                   if self.p.get_device_info_by_index(i)['maxInputChannels']>0]
-        
-        index = [self.p.get_device_info_by_index(i)['index'] 
+
+        index = [self.p.get_device_info_by_index(i)['index']
                 for i in range(self.p.get_device_count())
                 if self.p.get_device_info_by_index(i)['maxInputChannels']>0]
-        
+
         return(names,index)
-      
+
     def current_device_info(self):
         """
         Display the current selected device info
@@ -168,11 +172,11 @@ class Recorder(RecorderParent):
             pp.pprint(self.p.get_device_info_by_index(self.device_index))
         else:
             print('No index set')
-     
+
     def _set_device_by_index(self,index):
         """
         Set the selected device by index
-        
+
         Parameters
         ----------
         index: int
@@ -181,7 +185,7 @@ class Recorder(RecorderParent):
         self.device_index = index;
         self.device_name = self.p.get_device_info_by_index(index)['name']
         print("Selected device: %s" % self.device_name)
-        
+
 #---------------- DATA METHODS -----------------------------------
     # Convert data obtained into a proper array
     def audiodata_to_array(self,data):
@@ -189,31 +193,31 @@ class Recorder(RecorderParent):
         Re-implemented from RecorderParent
         """
         return np.frombuffer(data, dtype = np.int16).reshape((self.chunk_size,self.channels))/ 2**15
-                           
+
 #---------------- STREAMING METHODS -----------------------------------
     def stream_audio_callback(self,in_data, frame_count, time_info, status):
         """
         Callback function for audio streaming.
-        First, it writes data to the circular buffer, 
+        First, it writes data to the circular buffer,
         then record data if it is recording,
         finally check for any trigger.
-        
+
         Inputs and Outputs are part of the callback format.
         More info can be found in PyAudio documentation
         """
         data_array = self.audiodata_to_array(in_data)
         self.write_buffer(data_array)
         #self.rEmitter.newdata.emit()
-        
+
         if self.recording:
             self.record_data(data_array)
-            
+
          # Trigger check
         if self.trigger:
             self._trigger_check_threshold(data_array)
-            
+
         return(in_data,pyaudio.paContinue)
-    
+
     # TODO: Check for valid device, channels and all that before initialisation
     def stream_init(self, playback = False):
         """
@@ -229,14 +233,14 @@ class Recorder(RecorderParent):
                                  frames_per_buffer = self.chunk_size,
                                  input_device_index = self.device_index,
                                  stream_callback = self.stream_audio_callback)
-                
+
                 self.stream_start()
                 print('Input latency: %.3e' % self.audio_stream.get_input_latency())
                 print('Output latency: %.3e' % self.audio_stream.get_output_latency())
                 print('Read Available: %i' % self.audio_stream.get_read_available())
                 print('Write Available: %i' % self.audio_stream.get_write_available())
                 return True
-            
+
             except:
                 t,v,tb = sys.exc_info()
                 print(t)
@@ -246,7 +250,7 @@ class Recorder(RecorderParent):
                 return False
         else:
             return False
-            
+
     # Start the streaming
     def stream_start(self):
         """
@@ -259,20 +263,20 @@ class Recorder(RecorderParent):
                 print('stream already started')
         else:
             print('No audio stream is set up')
-            
+
     # Stop the streaming
     def stream_stop(self):
         """
         Re-implemented from RecorderParent.
         """
-        if self.audio_stream: 
+        if self.audio_stream:
             if not self.audio_stream.is_stopped():
                 self.audio_stream.stop_stream()
             else:
                 print('stream already stopped')
         else:
             print('No audio stream is set up')
-        
+
     # Close the stream, probably needed if any parameter of the stream is changed
     def stream_close(self):
         """
@@ -282,5 +286,4 @@ class Recorder(RecorderParent):
             self.stream_stop()
             self.audio_stream.close()
             self.audio_stream = None
-            
-    
+

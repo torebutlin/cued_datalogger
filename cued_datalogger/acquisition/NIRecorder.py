@@ -36,7 +36,10 @@ try:
     from PyDAQmx import Task
 except:
     # If PyDAQmx doesn't work, create mock version of it
-    from unittest.mock import MagicMock
+    if sys.version_info >= (3,):
+        from unittest.mock import MagicMock
+    else:
+        from mock import Mock as MagicMock
     class MockModule(MagicMock):
         @classmethod
         def __getattr__(cls, name):

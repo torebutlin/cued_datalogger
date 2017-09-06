@@ -206,5 +206,7 @@ setup(name='cued_datalogger',
       zip_safe=True,
       include_package_data=True)
 
-for error, message in error_messages.items():
-    print("Error: " + message)
+if error_messages:
+    print("Installation failed with the following errors:")
+    for error, message in error_messages.items():
+        print("Error: " + message)
