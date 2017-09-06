@@ -138,9 +138,9 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
 
         (self.freqs,
          self.times,
-                                           window=scipy.signal.get_window('hann', self.window_width),
          self.FT) = scipy.signal.spectrogram(self.channel.data("time_series"),
                                            self.channel.metadata("sample_rate"),
+                                           window=scipy.signal.get_window('hann', self.window_width),
                                            nperseg=self.window_width,
                                            noverlap=self.window_width // self.window_overlap_fraction,
                                            return_onesided=False,
