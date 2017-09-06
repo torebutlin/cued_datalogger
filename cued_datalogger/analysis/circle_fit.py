@@ -1,12 +1,12 @@
-import sys
+import sys, traceback
 if __name__ == '__main__':
-    sys.path.append('..')
+    sys.path.append('../../')
 
 from cued_datalogger.api.channel import ChannelSet
 from cued_datalogger.api.workspace import Workspace
 from cued_datalogger.api.file_import import import_from_mat
 from cued_datalogger.api.toolbox import Toolbox
-from cued_datalogger.api.numpy_extensions import to_dB, sdof_modal_peak
+from cued_datalogger.api.numpy_extensions import from_dB, to_dB, sdof_modal_peak
 from cued_datalogger.api.pyqtgraph_extensions import InteractivePlotWidget
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -14,10 +14,12 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import (QApplication, QWidget, QGridLayout, QTableWidget,
                              QDoubleSpinBox, QCheckBox, QPushButton, QGroupBox,
                              QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-                             QFileDialog)
+                             QFileDialog, QTreeWidget, QTreeWidgetItem, QRadioButton)
 
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import leastsq, minimize
+
+from multiprocessing import Pool
 
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
@@ -27,12 +29,12 @@ defaultpen='k'
 def fit_circle_to_data(x, y):
     """
     Fit a geometric circle to the data given in x, y.
-        
+
     Parameters
     ----------
     x : ndarray
     y : ndarray
-    
+
     Returns
     -------
     x0 : float
@@ -41,12 +43,12 @@ def fit_circle_to_data(x, y):
         The y-coordinate of the centre of the circle.
     R0 : float
         The radius of the circle.
-        
+
     Notes
     -----
     This function solves a standard eigenvector formulation of the circle fit
     problem. See [1]_ for the derivation.
-    
+
     References
     ----------
     .. [1]  Maia, N.M.M., Silva, J.M.M. et al, Theoretical and Experimental
@@ -88,645 +90,906 @@ class CircleFitWidget(QWidget):
         super().__init__()
 
         self.w = np.zeros(1)
-
-        self.autofit_parameters = set(["frequency", "z", "amplitude", "phase"])
+        self.tf = np.zeros(1)
+        self.channels = []
+        self.current_peak = 0
 
         self.init_ui()
 
-    # Initialisation functions ------------------------------------------------
     def init_ui(self):
         # # Transfer function plot
-        self.transfer_func_plotwidget = InteractivePlotWidget(parent=self,
-                                                          title="Transfer Function",
-                                                          labels={'bottom':
-                                                                  ("Frequency", "rad"),
-                                                                  'left':
-                                                                  ("Transfer Function",
-                                                                   "dB")})
-        self.transfer_func_plot = self.transfer_func_plotwidget.getPlotItem()
+        self.transfer_function_plotwidget = \
+            InteractivePlotWidget(parent=self,
+                                  title="Transfer Function",
+                                  labels={'bottom': ("Frequency", "Hz"),
+                                          'left': ("Transfer Function", "dB")})
 
-        """
-        # # Region Selection plot
-        self.region_select_plot_w = pg.PlotWidget(title="Region Selection",
-                                                  labels={'bottom':
-                                                          ("Frequency", "rad"),
-                                                          'left':
-                                                          ("Transfer Function",
-                                                           "dB")})
-        self.region_select_plot = self.region_select_plot_w.getPlotItem()
-        self.region_select_plot.setMouseEnabled(x=False, y=False)
-        
-        self.region_select = pg.LinearRegionItem()
-        self.region_select.setZValue(-10)
-        self.region_select_plot.addItem(self.region_select)
+        self.transfer_function_plot = \
+            self.transfer_function_plotwidget.getPlotItem()
 
-        self.region_select.sigRegionChangeFinished.connect(self.autorange_to_region)
-        self.region_select.sigRegionChanged.connect(self.update_zoom)
-        self.region_select.sigRegionChanged.connect(self.update_plots)
-        self.transfer_func_plot.sigXRangeChanged.connect(self.update_region)
-        self.transfer_func_plot.sigXRangeChanged.connect(self.update_plots)
-        """
-        # # Circle plot
-        self.circle_plotwidget = InteractivePlotWidget(parent=self,
-                                                       show_region=False,
-                                                       show_crosshair=False,
-                                                       title="Circle fit",
-                                                       labels={'bottom': ("Re"),
-                                                               'left': ("Im")})
-        self.circle_plot = self.circle_plotwidget.getPlotItem()
-        # self.circle_plot.setMouseEnabled(x=False, y=False)
-        self.circle_plot.setAspectLocked(lock=True, ratio=1)
-        self.circle_plot.showGrid(x=True, y=True)
+        self.transfer_function_plotwidget.sig_region_changed.connect(self.update_from_region)
+
+        # # Nyquist plot
+        self.nyquist_plotwidget = \
+            InteractivePlotWidget(parent=self,
+                                  show_region=False,
+                                  title="Circle fit",
+                                  labels={'bottom': ("Re"),
+                                          'left': ("Im")})
+
+        self.nyquist_plot = self.nyquist_plotwidget.getPlotItem()
+        self.nyquist_plot.setLimits(xMin=None, xMax=None,
+                                    yMin=None, yMax=None,
+                                    minXRange=None, maxXRange=None,
+                                    minYRange=None, maxYRange=None)
+        self.nyquist_plot.setAspectLocked(lock=True, ratio=1)
+        self.nyquist_plot.showGrid(x=True, y=True)
 
         # # Create the items for the plots
-        self.transfer_function1 = pg.PlotDataItem(pen=defaultpen)
-        self.transfer_func_plot.addItem(self.transfer_function1)
+        # The item for the raw transfer function
+        self.transfer_function_list = []
 
-        #self.transfer_function2 = pg.PlotDataItem(pen=defaultpen)
-        #self.region_select_plot.addItem(self.transfer_function2)
+        # The item for the reconstructed transfer function
+        self.constructed_transfer_function = \
+            pg.PlotDataItem(pen=pg.mkPen(width=3, style=Qt.DashLine))
+        self.transfer_function_plot.addItem(self.constructed_transfer_function)
 
-        self.constructed_transfer_fn1 = pg.PlotDataItem(pen='b')
-        self.transfer_func_plot.addItem(self.constructed_transfer_fn1)
+        # The item for the fitted peaks
+        self.peaks = []
 
-        #self.constructed_transfer_fn2 = pg.PlotDataItem(pen='b')
-        #self.region_select_plot.addItem(self.constructed_transfer_fn2)
+        # The item for the raw circle plot
+        self.nyquist_plot_list = []
 
-        self.circle_plot_points = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_points)
-
-        self.circle_plot_modal_peak = pg.PlotDataItem()
-        self.circle_plot.addItem(self.circle_plot_modal_peak)
-
-        # # Additional controls
-        self.add_peak_btn = QPushButton(self)
-        self.add_peak_btn.setText("Add new peak")
-        self.add_peak_btn.clicked.connect(self.add_peak)
-
-        self.delete_selected_btn = QPushButton(self)
-        self.delete_selected_btn.setText("Delete selected")
-        self.delete_selected_btn.clicked.connect(self.delete_selected)
-
-        controls = QGridLayout()
-        spacer_hbox = QHBoxLayout()
-        spacer_hbox.addStretch(1)
-        controls.addWidget(self.delete_selected_btn, 0, 0)
-        controls.addLayout(spacer_hbox, 0, 1)
-        controls.addWidget(self.add_peak_btn, 0, 2)
+        # The item for the fitted circles
+        self.nyquist_plot_peaks_list = []
 
         # # Table of results
-        self.init_table()
-
-        results_groupbox = QGroupBox(self)
-        results_groupbox.setTitle("Results")
-
-        results_groupbox_vbox = QVBoxLayout()
-        results_groupbox_vbox.addWidget(self.tableWidget)
-        results_groupbox_vbox.addLayout(controls)
-
-        results_groupbox.setLayout(results_groupbox_vbox)
+        self.results = CircleFitResults(self)
+        self.results.sig_selected_peak_changed.connect(self.set_current_peak)
+        self.results.sig_recalculate_fit.connect(self.update_from_region)
+        self.results.sig_add_new_peak.connect(self.add_new_peak)
+        self.results.sig_manual_parameter_change.connect(self.update_from_table)
 
         # # Widget layout
         layout = QGridLayout()
-        layout.addWidget(self.transfer_func_plotwidget, 0, 0)
-        #layout.addWidget(self.region_select_plot_w, 0, 1)
-        layout.addWidget(results_groupbox, 2, 0)
-        layout.addWidget(self.circle_plotwidget, 2, 1)
+        layout.addWidget(self.transfer_function_plotwidget, 0, 0, 1, 2)
+        layout.addWidget(self.results, 1, 0)
+        layout.addWidget(self.nyquist_plotwidget, 1, 1)
         self.setLayout(layout)
 
         self.setWindowTitle('Circle fit')
         self.show()
 
-    def init_table(self):
-        self.tableWidget = QTableWidget(self)
-
-        self.tableWidget.setColumnCount(6)
-        self.tableWidget.setHorizontalHeaderLabels(["", "Frequency (rad)",
-                                                    "Damping ratio",
-                                                    "Amplitude", "Phase (rad)",
-                                                    "\N{LOCK}"])
-        header = self.tableWidget.horizontalHeader()
-        header.setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-        header.setResizeMode(1, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(2, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(3, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(4, QtGui.QHeaderView.Stretch)
-        header.setResizeMode(5, QtGui.QHeaderView.ResizeToContents)
-
-        self.row_list = []
-        self.modal_peaks = []
-
-    # Interaction functions ---------------------------------------------------
-    def add_peak(self):
-        # Add the new row at the end
-        self.tableWidget.insertRow(self.tableWidget.rowCount())
-        # Go to the new row
-        self.tableWidget.setCurrentCell(self.tableWidget.rowCount()-1, 0)
-
-        # Create a new dict in the list of rows to store the
-        # widgets for this row in
-        self.row_list.append({})
-
-        # Create a new dict in the list of modal peaks to store the
-        # values for this peak in
-        self.modal_peaks.append({})
-
-        # Create the plot item for this peak
-        self.modal_peaks[-1]["plot1"] = pg.PlotDataItem()
-        self.modal_peaks[-1]["plot2"] = pg.PlotDataItem()
-        self.transfer_func_plot.addItem(self.modal_peaks[-1]["plot1"])
-        #self.region_select_plot.addItem(self.modal_peaks[-1]["plot2"])
-
-        # Create a load of widgets to fill the row - store them in the new dict
-        self.row_list[-1]["selectbox"] = QCheckBox()
-        self.row_list[-1]["selectbox"].toggle()
-        self.row_list[-1]["selectbox"].stateChanged.connect(self.update_peak_selection)
-        self.row_list[-1]["freqbox"] = QDoubleSpinBox()
-        self.row_list[-1]["freqbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["freqbox"].setSingleStep(0.01)
-        self.row_list[-1]["freqbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["zbox"] = QDoubleSpinBox()
-        self.row_list[-1]["zbox"].valueChanged.connect(self.update_plots)
-        #self.row_list[-1]["zbox"].valueChanged.connect(self.update_spinbox_step)
-        self.row_list[-1]["zbox"].setSingleStep(0.0001)
-        self.row_list[-1]["zbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["zbox"].setDecimals(4)
-        self.row_list[-1]["ampbox"] = QDoubleSpinBox()
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["ampbox"].valueChanged.connect(self.update_spinbox_step)
-        self.row_list[-1]["ampbox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["phasebox"] = QDoubleSpinBox()
-        self.row_list[-1]["phasebox"].valueChanged.connect(self.update_plots)
-        self.row_list[-1]["phasebox"].setSingleStep(0.01)
-        self.row_list[-1]["phasebox"].setRange(-9e99, 9e99)
-        self.row_list[-1]["lockbtn"] = QPushButton()
-        self.row_list[-1]["lockbtn"].setText("<")
-        self.row_list[-1]["lockbtn"].setCheckable(True)
-        self.row_list[-1]["lockbtn"].clicked.connect(self.set_active_row)
-
-        # Fill the row with widgets
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 0,
-                                       self.row_list[-1]["selectbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 1,
-                                       self.row_list[-1]["freqbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 2,
-                                       self.row_list[-1]["zbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 3,
-                                       self.row_list[-1]["ampbox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 4,
-                                       self.row_list[-1]["phasebox"])
-        self.tableWidget.setCellWidget(self.tableWidget.rowCount() - 1, 5,
-                                       self.row_list[-1]["lockbtn"])
-
-        # With pyqtgraph's addItem, all the other items are set back to being visible
-        # so need to undo this for those that are unchecked
-        self.update_peak_selection()
-        self.show_transfer_fn()
-
-        self.set_active_row(new_row=True)
-        self.update_plots()
+    def test_slot(*args, **kwargs):
+        print("Test slot: {}, {}".format(args, kwargs))
 
     def show_transfer_fn(self, visible=True):
         print("Setting transfer function visible to " + str(visible))
-        self.constructed_transfer_fn1.setVisible(visible)
-        #self.constructed_transfer_fn2.setVisible(visible)
-
-    def update_spinbox_step(self, value):
-        if np.abs(value) > 1:
-            # Set the step to 1% of the current value
-            self.sender().setSingleStep(0.01 * value)
-        else:
-            self.sender().setSingleStep(0.01)
-
-    def update_peak_selection(self):
-        #self.set_active_row()
-        for i, row in enumerate(self.row_list):
-            checked = row["selectbox"].isChecked()
-
-            for item in self.transfer_func_plot.items:
-                if item == self.modal_peaks[i]["plot1"]:
-                    item.setVisible(checked)
-            """
-            for item in self.region_select_plot.items:
-                if item == self.modal_peaks[i]["plot2"]:
-                    item.setVisible(checked)
-            """
-
-    def delete_selected(self):
-        for i, row in enumerate(self.row_list):
-            if row["selectbox"].isChecked():
-                # Delete from table
-                del self.row_list[i]
-                self.tableWidget.removeRow(i)
-                # Delete from graphs
-                self.transfer_func_plot.removeItem(self.modal_peaks[i]["plot1"])
-                #self.region_select_plot.removeItem(self.modal_peaks[i]["plot2"])
-                del self.modal_peaks[i]
-        # With pyqtgraph's removeItem, all the other items are set back to being visible
-        # so need to undo this for those that are unchecked
-        self.update_peak_selection()
-        self.show_transfer_fn(True)
-
-    def set_active_row(self, checked=False, new_row=False):
-        for i, row in enumerate(self.row_list):
-            # If this was the row that was clicked, or a new row is being added
-            if not new_row and self.sender() in row.values():
-                # Set this row as the current row
-                self.tableWidget.setCurrentCell(i, 0)
-
-                if checked:
-                    row["lockbtn"].setText("\N{LOCK}")
-                    for name, widget in row.items():
-                        if name != "lockbtn" and name != "selectbox":
-                            widget.setDisabled(True)
-                else:
-                    row["lockbtn"].setText("<")
-                    for widget in row.values():
-                            widget.setDisabled(False)
-
-            elif new_row and row is self.row_list[-1]:
-                row["lockbtn"].setText("<")
-                for widget in row.values():
-                    widget.setDisabled(False)
-
-            else:
-                row["lockbtn"].setText("\N{LOCK}")
-                for name, widget in row.items():
-                    if name != "lockbtn" and name != "selectbox":
-                        widget.setDisabled(True)
-
-        self.update_plots()
-
-    def set_data(self, w=None, a=None):
-        if a is not None:
-            self.a = a
-        if w is not None:
-            self.w = w
-            # Create a more precise version for plotting the fit
-            self.w_fit = np.linspace(0, self.w.max(), self.w.size*10)
-        else:
-            pass
-
-        # Plot the transfer function
-        self.transfer_function1.setData(x=self.w,
-                                        y=to_dB(np.abs(self.a)))
-
-        #self.transfer_function2.setData(x=self.w,
-        #                                y=to_dB(np.abs(self.a)))
-
-        self.transfer_func_plot.autoRange()
-        self.transfer_func_plot.setXRange(self.w.min(), self.w.max())
-        self.transfer_func_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
-        self.transfer_func_plot.disableAutoRange()
-
-        #self.region_select_plot.autoRange()
-        #self.region_select_plot.setXRange(self.w.min(), self.w.max())
-        #self.region_select_plot.setLimits(xMin=self.w.min(), xMax=self.w.max())
-        #self.region_select_plot.disableAutoRange()
-
-        #self.region_select.setBounds((self.w.min(), self.w.max()))
-        self.add_peak()
+        self.constructed_transfer_fn.setVisible(visible)
 
     def construct_transfer_fn(self):
-        #self.show_transfer_fn_checkbox.setChecked(True)
-        self.constructed_transfer_fn = np.zeros_like(self.modal_peaks[-1]["data"])
-        for i, peak in enumerate(self.modal_peaks):
-            if self.row_list[i]["selectbox"].isChecked():
-                self.constructed_transfer_fn += peak["data"]
-
-        self.constructed_transfer_fn1.setData(x=self.w_fit,
-                                              y=to_dB(np.abs(self.constructed_transfer_fn)))
-        #self.constructed_transfer_fn2.setData(x=self.w_fit,
-        #                                      y=to_dB(np.abs(self.constructed_transfer_fn)))
-
-    # Update functions --------------------------------------------------------
-    def update_zoom(self):
         pass
-        """
-        self.transfer_func_plot.setXRange(*self.region_select.getRegion(),
-                                          padding=0)
-        """
 
-    def autorange_to_region(self, checked):
-        pass
-        """
-        if self.autorange_to_region_checkbox.isChecked():
-            self.region_select_plot.setXRange(*self.region_select.getRegion(),
-                                              padding=1)
+    def add_new_peak(self):
+        lower, upper = self.transfer_function_plotwidget.getRegionBounds()
+        self.update_from_region(lower, upper)
+
+    def update_from_region(self, region_lower_bound, region_upper_bound):
+        for channel_dict in self.channel_info:
+            channel_dict["region_lower_bound"] = region_lower_bound
+            channel_dict["region_upper_bound"] = region_upper_bound
+
+        # Recalculate for each channel (multithreaded)
+        with Pool(len(self.channels)) as pool:
+            self.parameters = pool.map(calculate_parameters, self.channel_info)
+
+        for i, channel_params in enumerate(self.parameters):
+            wr, zr, cr, phi = channel_params
+            # Update the results table, only changing the value if the
+            # parameter is set to auto
+            self.results.set_omega(self.current_peak, i, wr)
+            self.results.set_damping(self.current_peak, i, zr)
+            self.results.set_amplitude(self.current_peak, i, cr)
+            self.results.set_phase_rad(self.current_peak, i, phi)
+
+            try:
+                # Recalculate the geometric circle fit
+                self.x0, self.y0, self.R0 = fit_circle_to_data(self.tf_reg.real,
+                                                               self.tf_reg.imag)
+            except:
+                print("Error in fitting geometric circle.")
+                traceback.print_exc()
+            # Recalculate the parameters
+            try:
+                wr, zr, cr, phi = self.sdof_get_parameters()
+
+                # Update the results table
+                self.results.set_parameter_values(self.current_peak,
+                                                  i,
+                                                  #{"frequency": wr / (2*np.pi),
+                                                  {"frequency": wr,
+                                                   #"Q": 1 / (2*zr),
+                                                   "damping": zr,
+                                                   #"amplitude": to_dB(cr),
+                                                   "amplitude": cr,
+                                                   #"phase": np.rad2deg(phi)})
+                                                   "phase": phi})
+            except:
+                print("Error in calculating parameters.")
+                traceback.print_exc()
+
+
+            # Update what is displayed on the nyquist plot
+            #self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
+
+        # Update the peak
+        peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+        self.peaks[i].setData(self.w, peak)
+        self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
+
+    def update_from_table(self):
+        for i, channel in enumerate(self.channels):
+            wr = self.results.get_omega(self.current_peak, i)
+            zr = self.results.get_damping(self.current_peak, i)
+            cr = self.results.get_amplitude(self.current_peak, i)
+            phi = self.results.get_phase_rad(self.current_peak, i)
+
+            # Update the peak
+            peak = sdof_modal_peak(self.channels[i].get_data("omega"), wr, zr, cr, phi)
+            self.peaks[i].setData(self.channels[i].get_data("frequency"), to_dB(np.abs(peak)))
+            self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
+
+    def refresh_nyquist_plot(self):
+        """Clear the nyquist plot and add the items back in."""
+        self.nyquist_plotwidget.clear()
+
+        for item in self.nyquist_plot_list:
+            self.nyquist_plot.addItem(item)
+
+        for item in self.nyquist_plot_peaks_list:
+            self.nyquist_plot.addItem(item)
+
+        self.nyquist_plot.autoRange()
+
+    def refresh_transfer_function_plot(self):
+        """Clear the transfer function plot and add the items back in."""
+        self.transfer_function_plotwidget.clear()
+
+        self.transfer_function_plot.addItem(self.constructed_transfer_function)
+
+        for item in self.transfer_function_list:
+            self.transfer_function_plot.addItem(item)
+
+        for item in self.peaks:
+            self.transfer_function_plot.addItem(item)
+
+        self.transfer_function_plot.autoRange()
+
+    def set_selected_channels(self, selected_channels):
+        """Update which channels are plotted."""
+        # If no channel list is given
+        if not selected_channels:
+            self.channels = []
         else:
-            self.region_select_plot.setXRange(self.w.min(), self.w.max())
-        """
-        
-    def update_region(self):
-        #self.region_select.setRegion(self.transfer_func_plot.getViewBox().viewRange()[0])
-        pass
+            self.channels = selected_channels
+            self.results.channels = selected_channels
 
-    def get_viewed_region(self):
-        # Get the axes limits
-        w_axis_lower, w_axis_upper = self.transfer_func_plot.getAxis('bottom').range
+        # # Populate the plot lists
+        self.transfer_function_list = []
+        self.nyquist_plot_list = []
+        self.peaks = []
+        self.nyquist_plot_peaks_list = []
+        for channel in self.channels:
+            transfer_function = pg.PlotDataItem(channel.data("frequency"),
+                                                to_dB(np.abs(channel.data("TF"))),
+                                                pen=channel.colour)
+            self.transfer_function_list.append(transfer_function)
 
-        w_in_display = (self.w >= w_axis_lower) & (self.w <= w_axis_upper)
+            nyquist_plot = pg.PlotDataItem(channel.data("TF").real,
+                                           channel.data("TF").imag,
+                                           pen=None,
+                                           symbol='o',
+                                           symbolPen=None,
+                                           symbolBrush=pg.mkBrush(channel.colour),
+                                           symbolSize=7)
+            self.nyquist_plot_list.append(nyquist_plot)
 
-        self.w_reg = np.extract(w_in_display, self.w)
-        self.a_reg = np.extract(w_in_display, self.a)
+            self.peaks.append(pg.PlotDataItem(pen=channel.colour))
+            self.nyquist_plot_peaks_list.append(pg.PlotDataItem(pen=channel.colour))
 
-        # Do something similar for the more precise w_fit - but get the indices
-        # rather than the values
-        w_fit_in_display = (self.w_fit >= w_axis_lower) & (self.w_fit <= w_axis_upper)
-        self.fit_lower = np.where(w_fit_in_display)[0][0]
-        self.fit_upper = np.where(w_fit_in_display)[0][-1]
+        self.refresh_transfer_function_plot()
+        self.refresh_nyquist_plot()
 
-    def update_plots(self, value=None):
-        try:
-            lck_btn = self.row_list[self.tableWidget.currentRow()]["lockbtn"]
-        except:
-            lck_btn = None    
-        # If the current peak is not locked
-        if lck_btn and not lck_btn.isChecked():
-            # Get zoomed in region
-            self.get_viewed_region()
+    def set_current_peak(self, current_peak):
+        self.current_peak = current_peak
 
-            # Update the values
-            if self.sender() in self.row_list[self.tableWidget.currentRow()].values():
-                self.update_from_row(value)
+class CircleFitResults(QGroupBox):
+    """
+    The tree displaying the Circle Fit results and the parameters used for
+    automatically fitting the circle.
+
+    Attributes
+    ----------
+    sig_selected_peak_changed : pyqtSignal(int)
+        The signal emitted when the selected peak is changed.
+    sig_recalculate_fit : pyqtSignal
+        Signal emitted when the fit is forced to be recalculated.
+    sig_add_new_peak : pyqtSignal
+        Signal emitted when a new peak is added.
+    sig_manual_parameter_change : pyqtSignal
+        Signal emitted when a parameter is changed by hand.
+    """
+
+    sig_selected_peak_changed = pyqtSignal(int)
+    sig_recalculate_fit = pyqtSignal()
+    sig_add_new_peak = pyqtSignal()
+    sig_manual_parameter_change = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__("Results", parent)
+
+        self.channels = []
+        self.num_peaks = 0
+
+        self.init_ui()
+
+    def init_ui(self):
+        # # Tree for values
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Name",
+                                   "Frequency (Hz)",
+                                   "Damping ratio",
+                                   "Amplitude (dB)",
+                                   "Phase (deg)",
+                                   "Select"])
+
+        self.tree.setStyleSheet("QTreeWidget::item:has-children "
+                                "{ background-color : palette(mid);}")
+
+        # # Tree for autofit parameters
+        self.autofit_tree = QTreeWidget()
+        self.autofit_tree.setHeaderLabels(["Name",
+                                           "Frequency (Hz)",
+                                           "Damping ratio",
+                                           "Amplitude (dB)",
+                                           "Phase (deg)",
+                                           "Select"])
+
+        self.autofit_tree.hide()
+        self.autofit_tree.setStyleSheet("QTreeWidget::item:has-children "
+                                        "{ background-color : palette(mid);}")
+
+        # Connect the two trees together, so the views look identical
+        self.autofit_tree.itemCollapsed.connect(self.on_item_collapsed)
+        self.autofit_tree.itemExpanded.connect(self.on_item_expanded)
+        self.tree.itemCollapsed.connect(self.on_item_collapsed)
+        self.tree.itemExpanded.connect(self.on_item_expanded)
+
+        # # Controls
+        self.add_peak_btn = QPushButton("Add new peak", self)
+        self.add_peak_btn.clicked.connect(self.add_peak)
+
+        self.delete_selected_btn = QPushButton("Delete selected", self)
+        self.delete_selected_btn.clicked.connect(self.delete_selected)
+
+        self.view_autofit_btn = QPushButton("View autofit parameters", self)
+        self.view_autofit_btn.clicked.connect(self.toggle_view)
+
+        self.reset_to_autofit_btn = QPushButton("Reset all to auto", self)
+        self.reset_to_autofit_btn.clicked.connect(self.reset_to_autofit)
+        self.reset_to_autofit_btn.hide()
+
+        controls1 = QGridLayout()
+        controls1.addWidget(self.add_peak_btn, 0, 0)
+        controls1.setColumnStretch(1, 1)
+        controls1.addWidget(self.delete_selected_btn, 0, 2)
+
+        controls2 = QGridLayout()
+        controls2.setColumnStretch(0, 1)
+        controls2.addWidget(self.reset_to_autofit_btn, 0, 1)
+        controls2.addWidget(self.view_autofit_btn, 0, 2)
+
+        # # Layout
+        layout = QGridLayout()
+        layout.addLayout(controls2, 0, 0)
+        layout.addWidget(self.tree, 1, 0)
+        layout.addWidget(self.autofit_tree, 1, 0)
+        layout.addLayout(controls1, 2, 0)
+
+        self.setLayout(layout)
+
+    def add_peak(self):
+        """Add a top-level item for a new peak to the tree, with children for
+        each channel."""
+        # Create the parent item for the peak
+        peak_item = QTreeWidgetItem(self.tree,
+                                    ["Peak {}".format(self.num_peaks),
+                                     "", "", "", "", ""])
+        autofit_peak_item = QTreeWidgetItem(self.autofit_tree,
+                                            ["Peak {}".format(self.num_peaks),
+                                             "", "", "", "", ""])
+
+        # Put a radio button in column 5 in the tree
+        radio_btn = QRadioButton()
+        radio_btn.toggled.connect(self.on_selected_peak_changed)
+        self.tree.setItemWidget(peak_item, 5, radio_btn)
+        radio_btn.setChecked(True)
+
+        for col in [1, 2, 3, 4]:
+            # Put comboboxes in the autofit tree
+            combobox = QComboBox()
+            combobox.addItems(["Auto", "Manual"])
+            combobox.currentIndexChanged.connect(self.update_peak_average)
+            self.autofit_tree.setItemWidget(autofit_peak_item, col, combobox)
+
+        # Put spinboxes in the tree
+        freq_spinbox = QDoubleSpinBox()
+        freq_spinbox.setRange(0, 9e99)
+        freq_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+        self.tree.setItemWidget(peak_item, 1, freq_spinbox)
+        damping_spinbox = QDoubleSpinBox()
+        damping_spinbox.setRange(0, 9e99)
+        damping_spinbox.setDecimals(5)
+        damping_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+        self.tree.setItemWidget(peak_item, 2, damping_spinbox)
+        amp_spinbox = QDoubleSpinBox()
+        amp_spinbox.setRange(0, 9e99)
+        amp_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+        self.tree.setItemWidget(peak_item, 3, amp_spinbox)
+        phase_spinbox = QDoubleSpinBox()
+        phase_spinbox.setRange(-180, 180)
+        phase_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+        phase_spinbox.setWrapping(True)
+        self.tree.setItemWidget(peak_item, 4, phase_spinbox)
+
+        # Create the child items for each channel for this peak if there's
+        # more than one channel
+        if len(self.channels) > 1:
+            for i in range(len(self.channels)):
+                channel_item = QTreeWidgetItem(peak_item,
+                                               ["Channel {}".format(i),
+                                                "", "", "", "", ""])
+                autofit_channel_item = QTreeWidgetItem(autofit_peak_item,
+                                                       ["Channel {}".format(i),
+                                                        "", "", "", "", ""])
+                for col in [1, 2, 3, 4]:
+                    # Put comboboxes in the autofit tree
+                    combobox = QComboBox()
+                    combobox.addItems(["Auto", "Manual"])
+                    combobox.currentIndexChanged.connect(self.update_peak_average)
+                    self.autofit_tree.setItemWidget(autofit_channel_item,
+                                                    col, combobox)
+
+                freq_spinbox = QDoubleSpinBox()
+                freq_spinbox.setRange(0, 9e99)
+                freq_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+                freq_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 1, freq_spinbox)
+                damping_spinbox = QDoubleSpinBox()
+                damping_spinbox.setRange(0, 9e99)
+                damping_spinbox.setDecimals(5)
+                damping_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+                damping_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 2, damping_spinbox)
+                amp_spinbox = QDoubleSpinBox()
+                amp_spinbox.setRange(0, 9e99)
+                amp_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+                amp_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 3, amp_spinbox)
+                phase_spinbox = QDoubleSpinBox()
+                phase_spinbox.setRange(-180, 180)
+                phase_spinbox.setWrapping(True)
+                phase_spinbox.valueChanged.connect(self.sig_manual_parameter_change.emit)
+                phase_spinbox.valueChanged.connect(self.update_peak_average)
+                self.tree.setItemWidget(channel_item, 4, phase_spinbox)
+
+        # Register that we've added another peak
+        self.num_peaks += 1
+        self.sig_add_new_peak.emit()
+
+    def delete_selected(self):
+        """Delete the item that is currently selected."""
+        for i in range(self.tree.topLevelItemCount()):
+            # If the radio button is checked
+            peak_item = self.tree.topLevelItem(i)
+            if peak_item is not None:
+                if self.tree.itemWidget(peak_item, 5).isChecked():
+                    # Delete this item
+                    self.tree.takeTopLevelItem(i)
+                    self.autofit_tree.takeTopLevelItem(i)
+                    # self.num_peaks -= 1
+
+    def toggle_view(self):
+        if self.tree.isVisible():
+            self.tree.hide()
+            self.autofit_tree.show()
+            self.reset_to_autofit_btn.show()
+            self.view_autofit_btn.setText("View parameter values")
+        else:
+            self.tree.show()
+            self.autofit_tree.hide()
+            self.reset_to_autofit_btn.hide()
+            self.view_autofit_btn.setText("View autofit parameters")
+
+    def on_item_collapsed(self, item):
+        index = self.sender().indexOfTopLevelItem(item)
+        self.tree.collapseItem(self.tree.topLevelItem(index))
+        self.autofit_tree.collapseItem(self.autofit_tree.topLevelItem(index))
+
+    def on_item_expanded(self, item):
+        index = self.sender().indexOfTopLevelItem(item)
+        self.tree.expandItem(self.tree.topLevelItem(index))
+        self.autofit_tree.expandItem(self.autofit_tree.topLevelItem(index))
+
+    def on_selected_peak_changed(self, checked):
+        for i in range(self.tree.topLevelItemCount()):
+            # If the radio button in this row is the sender
+            peak_item = self.tree.topLevelItem(i)
+            if peak_item is not None:
+                if self.tree.itemWidget(peak_item, 5) == self.sender():
+                    if checked:
+                        print("Selected peak: " + str(i))
+                        self.sig_selected_peak_changed.emit(i)
+
+    def reset_to_autofit(self):
+        """Reset all parameters to be automatically adjusted."""
+        for peak_number in range(self.num_peaks):
+            peak_item = self.autofit_tree.topLevelItem(peak_number)
+
+            for col in [1, 2, 3, 4]:
+                self.autofit_tree.itemWidget(peak_item, col).setCurrentIndex(0)
+
+            if len(self.channels) > 1:
+                for channel_number in range(len(self.channels)):
+                    channel_item = peak_item.child(channel_number)
+                    for col in [1, 2, 3, 4]:
+                        self.autofit_tree.itemWidget(channel_item, col).setCurrentIndex(0)
+
+        self.sig_recalculate_fit.emit()
+
+    def update_peak_average(self):
+        """Set the parameter values displayed for the peak to the average of
+        all the channel values for each parameter."""
+        for peak_number in range(self.num_peaks):
+            # Get the peak item
+            peak_item = self.tree.topLevelItem(peak_number)
+            autofit_item = self.autofit_tree.topLevelItem(peak_number)
+
+            if peak_item is not None:
+                # Find the average values of all the channels
+                avg_freq = 0
+                avg_damping = 0
+                avg_amplitude_dB = 0
+                avg_phase_deg = 0
+
+                for channel_number in range(len(self.channels)):
+                    avg_freq += self.get_frequency(peak_number, channel_number)
+                    avg_damping += self.get_damping(peak_number, channel_number)
+                    avg_amplitude_dB += self.get_amplitude_dB(peak_number, channel_number)
+                    avg_phase_deg += self.get_phase_deg(peak_number, channel_number)
+
+                avg_freq /= len(self.channels)
+                avg_damping /= len(self.channels)
+                avg_amplitude_dB /= len(self.channels)
+                avg_phase_deg /= len(self.channels)
+
+                # Set the peak item to display the averages
+                if self.autofit_tree.itemWidget(autofit_item, 1).currentText() == "Auto":
+                    self.tree.itemWidget(peak_item, 1).setValue(avg_freq)
+                if self.autofit_tree.itemWidget(autofit_item, 2).currentText() == "Auto":
+                    self.tree.itemWidget(peak_item, 2).setValue(avg_damping)
+                if self.autofit_tree.itemWidget(autofit_item, 3).currentText() == "Auto":
+                    self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude_dB)
+                if self.autofit_tree.itemWidget(autofit_item, 4).currentText() == "Auto":
+                    self.tree.itemWidget(peak_item, 4).setValue(avg_phase_deg)
+
+    def get_frequency(self, peak_number, channel_number=None):
+        """Return the resonant frequency (Hz) of the peak given by
+        *peak_number*. If *channel_number* is given, return the resonant
+        frequency of the given peak in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 1)
+                return spinbox.value()
             else:
-                self.update_from_plot()
-
-            # Recalculate the fitted modal peak
-            #self.modal_peaks[self.tableWidget.currentRow()]["data"] = self.fitted_sdof_peak(self.w_fit,
-            self.modal_peaks[self.tableWidget.currentRow()]["data"] = -self.w_fit**2 * sdof_modal_peak(self.w_fit,
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["wr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["zr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["cr"],
-                                                                                      self.modal_peaks[self.tableWidget.currentRow()]["phi"])
-
-            # Plot the raw data
-            self.circle_plot_points.setData(self.a_reg.real, self.a_reg.imag, pen=None,
-                                  ymbol='o', symbolPen=None, symbolBrush='k',
-                                  symbolSize=6)
-
-            # Plot the fitted modal peak
-            self.circle_plot_modal_peak.setData(self.modal_peaks[self.tableWidget.currentRow()]["data"].real[self.fit_lower:self.fit_upper],
-                                                self.modal_peaks[self.tableWidget.currentRow()]["data"].imag[self.fit_lower:self.fit_upper],
-                                                pen=pg.mkPen('r', width=1.5))
-
-            self.modal_peaks[self.tableWidget.currentRow()]["plot1"].setData(self.w_fit,
-                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                                             pen='r')
-            self.modal_peaks[self.tableWidget.currentRow()]["plot2"].setData(self.w_fit,
-                                                                             to_dB(np.abs(self.modal_peaks[self.tableWidget.currentRow()]["data"])),
-                                                                             pen='r')
-
-            # Update the constructed transfer function
-            if self.constructed_transfer_fn1.isVisible():
-                self.construct_transfer_fn()
-
-    def update_from_plot(self):
-        # Recalculate the geometric circle fit
-        self.x0, self.y0, self.R0 = fit_circle_to_data(self.a_reg.real, self.a_reg.imag)
-
-        # Recalculate the parameters
-        wr, zr, cr, phi = self.sdof_get_parameters()
-
-        if "frequency" in self.autofit_parameters:
-            self.modal_peaks[self.tableWidget.currentRow()]["wr"] = wr
-        if "z" in self.autofit_parameters:
-            self.modal_peaks[self.tableWidget.currentRow()]["zr"] = zr
-        if "amplitude" in self.autofit_parameters:
-            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = cr
-        if "phase" in self.autofit_parameters:
-            self.modal_peaks[self.tableWidget.currentRow()]["phi"] = phi
-
-        self.row_list[self.tableWidget.currentRow()]["freqbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["wr"])
-        self.row_list[self.tableWidget.currentRow()]["zbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["zr"])
-        self.row_list[self.tableWidget.currentRow()]["ampbox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["cr"])
-        self.row_list[self.tableWidget.currentRow()]["phasebox"].setValue(self.modal_peaks[self.tableWidget.currentRow()]["phi"])
-
-    def update_from_row(self, value):
-        if self.sender() == self.row_list[self.tableWidget.currentRow()]["freqbox"]:
-            self.modal_peaks[self.tableWidget.currentRow()]["wr"] = value
-        if self.sender() == self.row_list[self.tableWidget.currentRow()]["zbox"]:
-            self.modal_peaks[self.tableWidget.currentRow()]["zr"] = value
-        if self.sender() == self.row_list[self.tableWidget.currentRow()]["ampbox"]:
-            self.modal_peaks[self.tableWidget.currentRow()]["cr"] = value
-        if self.sender() == self.row_list[self.tableWidget.currentRow()]["phasebox"]:
-            self.modal_peaks[self.tableWidget.currentRow()]["phi"] = value
-
-    def update_autofit_parameters(self, autofit, parameter):
-        if autofit:
-            self.autofit_parameters.add(parameter)
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 1)
+                return spinbox.value()
         else:
-            self.autofit_parameters.remove(parameter)            
+            return 0
 
-# Fitting functions -----------------------------------------------------------
-    def single_pole(self, w, wr, zr, cr, phi):
-        return (-cr*np.exp(1j*phi) / (2*wr)) / (w - wr*(1 + 1j*zr))
+    def get_omega(self, peak_number, channel_number=None):
+        """Return the resonant frequency (rads) of the peak given by
+        *peak_number*. If *channel_number* is given, return the resonant
+        frequency of the given peak in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 1)
+                return spinbox.value() * 2*np.pi
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 1)
+                return spinbox.value() * 2*np.pi
+        else:
+            return 0
 
-    def fitted_single_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + self.single_pole(w, wr, zr, cr, phi)
+    def get_damping(self, peak_number, channel_number=None):
+        """Return the damping ratio of the peak given by *peak_number*. If
+        *channel_number* is given, return the damping ratio of the given peak
+        in the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 2)
+                #return 1/(2*spinbox.value())
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 2)
+                #return 1/(2*spinbox.value())
+                return spinbox.value()
+        else:
+            return 0
 
-    def fitted_double_pole(self, w, wr, zr, cr, phi):
-        return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-            + sdof_modal_peak(w, wr, zr, cr, phi)
+    """
+    def get_q(self, peak_number, channel_number=None):
+    """        """Return the Q factor of the peak given by *peak_number*. If
+        *channel_number* is given, return the damping ratio of the given peak
+        in the given channel.""""""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 2)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 2)
+                return spinbox.value()
+        else:
+            return 0
+    """
 
-    def optimise_single_pole_fit(self, w, wr, zr, cr, phi):
-        if cr < 0:
-            cr *= -1
-            phi = (phi + np.pi/2) % np.pi
+    def get_amplitude(self, peak_number, channel_number=None):
+        """Return the amplitude of the peak given by *peak_number*. If
+        *channel_number* is given, return the amplitude of the given peak in
+        the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 3)
+                return from_dB(spinbox.value())
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 3)
+                return from_dB(spinbox.value())
+        else:
+            return 0
 
-        f = self.fitted_single_pole(w, wr, zr, cr, phi)
-        #return np.abs(f)
-        return np.append(f.real, f.imag)
+    def get_amplitude_dB(self, peak_number, channel_number=None):
+        """Return the amplitude of the peak given by *peak_number*. If
+        *channel_number* is given, return the amplitude of the given peak in
+        the given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 3)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 3)
+                return spinbox.value()
+        else:
+            return 0
 
-    def fitted_sdof_peak(self, w, wr, zr, cr, phi):
-        if self.transfer_function_type == 'displacement':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi - np.pi/2))\
-                + sdof_modal_peak(w, wr, zr, cr, phi)
+    def get_phase_deg(self, peak_number, channel_number=None):
+        """Return the phase (deg) of the peak given by *peak_number*. If
+        *channel_number* is given, return the phase of the given peak in the
+        given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 4)
+                return spinbox.value()
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 4)
+                return spinbox.value()
+        else:
+            return 0
 
-        if self.transfer_function_type == 'velocity':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*phi)\
-                + 1j*w*sdof_modal_peak(w, wr, zr, cr, phi)
+    def get_phase_rad(self, peak_number, channel_number=None):
+        """Return the phase (rad) of the peak given by *peak_number*. If
+        *channel_number* is given, return the phase of the given peak in the
+        given channel."""
+        peak_item = self.tree.topLevelItem(peak_number)
+        if peak_item is not None:
+            if channel_number is None:
+                spinbox = self.tree.itemWidget(peak_item, 4)
+                return np.deg2rad(spinbox.value())
+            else:
+                channel_item = peak_item.child(channel_number)
+                spinbox = self.tree.itemWidget(channel_item, 4)
+                return np.deg2rad(spinbox.value())
+        else:
+            return 0
 
-        if self.transfer_function_type == 'acceleration':
-            return self.x0 + 1j*self.y0 - self.R0*np.exp(1j*(phi + np.pi/2))\
-                -w**2*sdof_modal_peak(w, wr, zr, cr, phi)
+    def set_frequency(self, peak_number, channel_number=None, value=0):
+        """Set the frequency (Hz) of a given peak to *value*. If *channel_number* is
+        given, set the frequency of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 1)
+                    spinbox.setValue(value)
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 1)
+                    spinbox.setValue(value)
 
-    def optimise_sdof_peak_fit(self, w, wr, zr, cr, phi):
-        if cr < 0:
-            cr *= -1
-            phi = (phi + np.pi) % np.pi
-        f = self.fitted_sdof_peak(w, wr, zr, cr, phi)
-        return np.append(f.real, f.imag)
+    def set_omega(self, peak_number, channel_number=None, value=0):
+        """Set the frequency (rad) of a given peak to *value*. If *channel_number* is
+        given, set the frequency of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 1)
+                    spinbox.setValue(value / (2*np.pi))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 1)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 1)
+                    spinbox.setValue(value / (2*np.pi))
 
-    def sdof_get_parameters(self):
-        # # Find initial parameters for curve fitting
-        # Find where the peak is - the maximum magnitude of the amplitude
-        # within the region
-        i = np.where(np.abs(self.a_reg) == np.abs(self.a_reg).max())[0][0]
-        # Take the frequency at the max amplitude as a
-        # first resonant frequency guess
-        wr0 = self.w_reg[i]
-        # Take the max amplitude as a first guess for the modal constant
-        cr0 = np.abs(self.a_reg[i])
-        phi0 = np.angle(self.a_reg[i])
-        #phi0 = 0
-        # First guess of damping factor of 1% (Q of 100)
-        zr0 = 0.01
+    def set_damping(self, peak_number, channel_number=None, value=0):
+        """Set the damping ratio of a given peak to *value*. If *channel_number* is
+        given, set the damping ratio of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 2)
+                    spinbox.setValue(1/(2*value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 2)
+                    spinbox.setValue(1/(2*value))
 
-        # # Find the parameter values that give a minimum of
-        # the optimisation function
-        wr, zr, cr, phi = curve_fit(self.optimise_sdof_peak_fit,
-                                    self.w_reg,
-                                    np.append(self.a_reg.real, self.a_reg.imag),
-                                    [wr0, zr0, cr0, phi0],
-                                    bounds=([self.w_reg.min(), 0, 0, -np.pi], [self.w_reg.max(), np.inf, np.inf, np.pi]))[0]
+    def set_q(self, peak_number, channel_number=None, value=0):
+        """Set the q factor of a given peak to *value*. If *channel_number* is
+        given, set the damping ratio of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 2)
+                    spinbox.setValue(value)
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 2)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 2)
+                    spinbox.setValue(value)
 
-        return wr, zr, cr, phi
+    def set_amplitude(self, peak_number, channel_number=None, value=0):
+        """Set the amplitude of a given peak to *value*. If *channel_number* is
+        given, set the amplitude of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 3)
+                    spinbox.setValue(to_dB(value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 3)
+                    spinbox.setValue(to_dB(value))
 
+    def set_amplitude_dB(self, peak_number, channel_number=None, value=0):
+        """Set the amplitude of a given peak to *value*. If *channel_number* is
+        given, set the amplitude of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 3)
+                    spinbox.setValue(value)
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 3)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 3)
+                    spinbox.setValue(value)
 
-    def load_tf(self,cs):
-        # Get a list of URLs from a QFileDialog
-        url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
-                                               "MAT Files (*.mat)")[0]
-        print(url)
-        
-        try:
-            import_from_mat(url, cs)
-        except:
-            print('Load failed. Revert to default!')
-            import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat", cs)
+    def set_phase_deg(self, peak_number, channel_number=None, value=0):
+        """Set the phase of a given peak to *value*. If *channel_number* is
+        given, set the phase of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 4)
+                    spinbox.setValue(value)
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 4)
+                    spinbox.setValue(value)
+
+    def set_phase_rad(self, peak_number, channel_number=None, value=0):
+        """Set the phase of a given peak to *value*. If *channel_number* is
+        given, set the phase of the given peak in the given channel."""
+        # Get the top level items
+        peak_item = self.tree.topLevelItem(peak_number)
+        autofit_peak_item = self.autofit_tree.topLevelItem(peak_number)
+        # Check they exist
+        if peak_item is not None:
+            # If they have children
+            if channel_number is not None:
+                # Get the channel items
+                channel_item = peak_item.child(channel_number)
+                autofit_channel_item = autofit_peak_item.child(channel_number)
+                # Set the value only if the combobox is set to autofit
+                combobox = \
+                    self.autofit_tree.itemWidget(autofit_channel_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(channel_item, 4)
+                    spinbox.setValue(np.rad2deg(value))
+            else:
+                # Set the value only if the combobox is set to autofit
+                combobox = self.autofit_tree.itemWidget(autofit_peak_item, 4)
+                if combobox.currentText() == "Auto":
+                    spinbox = self.tree.itemWidget(peak_item, 4)
+                    spinbox.setValue(np.rad2deg(value))
 
 
 class CircleFitToolbox(Toolbox):
-    
-    sig_autofit_parameter_change = pyqtSignal([bool, str])
+    """
+    The Toolbox for the CircleFitWidget.
+
+    This Toolbox contains the tools for controlling the circle fit. It has
+    two tabs: 'Transfer Function', for tools relating to the construction
+    of a transfer function, and 'Autofit Controls', which contains tools
+    for controlling how the circle is fit to the data.
+
+    Attributes
+    ----------
+    sig_construct_transfer_fn : pyqtSignal
+      The signal emitted when a new transfer function is to be constructed.
+    sig_show_transfer_fn : pyqtSignal(bool)
+      The signal emitted when the visibility of the transfer function is
+      changed. Format (visible).
+    """
+
     sig_construct_transfer_fn = pyqtSignal()
     sig_show_transfer_fn = pyqtSignal(bool)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        
+
         self.init_ui()
-    
+
     def init_ui(self):
         self.init_transfer_function_tab()
-        self.init_autofit_tab()
-        
+
     def init_transfer_function_tab(self):
         self.transfer_function_tab = QWidget()
         transfer_function_tab_layout = QGridLayout()
-        
+
         self.construct_transfer_fn_btn = QPushButton()
         self.construct_transfer_fn_btn.setText("Construct transfer function")
         self.construct_transfer_fn_btn.clicked.connect(self.sig_construct_transfer_fn.emit)
         transfer_function_tab_layout.addWidget(self.construct_transfer_fn_btn, 0, 0)
-        
+
         self.show_transfer_fn_checkbox = QCheckBox()
         self.show_transfer_fn_checkbox.setText("Show transfer function")
         self.show_transfer_fn_checkbox.stateChanged.connect(self.sig_show_transfer_fn.emit)
         transfer_function_tab_layout.addWidget(self.show_transfer_fn_checkbox, 1, 0)
-        
+
         self.transfer_function_tab.setLayout(transfer_function_tab_layout)
         transfer_function_tab_layout.setColumnStretch(1, 1)
         transfer_function_tab_layout.setRowStretch(2, 1)
-        
+
         self.addTab(self.transfer_function_tab, "Transfer function")
-    
-    def init_autofit_tab(self):
-        self.autofit_tab = QWidget()
-        autofit_layout = QGridLayout()
-        
-        self.autofit_freq_combobox = QComboBox()
-        self.autofit_z_combobox = QComboBox()
-        self.autofit_amp_combobox = QComboBox()
-        self.autofit_phase_combobox = QComboBox()
-
-        self.autofit_freq_combobox.addItems(["Manual", "Automatic"])
-        self.autofit_z_combobox.addItems(["Manual", "Automatic"])
-        self.autofit_amp_combobox.addItems(["Manual", "Automatic"])
-        self.autofit_phase_combobox.addItems(["Manual", "Automatic"])
-
-        self.autofit_freq_combobox.setCurrentIndex(1)
-        self.autofit_z_combobox.setCurrentIndex(1)
-        self.autofit_amp_combobox.setCurrentIndex(1)
-        self.autofit_phase_combobox.setCurrentIndex(1)
-
-        self.autofit_freq_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
-        self.autofit_z_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
-        self.autofit_amp_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
-        self.autofit_phase_combobox.currentIndexChanged.connect(self.on_autofit_parameter_change)
-
-        self.autofit_reset_btn = QPushButton("Reset")
-        self.autofit_reset_btn.clicked.connect(self.reset_to_auto_fit)
-
-        autofit_layout.addWidget(QLabel("Parameters"), 0, 0)
-        autofit_layout.addWidget(QLabel("Frequency:"), 1, 0)
-        autofit_layout.addWidget(self.autofit_freq_combobox, 1, 1)
-        autofit_layout.addWidget(QLabel("Damping ratio:"), 2, 0)
-        autofit_layout.addWidget(self.autofit_z_combobox, 2, 1)
-        autofit_layout.addWidget(QLabel("Amplitude:"), 3, 0)
-        autofit_layout.addWidget(self.autofit_amp_combobox, 3, 1)
-        autofit_layout.addWidget(QLabel("Phase:"), 4, 0)
-        autofit_layout.addWidget(self.autofit_phase_combobox, 4, 1)
-        autofit_layout.addWidget(self.autofit_reset_btn, 5, 1)
-
-        autofit_layout.setColumnStretch(2, 1)
-        autofit_layout.setRowStretch(6, 1)
-
-        self.autofit_tab.setLayout(autofit_layout)
-        self.addTab(self.autofit_tab, "Autofit controls")
-    
-    def on_autofit_parameter_change(self, index):
-        if self.sender() == self.autofit_freq_combobox:
-            self.sig_autofit_parameter_change.emit(index, "frequency")
-        elif self.sender() == self.autofit_z_combobox:
-            self.sig_autofit_parameter_change.emit(index, "amplitude")
-        elif self.sender() == self.autofit_amp_combobox:
-            self.sig_autofit_parameter_change.emit(index, "z")
-        elif self.sender() == self.autofit_phase_combobox:
-            self.sig_autofit_parameter_change.emit(index, "phase")
-    
-    def reset_to_auto_fit(self):
-        self.autofit_freq_combobox.setCurrentIndex(1)
-        self.autofit_z_combobox.setCurrentIndex(1)
-        self.autofit_amp_combobox.setCurrentIndex(1)
-        self.autofit_phase_combobox.setCurrentIndex(1)
 
 
 if __name__ == '__main__':
-    defaultpen = 'k'
     CurrentWorkspace = Workspace()
     app = 0
 
     app = QApplication(sys.argv)
     c = CircleFitWidget()
+    c.CurrentWorkspace = CurrentWorkspace
     c.showMaximized()
 
-    # Create a demo transfer function
-    w = np.linspace(0, 25, 3e2)
-    d = sdof_modal_peak(w, 5, 0.006, 8e12, np.pi/2) \
-        + sdof_modal_peak(w, 10, 0.008, 8e12, 0) \
-        + sdof_modal_peak(w, 12, 0.003, 8e12, 0) \
-        + sdof_modal_peak(w, 20, 0.01, 22e12, 0)
-    v = 1j * w * d
-    a = -w**2*d
-
-    #c.transfer_function_type = 'displacement'
-    #c.set_data(w, d)
-
-    #c.transfer_function_type = 'velocity'
-    #c.set_data(w, v)
-
-    #c.transfer_function_type = 'acceleration'
-    #c.set_data(w, a)
-    #"""
     cs = ChannelSet()
-    
+
     #c.load_tf(cs)
-    import_from_mat("../../tests/transfer_function_clean.mat", cs)
-    a = cs.channel_data(0, "spectrum")
+    import_from_mat("../../tests/transfer_function_grid.mat", cs)
     c.transfer_function_type = 'acceleration'
-    c.set_data(np.linspace(0, cs.channel_metadata(0, "sample_rate"), a.size), a)
+    c.set_selected_channels(cs.channels)
+    #c.set_data(np.linspace(0, cs.get_channel_metadata(0, "sample_rate"), a.size), a)
     #"""
     sys.exit(app.exec_())

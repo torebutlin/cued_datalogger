@@ -7,8 +7,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
 
 import sys
 
-#from cued_datalogger.analysis.circle_fit import CircleFitWidget, CircleFitToolbox
-from cued_datalogger.analysis.circle_fit_v2 import CircleFitWidget, CircleFitToolbox
+from cued_datalogger.analysis.circle_fit import CircleFitWidget, CircleFitToolbox
 from cued_datalogger.analysis.frequency_domain import FrequencyDomainWidget, FrequencyToolbox
 from cued_datalogger.analysis.sonogram import SonogramDisplayWidget, SonogramToolbox
 from cued_datalogger.analysis.time_domain import TimeDomainWidget, TimeToolbox
