@@ -16,6 +16,7 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
+error_messages = {}
 
 # Check for Anaconda
 print("Checking for Anaconda installation...")
@@ -39,9 +40,11 @@ else:
 
 print("Operating system: {}.\n".format(operating_system))
 
-if operating_system == "unable to detect operating system" and use_anaconda:
-    print("[WARNING] The DataLogger has not been configured for this operating"
+if operating_system == "unable to detect operating system":
+    error_messages["operating_system"] = \
+        ("[WARNING] The DataLogger has not been configured for this operating"
           " system. \n The installation may not work correctly.\n")
+    print(error_messages["operating_system"])
 
 
 # Do some OS / Anaconda specific config
@@ -52,12 +55,13 @@ if operating_system != "windows":
     if len(portaudio) > 1:
         print("\t Portaudio found at {}".format(portaudio[1]))
     else:
-        print("\t Portaudio not installed - please install it manually using the "
+        error_messages["portaudio"] = \
+            ("\t Portaudio not installed - please install it manually using the "
               "appropriate package manager for your system: \n"
               "\t \t OS X: brew install portaudio \n"
               "\t \t Ubuntu/Debian: sudo apt install libportaudio2 portaudio19-dev \n"
               "\t \t CentOS: yum install portaudio portaudio-devel")
-        sys.exit(1)
+        print(error_messages["portaudio"])
 
     if use_anaconda:
         # Find conda
@@ -202,3 +206,5 @@ setup(name='cued_datalogger',
       zip_safe=True,
       include_package_data=True)
 
+for error, message in error_messages.items():
+    print("Error: " + message)
