@@ -111,7 +111,6 @@ class CircleFitWidget(QWidget):
         self.nyquist_plotwidget = \
             InteractivePlotWidget(parent=self,
                                   show_region=False,
-                                  show_crosshair=False,
                                   title="Circle fit",
                                   labels={'bottom': ("Re"),
                                           'left': ("Im")})
@@ -152,8 +151,8 @@ class CircleFitWidget(QWidget):
         # # Widget layout
         layout = QGridLayout()
         layout.addWidget(self.transfer_function_plotwidget, 0, 0, 1, 2)
-        layout.addWidget(self.results, 2, 0)
-        layout.addWidget(self.nyquist_plotwidget, 2, 1)
+        layout.addWidget(self.results, 1, 0)
+        layout.addWidget(self.nyquist_plotwidget, 1, 1)
         self.setLayout(layout)
 
         self.setWindowTitle('Circle fit')

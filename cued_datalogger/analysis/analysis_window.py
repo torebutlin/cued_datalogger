@@ -19,9 +19,8 @@ from cued_datalogger.api.file_import import DataImportWidget
 from cued_datalogger.api.file_export import DataExportWidget
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
 
-import cued_datalogger.acquisition_window as lpUI
+from cued_datalogger.acquisition.acquisition_window import AcquisitionWindow
 from cued_datalogger.acquisition.RecordingUIs import DevConfigUI
-
 
 class AnalysisDisplayTabWidget(QTabWidget):
     """This is the central widget for the AnalysisWindow, where graphs, data,
@@ -58,6 +57,10 @@ class AnalysisDisplayTabWidget(QTabWidget):
 
 
 class ProjectMenu(QMenu):
+    '''
+    A simple drop-down menu for demonstration purposes.
+    Currently does not do anything.
+    '''
     def __init__(self,parent):
         super().__init__('Project',parent)
         self.parent = parent
@@ -109,7 +112,7 @@ class AnalysisWindow(QMainWindow):
       containing: <acquisition window launcher>, :attr:`channel_select_widget`,
       :attr:`channel_metadata_widget`, :attr:`addon_widget`,
       :attr:`import_widget`.
-    liveplot : :class:`~cued_datalogger.acquisition_window.LiveplotApp`
+    acquisition_window : :class:`~cued_datalogger.acquisition_window.AcquisitionWindow`
     channel_select_widget : :class:`~cued_datalogger.api.channel.ChannelSelectWidget`
     channel_metadata_widget : :class:`~cued_datalogger.api.channel.ChannelMetadataWidget`
     addon_widget : :class:`~cued_datalogger.api.addons.AddonManager`
@@ -141,7 +144,7 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox = FrequencyToolbox(self.toolbox)
         self.frequency_toolbox.set_channel_set(self.cs)
         self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
-        self.frequency_toolbox.sig_view_type_changed.connect(self.switch_freq_plot)
+        self.frequency_toolbox.sig_view_type_changed.connect(self.set_freq_plot_type)
         self.frequency_toolbox.sig_converted_TF.connect(self.plot_tf)
         self.frequency_toolbox.sig_coherence_plot.connect(self.display_tabwidget.freqdomain_widget.switch_cor_plot)
         self.frequency_toolbox.sig_convert_to_circle_fit.connect(self.circle_fitting)
@@ -171,11 +174,11 @@ class AnalysisWindow(QMainWindow):
         self.global_toolbox = Toolbox('right', self.global_master_toolbox)
 
         # # Acquisition Window
-        self.liveplot = None
-        dev_configUI = DevConfigUI()
-        dev_configUI.config_button.setText('Open Oscilloscope')
-        dev_configUI.config_button.clicked.connect(self.open_liveplot)
-        self.global_toolbox.addTab(dev_configUI,'Oscilloscope')
+        self.acquisition_window = None
+        self.dev_configUI = DevConfigUI()
+        self.dev_configUI.config_button.setText('Open AcquisitionWindow')
+        self.dev_configUI.config_button.clicked.connect(self.open_acquisition_window)
+        self.global_toolbox.addTab(self.dev_configUI,'AcquisitionWindow')
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
@@ -202,7 +205,7 @@ class AnalysisWindow(QMainWindow):
         self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
         self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
-        
+
         # # Export
         self.export_widget = DataExportWidget(self)
         self.global_toolbox.addTab(self.export_widget, 'Export Files')
@@ -215,6 +218,7 @@ class AnalysisWindow(QMainWindow):
         self.channel_select_widget.set_channel_name()
 
     def init_ui(self):
+        # Add the drop-down menu
         self.menubar = self.menuBar()
         self.menubar.addMenu(ProjectMenu(self))
 
@@ -235,7 +239,7 @@ class AnalysisWindow(QMainWindow):
         self.init_global_master_toolbox()
 
         self.tfplots = []
-        self.config_channelset()
+        self.configure_channelset()
         self.plot_time_series()
         #self.plot_fft()
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
@@ -251,35 +255,40 @@ class AnalysisWindow(QMainWindow):
 
     def create_test_channelset(self):
         self.cs = ChannelSet(5)
-        t = np.arange(1000)/44100
+        t = np.arange(0,0.5,1/5000)
         for i, channel in enumerate(self.cs.channels):
+            self.cs.set_channel_metadata(i,{'sample_rate': 5000})
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
             self.cs.add_channel_dataset(i,'spectrum', [])
-
         self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
         self.cs.add_channel_dataset(i,'spectrum', [])
 
-    def open_liveplot(self):
-        if not self.liveplot:
-            self.liveplot = lpUI.LiveplotApp(self)
-            self.liveplot.done.connect(self.done_liveplot)
-            self.liveplot.dataSaved.connect(self.receive_data)
-            self.liveplot.show()
+    def open_acquisition_window(self):
+        if not self.acquisition_window:
+            recType, configs = self.dev_configUI.read_device_config()
+            if not any([not c for c in configs]):
+                self.acquisition_window = AcquisitionWindow(self, recType, configs)
+            else:
+                self.acquisition_window = AcquisitionWindow(self)
+            self.acquisition_window.done.connect(self.done_acquisition_window)
+            self.acquisition_window.dataSaved.connect(self.receive_data)
+            self.acquisition_window.show()
 
-    def receive_data(self,tab_num = 0):
-        self.config_channelset()
+    def receive_data(self, tab_number=0):
+        self.configure_channelset()
         self.plot_time_series()
         self.plot_fft()
 
-        self.display_tabwidget.setCurrentIndex(tab_num)
-        if tab_num == 1:
-            self.switch_freq_plot('Transfer Function')
+        if self.sender() == self.acquisition_window:
+            self.display_tabwidget.setCurrentIndex(tab_number)
+            if tab_number == 1:
+                self.set_freq_plot_type('Transfer Function')
 
-    def done_liveplot(self):
-        self.liveplot.done.disconnect()
-        self.liveplot = None
+    def done_acquisition_window(self):
+        self.acquisition_window.done.disconnect()
+        self.acquisition_window = None
 
-    def config_channelset(self):
+    def configure_channelset(self):
         self.channel_select_widget.set_channel_set(self.cs)
         self.channel_metadata_widget.set_channel_set(self.cs)
         self.time_toolbox.set_channel_set(self.cs)
@@ -290,47 +299,33 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
 
-    def switch_freq_plot(self,dtype):
-        if dtype == 'Fourier Transform':
+    def set_freq_plot_type(self, plot_type):
+        if plot_type == 'Fourier Transform':
             self.plot_fft()
-        elif dtype == 'Transfer Function':
+        elif plot_type == 'Transfer Function':
             self.plot_tf()
 
     def plot_fft(self):
         # Switch to frequency domain tab
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.set_view_type("spectrum")
-        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.channel_select_widget.selected_channels())
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
         self.frequency_toolbox.set_view_type('Fourier Transform')
 
     def plot_tf(self):
         #TODO: calculate TF function if none is found
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.set_view_type("TF")
-        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.channel_select_widget.selected_channels())
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
         self.frequency_toolbox.set_view_type('Transfer Function')
-
 
     def plot_sonogram(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
         self.display_tabwidget.sonogram_widget.set_selected_channels(self.cs.channels)
 
-
     def circle_fitting(self):
         self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
         self.display_tabwidget.circle_widget.set_selected_channels(self.cs.channels)
-        """
-        # Send the first available Transfer Function
-        for i in range(len(self.cs)):
-            fdata = self.cs.get_channel_data(i, "TF")
-            if not fdata.shape[0] == 0:
-                self.display_tabwidget.circle_widget.transfer_function_type = 'acceleration'
-                self.display_tabwidget.circle_widget.set_data(
-                        np.linspace(0, self.cs.get_channel_metadata(i, "sample_rate"),fdata.size),
-                        fdata)
-
-        print('No Transfer Function Available')
-        """
 
     def add_import_data(self,mode):
         if mode == 'Extend':

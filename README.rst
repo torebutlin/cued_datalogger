@@ -4,13 +4,22 @@ Quick start guide
 
 Install the DataLogger by following the relevant instructions below.
 
-Then run the DataLogger from a command line using any of::
+Then run the DataLogger from a command line using::
 
-    cued_datalogger_run
+    cued_datalogger
+
+
+To specify a Workspace when running the DataLogger, use::
+
+    cued_datalogger -w /path/to/workspace.wsp
+
+For further options type::
+
+    cued_datalogger --help
+
+For a debugging version type::
 
     cued_datalogger_dbg
-
-    python -m cued_datalogger
 
 
 See the `documentation <http://cued-datalogger.readthedocs.io/en/latest/>`_

@@ -1,6 +1,6 @@
 # Workspace metadata
 name='Test Workspace'
-path='/path/to/test/workspace.wsp'
+path='/home/theo/Documents/cambridge/urop/cued_datalogger/cued_datalogger'
 
 # Workspace preferences
 add_ons_enabled=0

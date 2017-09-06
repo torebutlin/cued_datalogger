@@ -69,6 +69,10 @@ class InteractivePlotWidget(QWidget):
         self.PlotItem.disableAutoRange()
 
         self.ViewBox = self.PlotWidget.getViewBox()
+        self.ViewBox.menu.show_crosshair_action.setChecked(self.show_crosshair)
+        self.ViewBox.menu.show_region_action.setChecked(self.show_region)
+        self.ViewBox.menu.show_label_action.setChecked(self.show_label)
+
 
         self.vline = pg.InfiniteLine(angle=90)
         self.hline = pg.InfiniteLine(angle=0)
@@ -81,7 +85,7 @@ class InteractivePlotWidget(QWidget):
         self.label = pg.LabelItem(angle = 0)
         self.label.setParentItem(self.ViewBox)
 
-        self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        self.proxy = pg.SignalProxy(self.PlotWidget.scene().sigMouseMoved, rateLimit=30, slot=self.mouseMoved)
 
         self.ViewBox.menu.sig_show_region.connect(self.set_show_region)
         self.ViewBox.menu.sig_show_crosshair.connect(self.set_show_crosshair)
@@ -90,9 +94,9 @@ class InteractivePlotWidget(QWidget):
         # # Set up the region controls
         control_layout = QHBoxLayout()
         self.lower_box = pg.SpinBox(self, bounds=(None, None))
-        self.lower_box_proxy = pg.SignalProxy(self.lower_box.valueChanged, rateLimit=60, slot=self.on_region_changed)
+        self.lower_box_proxy = pg.SignalProxy(self.lower_box.valueChanged, rateLimit=30, slot=self.on_region_changed)
         self.upper_box = pg.SpinBox(self, bounds=(None, None))
-        self.upper_box_proxy = pg.SignalProxy(self.upper_box.valueChanged, rateLimit=60, slot=self.on_region_changed)
+        self.upper_box_proxy = pg.SignalProxy(self.upper_box.valueChanged, rateLimit=30, slot=self.on_region_changed)
         self.zoom_btn = QPushButton('Zoom', self)
         self.zoom_btn.clicked.connect(self.zoomToRegion)
 
@@ -116,18 +120,25 @@ class InteractivePlotWidget(QWidget):
         self.sig_region_changed.emit(lower, upper)
 
     def mouseMoved(self, mouse_moved_event):
+        """
+        Update the mouse position with crosshair
+        """
         mouse_position = mouse_moved_event[0]  ## using signal proxy turns original arguments into a tuple
         # If the mouse is in the PlotItem
         if self.PlotItem.sceneBoundingRect().contains(mouse_position):
             # Convert it to the coordinate system
-            mousePoint = self.ViewBox.mapSceneToView(mouse_position)
-            # Update the label
-            self.label.setText((("<span style='font-size: 12pt;color: black'>"
-                                 "x=%0.4f,"
-                                 "<span style='color: red'>y1=%0.4f</span>" )
-                                % (mousePoint.x(), mousePoint.y()) ))
-            self.vline.setPos(mousePoint.x())
-            self.hline.setPos(mousePoint.y())
+            try:
+                mousePoint = self.ViewBox.mapSceneToView(mouse_position)
+                # Update the label
+                self.label.setText((("<span style='font-size: 12pt;color: black'>"
+                                     "x=%0.4f,"
+                                     "<span style='color: red'>y1=%0.4f</span>" )
+                                    % (mousePoint.x(), mousePoint.y()) ))
+                self.vline.setPos(mousePoint.x())
+                self.hline.setPos(mousePoint.y())
+            except np.linalg.LinAlgError:
+                print("Warning: Exception raised in calculating mouse position"
+                      " (np.linalg.LinAlgError)")
 
     def clear(self):
         """Clear the PlotItem and add the default items back in."""
@@ -286,7 +297,7 @@ class CustomPlotWidget(pg.PlotWidget):
 
 class CustomViewBox(pg.ViewBox):
     '''
-    A custom ViewBox, reimplemented to allow custom right context menu
+    A custom ViewBox, reimplemented to allow custom right click context menu
     '''
     def __init__(self, cparent=None, *arg, **kwarg):
         super().__init__(*arg,**kwarg)
@@ -334,23 +345,23 @@ class CustomViewMenu(QMenu):
         # Display menu, our custom actions
         self.display_menu = QMenu("Display options")
 
-        show_crosshair_action = QAction("Show crosshair", self.display_menu)
-        show_crosshair_action.setCheckable(True)
-        show_crosshair_action.setChecked(True)
-        show_crosshair_action.triggered.connect(self.sig_show_crosshair.emit)
-        self.display_menu.addAction(show_crosshair_action)
+        self.show_crosshair_action = QAction("Show crosshair", self.display_menu)
+        self.show_crosshair_action.setCheckable(True)
+        #show_crosshair_action.setChecked(self.view().cparent.parent().show_crosshair)
+        self.show_crosshair_action.triggered.connect(self.sig_show_crosshair.emit)
+        self.display_menu.addAction(self.show_crosshair_action)
 
-        show_region_action = QAction("Show region", self.display_menu)
-        show_region_action.setCheckable(True)
-        show_region_action.setChecked(True)
-        show_region_action.triggered.connect(self.sig_show_region.emit)
-        self.display_menu.addAction(show_region_action)
+        self.show_region_action = QAction("Show region", self.display_menu)
+        self.show_region_action.setCheckable(True)
+        #show_region_action.setChecked(self.view().cparent.parent().show_region)
+        self.show_region_action.triggered.connect(self.sig_show_region.emit)
+        self.display_menu.addAction(self.show_region_action)
 
-        show_label_action = QAction("Show Label", self.display_menu)
-        show_label_action.setCheckable(True)
-        show_label_action.setChecked(True)
-        show_label_action.triggered.connect(self.sig_show_label.emit)
-        self.display_menu.addAction(show_label_action)
+        self.show_label_action = QAction("Show Label", self.display_menu)
+        self.show_label_action.setCheckable(True)
+        #show_label_action.setChecked(self.view().cparent.parent().show_label)
+        self.show_label_action.triggered.connect(self.sig_show_label.emit)
+        self.display_menu.addAction(self.show_label_action)
 
         self.addMenu(self.display_menu)
 

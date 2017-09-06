@@ -1,30 +1,33 @@
 import pyqtgraph as pg
 import re
 
+from pathlib import Path
+
+from cued_datalogger.analysis import analysis_window
 
 class Workspace(object):
     """
     The ``Workspace`` class stores the workspace attributes and has methods for
     saving, loading, configuring, and displaying the workspace settings.
-    
+
     Workspaces are designed so that specific configurations of the DataLogger
-    can be created, eg. for undergraduate labs, with different features 
+    can be created, eg. for undergraduate labs, with different features
     enabled or disabled, and stored in a ``.wsp`` file that can be read using
-    the :class:`Workspace` class. In the DataLogger, a ``CurrentWorkspace`` 
-    instance is normally initiated that will store the current settings and all 
+    the :class:`Workspace` class. In the DataLogger, a ``CurrentWorkspace``
+    instance is normally initiated that will store the current settings and all
     the workspace functionality will be accessed through the
-    ``CurrentWorkspace``. 
-    
+    ``CurrentWorkspace``.
+
     Attributes
     ----------
     name : str
         A human-readable name for this workspace, eg. ``"Lab 4C6"``
     path : str
         The path to this workspace's directory. Addons will be loaded from the
-        directory ``path/addons/``, and files will be saved to ``path`` (not 
+        directory ``path/addons/``, and files will be saved to ``path`` (not
         implemented yet). Default value is ``"./"``.
     add_ons_enabled : bool
-        Flag that sets whether to addons are enabled (not implemented yet - 
+        Flag that sets whether to addons are enabled (not implemented yet -
         currently has no effect). Default value is ``True``
     pyqtgraph_inverted : bool
         Flag that sets whether pyqtgraph uses a white background and black
@@ -40,11 +43,12 @@ class Workspace(object):
     def __init__(self):
         # Set default values:
         self.name = "Default Workspace"
-        self.path = "./"
+        self.path = str(Path.home())
         self.add_ons_enabled = 1
         self.pyqtgraph_inverted = 0
         self.pyqtgraph_antialias = 1
         self.default_pen = None
+        self.parent = None
 
         self.configure()
 
@@ -53,7 +57,7 @@ class Workspace(object):
         return vars(self)
 
     def save(self, destination):
-        """Save this workspace to *destination* (of the form 
+        """Save this workspace to *destination* (of the form
         ``"/path/to/workspace.wsp"``)."""
 
         print("Saving current workspace to {} ...".format(destination))
@@ -120,6 +124,12 @@ class Workspace(object):
         # # Set other settings
         # <code>
 
+        # Set window settings
+        if self.parent is not None:
+            if isinstance(self.parent, analysis_window.AnalysisWindow):
+                if not self.add_ons_enabled:
+                    self.parent.global_toolbox.removeTab("Addon Manager")
+
         # # Set PyQtGraph settings
         if self.default_pen is None:
             if self.pyqtgraph_inverted:
@@ -141,3 +151,8 @@ class Workspace(object):
             pg.setConfigOption('antialias', False)
 
         print("Done.")
+
+    def set_parent_window(self, parent_window):
+        self.parent = parent_window
+        self.parent.CurrentWorkspace = self
+        self.configure()

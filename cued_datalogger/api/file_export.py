@@ -11,12 +11,14 @@ import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QListWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog,QCheckBox)
 from PyQt5.QtCore import  Qt
-
+from cued_datalogger.api.numpy_extensions import to_dB
+import pickle
 
 def export_to_mat(file,order, channel_set=None,back_comp = False):
     """
     Export data and metadata from ChannelsSet to a mat file.
-    Support backward compatibility with the oldlogger
+    Support backward compatibility with the old logger.
+    Still in alpha stage.
     
     Parameters
     ----------
@@ -57,7 +59,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
         if new_channel_set:
             return channel_set
     else:
-        # Save as the old format
+        # Save as the old format, with individual MAT file for each type of data
         sampling_rate = channel_set.get_channel_metadata(0,'sample_rate')
         calibration_factor = channel_set.get_channel_metadata(0,'calibration_factor')
         # Save Time Series
@@ -95,7 +97,7 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
                 sono_phase = channel_set.get_channel_data(order[0],'sonogram_phase')
                 sono_step = channel_set.get_channel_data(order[0],'sonogram_step')
                 n_samples = sono_data[0].shape[0]
-                variables = {'yson':sono_data,'freq':float(sampling_rate),
+                variables = {'yson':to_dB(np.abs(sono_data)),'freq':float(sampling_rate),
                              'dt2' :[0,0,1],'npts':float((n_samples-1)*2),
                              'sonstep':float(sono_step),'yphase': sono_phase}
                 time_series_fname = file[:-4]+'_sonogram.mat'
@@ -103,7 +105,15 @@ def export_to_mat(file,order, channel_set=None,back_comp = False):
             
 class DataExportWidget(QWidget):
     """
-    A proof-of-concept widget to show that exporting data is possible
+    A proof-of-concept widget to show that exporting data is possible.
+    Currently, it saves all of the available variables. Alpha stage.
+    
+    Attributes
+    ----------
+    cs : ChannelSet
+        Reference to the channelSet
+    order : list
+        The order of channels to be saved    
     """
     def __init__(self,parent):
         super().__init__(parent)
@@ -112,6 +122,9 @@ class DataExportWidget(QWidget):
         self.init_UI()
         
     def init_UI(self):
+        """
+        Construct the UI
+        """
         layout = QVBoxLayout(self)
         
         self.channel_listview = QListWidget(self)
@@ -123,6 +136,8 @@ class DataExportWidget(QWidget):
         shift_down_btn.clicked.connect(lambda: self.shift_list('down'))
         shift_btn_layout.addWidget(shift_up_btn )
         shift_btn_layout.addWidget(shift_down_btn )
+        self.pickle_export_btn = QPushButton('Export as Pickle',self)
+        self.pickle_export_btn.clicked.connect(self.pickle_file)
         self.back_comp_btn = QCheckBox('Backward Compatibility?',self)
         self.mat_export_btn = QPushButton('Export as MAT',self)
         self.mat_export_btn.clicked.connect(self.export_files)
@@ -131,16 +146,28 @@ class DataExportWidget(QWidget):
         layout.addWidget(QLabel('ChannelSet Saving Order',self))
         layout.addWidget(self.channel_listview)
         layout.addLayout(shift_btn_layout)
+        layout.addWidget(self.pickle_export_btn)
         layout.addWidget(self.back_comp_btn)
         layout.addWidget(self.mat_export_btn)
         
     def set_channel_set(self, channel_set):
+        """
+        Set the ChannelSet reference
+        """
         self.cs = channel_set
         self.order = list(range(len(self.cs)))
         self.update_list()
         self.channel_listview.setCurrentRow(0)
     
     def shift_list(self,mode):
+        """
+        Shift the channel saving order
+        
+        Parameter
+        ---------
+        mode : str
+            either 'up' or 'down', indicating the shifting direction
+        """
         ind = self.channel_listview.currentRow()
         if mode == 'up':
             if not ind == 0:
@@ -154,13 +181,18 @@ class DataExportWidget(QWidget):
         self.channel_listview.setCurrentRow(ind)
     
     def update_list(self):
+        """
+        Update the list with the current saving order
+        """
         self.channel_listview.clear()
         names = self.cs.get_channel_metadata(tuple(self.order),'name')
         full_names = [str(self.order[i])+' : '+names[i] for i in range(len(names))]
         self.channel_listview.addItems(full_names)
         
     def export_files(self):
-        # Get save URL from QFileDialog
+        """
+        Export the file to the url selected
+        """
         url = QFileDialog.getSaveFileName(self, "Export Data", "",
                                            "MAT Files (*.mat)")[0]
         if url:
@@ -168,7 +200,23 @@ class DataExportWidget(QWidget):
                 export_to_mat(url,tuple(self.order), self.cs,back_comp = True)
             else:
                 export_to_mat(url,tuple(self.order), self.cs)
-        
+      
+    def pickle_file(self):
+        '''
+        This is probably a temporary solution to saving data.
+        The pickle file is only intended for internal use only.
+        Please make sure no one tampers with the files.
+        Also, only open files that YOU have pickled.
+        '''
+        url = QFileDialog.getSaveFileName(self, "Export Data", "",
+                                           "Pickle Files (*.pickle)")[0]
+        if url:
+            saved_cs = ChannelSet(len(self.order))
+            for i,n in enumerate(self.order):
+                saved_cs.channels[i] = self.cs.channels[n]
+            with open(url,'wb') as f:
+                pickle.dump(saved_cs,f)
+    
 if __name__ == '__main__':
     cs = ChannelSet(4)
     cs.add_channel_dataset((0,1,2,3),'time_series',np.random.rand(5,1))

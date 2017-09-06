@@ -7,7 +7,7 @@ Workspaces provide a way for the user to set up, save, and load customised confi
 The ``.wsp`` format
 -------------------
 
-Workspaces are saved in a unique format, ``.wsp``. WSP files are effectively a list of the settings for the DataLogger, allowing the user to enable add ons, set display options and suchlike. 
+Workspaces are saved in a unique format, ``.wsp``. WSP files are effectively a list of the settings for the DataLogger, allowing the user to enable add ons, set display options and suchlike.
 An example of a `.wsp` file can be found in ``tests/test_workspace.wsp``.
 
 *Rules for a ``.wsp`` file*:
@@ -21,6 +21,15 @@ An example of a `.wsp` file can be found in ``tests/test_workspace.wsp``.
 * The only form of line that will be interpreted as a setting is ``variable_name=variable_value`` where ``variable_value`` can either be a string (``variable_name='example'``), integer ``variable_name=1``, or boolean (``variable_name=False``)
 
 * Hence comments may be inserted into the ``.wsp`` file. It is recommended to use Python comment syntax (``#`` and ``""" """``)
+
+
+Running the DataLogger with a Workspace
+---------------------------------------
+
+To specify a Workspace when running the DataLogger, use::
+
+    cued_datalogger -w /path/to/workspace.wsp
+
 
 The ``Workspace`` class
 -----------------------
