@@ -313,12 +313,13 @@ class CircleFitWidget(QWidget):
 
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted."""
-        # If no channel list is given
-        if not selected_channels:
-            self.channels = []
-        else:
-            self.channels = selected_channels
-            self.results.channels = selected_channels
+        self.channels = []
+        if selected_channels:
+            for channel in selected_channels:
+                if channel.is_dataset("TF"):
+                    self.channels.append(channel)
+
+        self.results.channels = self.channels
 
         # # Populate the plot lists
         self.transfer_function_list = []
@@ -491,12 +492,12 @@ class CircleFitResults(QGroupBox):
         # Create the child items for each channel for this peak if there's
         # more than one channel
         if len(self.channels) > 1:
-            for i in range(len(self.channels)):
+            for channel in self.channels:
                 channel_item = QTreeWidgetItem(peak_item,
-                                               ["Channel {}".format(i),
+                                               [channel.name,
                                                 "", "", "", "", ""])
                 autofit_channel_item = QTreeWidgetItem(autofit_peak_item,
-                                                       ["Channel {}".format(i),
+                                                       [channel.name,
                                                         "", "", "", "", ""])
                 for col in [1, 2, 3, 4]:
                     # Put comboboxes in the autofit tree

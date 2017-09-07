@@ -259,6 +259,7 @@ class AnalysisWindow(QMainWindow):
             self.cs.set_channel_metadata(i,{'sample_rate': 5000})
             self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
             self.cs.add_channel_dataset(i,'spectrum', [])
+            channel.name = "Channel {}".format(i)
         self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
         self.cs.add_channel_dataset(i,'spectrum', [])
 
