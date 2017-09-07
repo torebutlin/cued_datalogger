@@ -736,7 +736,7 @@ class AcquisitionWindow(QMainWindow):
         """
         Update the channel names, obtained from the ChannelSet
         """
-        names = self.live_chanset.get_channel_metadata(tuple(range(self.rec.channels)),'name')
+        names = self.live_chanset.channel_metadata(tuple(range(self.rec.channels)),'name')
         for n,name in enumerate(names):
             chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
             chan_btn.setText(name)

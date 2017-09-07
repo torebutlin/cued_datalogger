@@ -219,6 +219,7 @@ class CircleFitWidget(QWidget):
 
             # Update what is displayed on the nyquist plot
             self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
+
             self.nyquist_plot.autoRange()
 
     def update_from_table(self):
@@ -284,7 +285,7 @@ class CircleFitWidget(QWidget):
             phi = (phi + np.pi) % np.pi
         f = self.tf_reg - self.fitted_sdof_peak(self.w_reg, wr, zr, cr, phi)
         #return np.append(tf_real, tf_imag) - np.append(f.real, f.imag)
-        return float(np.sum(f*f.conj()))
+        return np.sum(f*f.conj()).real
 
     def sdof_get_parameters(self):
         """Fit a SDOF peak to the data with a least squares fit, using values
@@ -384,7 +385,7 @@ class CircleFitResults(QGroupBox):
         self.tree.setHeaderLabels(["Name",
                                    "Frequency (Hz)",
                                    "Damping ratio",
-                                   "Amplitude (dB)",
+                                   "Amplitude",
                                    "Phase (deg)",
                                    "Select"])
 
@@ -396,7 +397,7 @@ class CircleFitResults(QGroupBox):
         self.autofit_tree.setHeaderLabels(["Name",
                                            "Frequency (Hz)",
                                            "Damping ratio",
-                                           "Amplitude (dB)",
+                                           "Amplitude",
                                            "Phase (deg)",
                                            "Select"])
 
@@ -604,18 +605,18 @@ class CircleFitResults(QGroupBox):
                 # Find the average values of all the channels
                 avg_freq = 0
                 avg_damping = 0
-                avg_amplitude_dB = 0
+                avg_amplitude = 0
                 avg_phase_deg = 0
 
                 for channel_number in range(len(self.channels)):
                     avg_freq += self.get_frequency(peak_number, channel_number)
                     avg_damping += self.get_damping(peak_number, channel_number)
-                    avg_amplitude_dB += self.get_amplitude_dB(peak_number, channel_number)
+                    avg_amplitude += self.get_amplitude(peak_number, channel_number)
                     avg_phase_deg += self.get_phase_deg(peak_number, channel_number)
 
                 avg_freq /= len(self.channels)
                 avg_damping /= len(self.channels)
-                avg_amplitude_dB /= len(self.channels)
+                avg_amplitude /= len(self.channels)
                 avg_phase_deg /= len(self.channels)
 
                 # Set the peak item to display the averages
@@ -624,7 +625,7 @@ class CircleFitResults(QGroupBox):
                 if self.autofit_tree.itemWidget(autofit_item, 2).currentText() == "Auto":
                     self.tree.itemWidget(peak_item, 2).setValue(avg_damping)
                 if self.autofit_tree.itemWidget(autofit_item, 3).currentText() == "Auto":
-                    self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude_dB)
+                    self.tree.itemWidget(peak_item, 3).setValue(avg_amplitude)
                 if self.autofit_tree.itemWidget(autofit_item, 4).currentText() == "Auto":
                     self.tree.itemWidget(peak_item, 4).setValue(avg_phase_deg)
 
@@ -694,12 +695,12 @@ class CircleFitResults(QGroupBox):
                 return spinbox.value()
         else:
             return 0
-    """
+
 
     def get_amplitude(self, peak_number, channel_number=None):
-        """Return the amplitude of the peak given by *peak_number*. If
+    """    """Return the amplitude of the peak given by *peak_number*. If
         *channel_number* is given, return the amplitude of the given peak in
-        the given channel."""
+        the given channel.""""""
         peak_item = self.tree.topLevelItem(peak_number)
         if peak_item is not None:
             if channel_number is None:
@@ -711,8 +712,8 @@ class CircleFitResults(QGroupBox):
                 return from_dB(spinbox.value())
         else:
             return 0
-
-    def get_amplitude_dB(self, peak_number, channel_number=None):
+    """
+    def get_amplitude(self, peak_number, channel_number=None):
         """Return the amplitude of the peak given by *peak_number*. If
         *channel_number* is given, return the amplitude of the given peak in
         the given channel."""

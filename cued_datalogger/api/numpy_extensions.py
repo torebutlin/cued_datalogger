@@ -3,7 +3,13 @@ import numpy as np
 
 def to_dB(x):
     """A simple function that converts x to dB: ``20*np.log10(x)``"""
-    return 20*np.log10(x)
+    result = 20*np.log10(x)
+    """
+    not_finite = np.where(~ np.isfinite(result))[0]
+    for index in not_finite:
+        result[index] = 0
+    """
+    return result
 
 
 def from_dB(x):
@@ -11,7 +17,8 @@ def from_dB(x):
     ``10**(x/20)``
 
     """
-    return 10**(x/20)
+    result = 10**(x/20)
+    return result
 
 
 class MatlabList(list):
