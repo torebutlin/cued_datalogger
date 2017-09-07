@@ -309,9 +309,18 @@ class CustomViewBox(pg.ViewBox):
         menu.addMenu(self.cparent.getPlotItem().ctrlMenu)
         menu.popup(ev.screenPos().toPoint())
 
-    # Temporarily disable the autorange
-    #def autoRange(self, padding= None, items=None):
-    #    super().autoRange(padding=padding, items= None)
+    def autoRange(self, padding=None, items=None):
+        interactive_plotwidget = self.cparent.parent()
+        plot_item = interactive_plotwidget.PlotItem
+
+        if items is None:
+            items = plot_item.items
+        if interactive_plotwidget.vline in items:
+            items.remove(interactive_plotwidget.vline)
+        if interactive_plotwidget.hline in items:
+            items.remove(interactive_plotwidget.hline)
+
+        super().autoRange(padding=padding, items=items)
         #r = self.viewRect()
         #self.setLimits(xMin = r.left(), xMax = r.right())
 
