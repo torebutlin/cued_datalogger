@@ -112,27 +112,23 @@ if use_anaconda and operating_system == "windows":
         print("\t python3.dll file found, so DataLogger will work "
               "with this Anaconda installation.\n")
     else:
-        user_input = input("\tNo python3.dll file found. "
-                           "\tDo you want to download it? [y]/n: ")
-        if user_input is '' or 'y':
-            dll_url = ("https://github.com/torebutlin/cued_datalogger/tree/"
-                       "master/lib/python3.dll")
-            print("Downloading from {}...".format(dll_url))
-            for location in anaconda_paths:
-                # Download the dll
-                try:
-                    urllib.request.urlretrieve(dll_url,
-                                               location + 'Library/bin/python3.dll')
-                except:
-                    print("Error downloading python3.dll.")
-                    traceback.print_exc()
-                    sys.exit(1)
-                print("python3.dll downloaded to {}.\n".format(location))
-        elif user_input is 'n':
-            print("Not downloading python3.dll. Aborting install.\n")
-            sys.exit(1)
-        else:
-            print("Please enter 'y' or 'n'.")
+        # TODO: Currently this script installs the python3.dll automatically
+        # with no user input prompting. It might be nice to have it prompt.
+        print("No python3.dll found.")
+        dll_url = ("https://github.com/torebutlin/cued_datalogger/tree/"
+                   "master/lib/python3.dll")
+
+        print("Downloading from {}...".format(dll_url))
+        for location in anaconda_paths:
+            # Download the dll
+            try:
+                urllib.request.urlretrieve(dll_url,
+                                           location + 'Library/bin/python3.dll')
+            except:
+                print("Error downloading python3.dll.")
+                traceback.print_exc()
+                sys.exit(1)
+            print("python3.dll downloaded to {}.\n".format(location))
 
 
 print("Configuring dependency list...")
@@ -180,7 +176,7 @@ if use_anaconda:
 # As a result, it was decided to install all the packages this way rather than
 # using the setuptools install_requires parameter.
 for package in dependency_list:
-    pip.main(['install', package])
+    pip.main(['install', '-v', package])
 
 
 print("\nContinuing to setup...\n")
