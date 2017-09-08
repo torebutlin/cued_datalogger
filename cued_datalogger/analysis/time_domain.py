@@ -77,9 +77,9 @@ class TimeToolbox(Toolbox):
         for i in range(len(self.cs)):
             time_sig = self.cs.channel_data(i,"time_series")
             if not time_sig.shape[0] == 0:
-                #window = np.hanning(len(time_sig))
-                cycle=np.linspace(0,2*np.pi,time_sig.shape[0])
-                window=1-np.cos(cycle);
+                window = np.hanning(len(time_sig))
+                #cycle=np.linspace(0,2*np.pi,time_sig.shape[0])
+                #window=1-np.cos(cycle);
                 spectrum = rfft(time_sig * window)
                 if not self.cs.channels[i].is_dataset("spectrum"):
                     self.cs.add_channel_dataset(i, "spectrum", spectrum)

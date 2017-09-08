@@ -266,7 +266,7 @@ class AnalysisWindow(QMainWindow):
     def open_acquisition_window(self):
         if not self.acquisition_window:
             recType, configs = self.dev_configUI.read_device_config()
-            if not any([not c for c in configs]):
+            if not any([c==None for c in configs]):
                 self.acquisition_window = AcquisitionWindow(self, recType, configs)
             else:
                 self.acquisition_window = AcquisitionWindow(self)
