@@ -276,8 +276,10 @@ class AnalysisWindow(QMainWindow):
 
     def receive_data(self, tab_number=0):
         self.configure_channelset()
-        self.plot_time_series()
-        self.plot_fft()
+        self.plot_time_series(switch_to_tab=False)
+        self.plot_fft(switch_to_tab=False)
+        self.plot_sonogram(switch_to_tab=False)
+        self.circle_fitting(switch_to_tab=False)
 
         if self.sender() == self.acquisition_window:
             self.display_tabwidget.setCurrentIndex(tab_number)
@@ -295,8 +297,9 @@ class AnalysisWindow(QMainWindow):
         self.frequency_toolbox.set_channel_set(self.cs)
         self.export_widget.set_channel_set(self.cs)
 
-    def plot_time_series(self):
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
+    def plot_time_series(self, switch_to_tab=True):
+        if switch_to_tab:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
         self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
 
     def set_freq_plot_type(self, plot_type):
@@ -305,26 +308,30 @@ class AnalysisWindow(QMainWindow):
         elif plot_type == 'Transfer Function':
             self.plot_tf()
 
-    def plot_fft(self):
-        # Switch to frequency domain tab
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
+    def plot_fft(self, switch_to_tab=True):
+        if switch_to_tab:
+            # Switch to frequency domain tab
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.set_view_type("spectrum")
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
         self.frequency_toolbox.set_view_type('Fourier Transform')
 
-    def plot_tf(self):
+    def plot_tf(self, switch_to_tab=True):
+        if switch_to_tab:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         #TODO: calculate TF function if none is found
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
         self.display_tabwidget.freqdomain_widget.set_view_type("TF")
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
         self.frequency_toolbox.set_view_type('Transfer Function')
 
-    def plot_sonogram(self):
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
+    def plot_sonogram(self, switch_to_tab=True):
+        if switch_to_tab:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
         self.display_tabwidget.sonogram_widget.set_selected_channels(self.cs.channels)
 
-    def circle_fitting(self):
-        self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
+    def circle_fitting(self, switch_to_tab=True):
+        if switch_to_tab:
+            self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
         self.display_tabwidget.circle_widget.set_selected_channels(self.cs.channels)
 
     def add_import_data(self,mode):
