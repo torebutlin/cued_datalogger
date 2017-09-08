@@ -87,8 +87,8 @@ class CircleFitWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
 
-        self.w = np.zeros(1)
-        self.tf = np.zeros(1)
+        self.omega = np.zeros(1)
+        self.transfer_function = np.zeros(1)
         self.channels = []
         self.current_peak = 0
 
@@ -176,20 +176,20 @@ class CircleFitWidget(QWidget):
     def update_from_region(self, region_lower_bound, region_upper_bound):
         for i, channel in enumerate(self.channels):
             self.freq = channel.data("frequency")
-            self.w = channel.data("omega")
-            self.tf = channel.data("TF")
+            self.omega = channel.data("omega")
+            self.transfer_function = channel.data("transfer_function")
             self.transfer_function_type = channel.transfer_function_type
 
             f_in_region = (self.freq >= region_lower_bound) \
                               & (self.freq <= region_upper_bound)
 
-            self.w_reg = np.extract(f_in_region, self.w)
-            self.tf_reg = np.extract(f_in_region, self.tf)
+            self.omega_reg = np.extract(f_in_region, self.omega)
+            self.transfer_function_reg = np.extract(f_in_region, self.transfer_function)
 
             try:
                 # Recalculate the geometric circle fit
-                self.x0, self.y0, self.R0 = fit_circle_to_data(self.tf_reg.real,
-                                                               self.tf_reg.imag)
+                self.x0, self.y0, self.R0 = fit_circle_to_data(self.transfer_function_reg.real,
+                                                               self.transfer_function_reg.imag)
             except:
                 print("Error in fitting geometric circle.")
                 traceback.print_exc()
@@ -218,13 +218,13 @@ class CircleFitWidget(QWidget):
 
 
             # Update the peak
-            w_fit = np.linspace(self.w.min(), self.w.max(), self.w.size*10)
+            w_fit = np.linspace(self.omega.min(), self.omega.max(), self.omega.size*10)
             peak = sdof_modal_peak(w_fit, wr, zr, cr, phi)
             self.peaks[i].setData(w_fit / (2*np.pi), to_dB(np.abs(peak)))
             self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
             # Update what is displayed on the nyquist plot
-            self.nyquist_plot_list[i].setData(self.tf_reg.real, self.tf_reg.imag)
+            self.nyquist_plot_list[i].setData(self.transfer_function_reg.real, self.transfer_function_reg.imag)
 
             self.nyquist_plot.autoRange()
 
@@ -236,7 +236,7 @@ class CircleFitWidget(QWidget):
             phi = self.results.get_phase_rad(self.current_peak, i)
 
             # Update the peak
-            peak = sdof_modal_peak(self.w, wr, zr, cr, phi)
+            peak = sdof_modal_peak(self.omega, wr, zr, cr, phi)
             self.peaks[i].setData(self.freq, to_dB(np.abs(peak)))
             self.nyquist_plot_peaks_list[i].setData(peak.real, peak.imag)
 
@@ -289,7 +289,7 @@ class CircleFitWidget(QWidget):
         if cr < 0:
             cr *= -1
             phi = (phi + np.pi) % np.pi
-        f = self.fitted_sdof_peak(self.w_reg, wr, zr, cr, phi) - self.tf_reg
+        f = self.fitted_sdof_peak(self.omega_reg, wr, zr, cr, phi) - self.transfer_function_reg
         return np.sum(f*f.conj()).real
 
 
@@ -299,13 +299,13 @@ class CircleFitWidget(QWidget):
         # # Find initial parameters for curve fitting
         # Find where the peak is - the maximum magnitude of the amplitude
         # within the region
-        i = np.where(np.abs(self.tf_reg) == np.abs(self.tf_reg).max())[0][0]
+        i = np.where(np.abs(self.transfer_function_reg) == np.abs(self.transfer_function_reg).max())[0][0]
         # Take the frequency at the max amplitude as a
         # first resonant frequency guess
-        wr0 = self.w_reg[i]
+        wr0 = self.omega_reg[i]
         # Take the max amplitude as a first guess for the modal constant
-        cr0 = np.abs(from_dB(self.tf_reg[i]))
-        phi0 = np.angle(self.tf_reg[i])
+        cr0 = np.abs(from_dB(self.transfer_function_reg[i]))
+        phi0 = np.angle(self.transfer_function_reg[i])
         # First guess of damping factor of 1% (Q of 100)
         zr0 = 0.01
 
@@ -315,7 +315,7 @@ class CircleFitWidget(QWidget):
         #wr, zr, cr, phi = so.minimize(self.residuals, parameters0).x
         wr, zr, cr, phi = \
             so.minimize(self.residuals, parameters0, method='SLSQP',
-                        bounds=[(self.w_reg.min(), self.w_reg.max()),
+                        bounds=[(self.omega_reg.min(), self.omega_reg.max()),
                                 (None, None),
                                 (None, None),
                                 (None, None)]).x
@@ -327,7 +327,7 @@ class CircleFitWidget(QWidget):
         self.channels = []
         if selected_channels:
             for channel in selected_channels:
-                if channel.is_dataset("TF"):
+                if channel.is_dataset("transfer_function"):
                     self.channels.append(channel)
 
         self.results.channels = self.channels
@@ -339,12 +339,12 @@ class CircleFitWidget(QWidget):
         self.nyquist_plot_peaks_list = []
         for channel in self.channels:
             transfer_function = pg.PlotDataItem(channel.data("frequency"),
-                                                to_dB(np.abs(channel.data("TF"))),
+                                                to_dB(np.abs(channel.data("transfer_function"))),
                                                 pen=channel.colour)
             self.transfer_function_list.append(transfer_function)
 
-            nyquist_plot = pg.PlotDataItem(channel.data("TF").real,
-                                           channel.data("TF").imag,
+            nyquist_plot = pg.PlotDataItem(channel.data("transfer_function").real,
+                                           channel.data("transfer_function").imag,
                                            pen=None,
                                            symbol='o',
                                            symbolPen=None,
@@ -937,7 +937,7 @@ if __name__ == '__main__':
 
     cs = ChannelSet()
 
-    #c.load_tf(cs)
+    #c.load_transfer_function(cs)
     import_from_mat("../../tests/transfer_function_grid.mat", cs)
     c.transfer_function_type = 'acceleration'
     c.set_selected_channels(cs.channels)

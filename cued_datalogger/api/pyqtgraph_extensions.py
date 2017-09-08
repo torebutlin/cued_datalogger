@@ -199,20 +199,23 @@ class InteractivePlotWidget(QWidget):
 
         if x is not None and y is not None:
             # Update the increment of the spinboxes
-            self.lower_box.setSingleStep(x.max()/100)
-            self.upper_box.setSingleStep(x.max()/100)
+            try:
+                self.lower_box.setSingleStep(x.max()/100)
+                self.upper_box.setSingleStep(x.max()/100)
 
-            # Set the linear region to be in view
-            #self.lower_box.setValue(x.max()*0.4)
-            #self.upper_box.setValue(x.max()*0.6)
-            #self.lower_box.setValue(0)
-            #self.upper_box.setValue(0)
+                # Set the linear region to be in view
+                #self.lower_box.setValue(x.max()*0.4)
+                #self.upper_box.setValue(x.max()*0.6)
+                #self.lower_box.setValue(0)
+                #self.upper_box.setValue(0)
 
-            # Set the limits of the PlotItem
-            self.PlotItem.setLimits(xMin=x.min(), xMax=x.max())
-            self.PlotItem.setRange(xRange=(x.min(), x.max()),
-                                   yRange=(y.min(), y.max()),
-                                   padding=0.2)
+                # Set the limits of the PlotItem
+                self.PlotItem.setLimits(xMin=x.min(), xMax=x.max())
+                self.PlotItem.setRange(xRange=(x.min(), x.max()),
+                                       yRange=(y.min(), y.max()),
+                                       padding=0.2)
+            except:
+                print("Error in scaling limits.")
 
 
     def getPlotItem(self):

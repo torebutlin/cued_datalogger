@@ -60,7 +60,7 @@ except ImportError:
     print("ImportError: Seems like you don't have pyDAQmx modules")
     NI_drivers = False
 from cued_datalogger.analysis.frequency_domain import (compute_transfer_function,
-                                                   compute_autospec,compute_crossspec)
+                                                   calculate_auto_spectrum, calculate_cross_spectrum)
 
 from cued_datalogger.api.channel import ChannelSet
 from cued_datalogger.api.toolbox import Toolbox, MasterToolbox
@@ -525,13 +525,13 @@ class AcquisitionWindow(QMainWindow):
                     self.RecUI.switch_rec_box.setEnabled(True)
                     return
 
-            self.autospec_in_tally.append(compute_autospec(input_chan_data))
+            self.autospec_in_tally.append(calculate_auto_spectrum(input_chan_data))
 
             autospec_out = np.zeros((ft_datas.shape[0],ft_datas.shape[1] - 1),dtype = np.complex)
             crossspec = np.zeros(autospec_out.shape,dtype = np.complex)
             for i,chan in enumerate(chans):
-                autospec_out[:,i] = compute_autospec(ft_datas[:,chan])
-                crossspec[:,i] = compute_crossspec(input_chan_data,ft_datas[:,chan])
+                autospec_out[:,i] = calculate_auto_spectrum(ft_datas[:,chan])
+                crossspec[:,i] = calculate_cross_spectrum(input_chan_data,ft_datas[:,chan])
 
             self.autospec_out_tally.append(autospec_out)
             self.crossspec_tally.append(crossspec)

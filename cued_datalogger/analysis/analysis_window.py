@@ -120,7 +120,6 @@ class AnalysisWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setGeometry(500,300,800,500)
         self.setWindowTitle('AnalysisWindow')
 
         #self.new_cs = ChannelSet()
@@ -128,7 +127,7 @@ class AnalysisWindow(QMainWindow):
         self.init_ui()
 
         self.setFocus()
-        self.show()
+        self.showMaximized()
 
     def init_toolbox(self):
         """Create the master toolbox"""
@@ -136,17 +135,17 @@ class AnalysisWindow(QMainWindow):
 
         # # Time toolbox
         self.time_toolbox = TimeToolbox(self.toolbox)
-        self.time_toolbox.sig_converted_FFT.connect(self.plot_fft)
+        self.time_toolbox.sig_convert_to_fft.connect(self.plot_fft)
         self.time_toolbox.sig_convert_to_sonogram.connect(self.plot_sonogram)
 
         # # Frequency toolbox
         self.frequency_toolbox = FrequencyToolbox(self.toolbox)
-        self.frequency_toolbox.set_channel_set(self.cs)
-        self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
-        self.frequency_toolbox.sig_view_type_changed.connect(self.set_freq_plot_type)
-        self.frequency_toolbox.sig_converted_TF.connect(self.plot_tf)
-        self.frequency_toolbox.sig_coherence_plot.connect(self.display_tabwidget.freqdomain_widget.switch_cor_plot)
+        self.frequency_toolbox.sig_calculate_transfer_function.connect(self.display_tabwidget.freqdomain_widget.calculate_transfer_function)
         self.frequency_toolbox.sig_convert_to_circle_fit.connect(self.circle_fitting)
+        self.frequency_toolbox.sig_plot_frequency_spectrum.connect(lambda: self.display_tabwidget.freqdomain_widget.update_plot(False))
+        self.frequency_toolbox.sig_plot_transfer_function.connect(lambda: self.display_tabwidget.freqdomain_widget.update_plot(True))
+        self.frequency_toolbox.sig_plot_type_changed.connect(self.display_tabwidget.freqdomain_widget.set_plot_type)
+        self.frequency_toolbox.sig_show_coherence.connect(self.display_tabwidget.freqdomain_widget.set_show_coherence)
 
         # # Sonogram toolbox
         self.sonogram_toolbox = SonogramToolbox(self.toolbox)
@@ -159,7 +158,6 @@ class AnalysisWindow(QMainWindow):
         self.circle_fit_toolbox = CircleFitToolbox(self.toolbox)
         self.circle_fit_toolbox.sig_show_transfer_fn.connect(self.display_tabwidget.circle_widget.show_transfer_fn)
         self.circle_fit_toolbox.sig_construct_transfer_fn.connect(self.display_tabwidget.circle_widget.construct_transfer_fn)
-        #self.circle_fit_toolbox.sig_autofit_parameter_change.connect(self.display_tabwidget.circle_widget.update_autofit_parameters)
 
         self.toolbox.add_toolbox(self.time_toolbox)
         self.toolbox.add_toolbox(self.frequency_toolbox)
@@ -181,12 +179,7 @@ class AnalysisWindow(QMainWindow):
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.timedomain_widget.set_selected_channels)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.freqdomain_widget.set_selected_channels)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.sonogram_widget.set_selected_channels)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.sonogram_toolbox.set_selected_channels)
-        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.circle_widget.set_selected_channels)
-
+        self.channel_select_widget.sig_channel_selection_changed.connect(self.display_tabwidget.currentWidget().set_selected_channels)
         self.global_toolbox.addTab(self.channel_select_widget, 'Channel Selection')
 
         # # Channel Metadata
@@ -237,7 +230,6 @@ class AnalysisWindow(QMainWindow):
         # Create the global toolbox
         self.init_global_master_toolbox()
 
-        self.tfplots = []
         self.configure_channelset()
         self.plot_time_series()
         #self.plot_fft()
@@ -293,48 +285,41 @@ class AnalysisWindow(QMainWindow):
     def configure_channelset(self):
         self.channel_select_widget.set_channel_set(self.cs)
         self.channel_metadata_widget.set_channel_set(self.cs)
-        self.time_toolbox.set_channel_set(self.cs)
-        self.frequency_toolbox.set_channel_set(self.cs)
         self.export_widget.set_channel_set(self.cs)
 
     def plot_time_series(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.display_tabwidget.timedomain_widget)
-        self.display_tabwidget.timedomain_widget.set_selected_channels(self.cs.channels)
-
-    def set_freq_plot_type(self, plot_type):
-        if plot_type == 'Fourier Transform':
-            self.plot_fft()
-        elif plot_type == 'Transfer Function':
-            self.plot_tf()
+        self.display_tabwidget.timedomain_widget.set_selected_channels(self.channel_select_widget.selected_channels())
 
     def plot_fft(self, switch_to_tab=True):
         if switch_to_tab:
             # Switch to frequency domain tab
             self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
-        self.display_tabwidget.freqdomain_widget.set_view_type("spectrum")
-        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
-        self.frequency_toolbox.set_view_type('Fourier Transform')
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.channel_select_widget.selected_channels())
+        self.display_tabwidget.freqdomain_widget.calculate_spectrum()
+        self.frequency_toolbox.set_plot_spectrum()
 
     def plot_tf(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.display_tabwidget.freqdomain_widget)
-        #TODO: calculate TF function if none is found
-        self.display_tabwidget.freqdomain_widget.set_view_type("TF")
+        self.display_tabwidget.freqdomain_widget.set_selected_channels(self.channel_select_widget.selected_channels())
+        # TODO: calculate TF function if none is found
+        self.display_tabwidget.freqdomain_widget.calculate_transfer_function()
+        self.frequency_toolbox.set_plot_transfer_function()
         self.display_tabwidget.freqdomain_widget.set_selected_channels(self.cs.channels)
-        self.frequency_toolbox.set_view_type('Transfer Function')
 
     def plot_sonogram(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.display_tabwidget.sonogram_widget)
-        self.display_tabwidget.sonogram_widget.set_selected_channels(self.cs.channels)
+        self.display_tabwidget.sonogram_widget.set_selected_channels(self.channel_select_widget.selected_channels())
 
     def circle_fitting(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.display_tabwidget.circle_widget)
-        self.display_tabwidget.circle_widget.set_selected_channels(self.cs.channels)
+        self.display_tabwidget.circle_widget.set_selected_channels(self.channel_select_widget.selected_channels())
 
-    def add_import_data(self,mode):
+    def add_import_data(self, mode):
         if mode == 'Extend':
             self.cs.channels.extend(self.import_widget.new_cs.channels)
         elif mode == 'Replace':

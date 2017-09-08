@@ -97,7 +97,7 @@ def import_from_mat(file, channel_set=None):
         if i < num_spectrum_datasets:
             if is_transfer_function:
                 channel_set.add_channel_dataset(i,
-                                                "TF",
+                                                "transfer_function",
                                                  spectrum[i],
                                                  ' ')
             else:
