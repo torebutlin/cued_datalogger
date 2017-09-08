@@ -319,9 +319,9 @@ class AcquisitionWindow(QMainWindow):
         # get data from the plot widgets
         if type(arg) == pg.PlotDataItem:
             num = self.timeplot.check_line(arg)
-            if not num == None:
+            if num == None:
                 num = self.freqplot.check_line(arg)
-                self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
+            self.chanconfig_UI.chans_num_box.setCurrentIndex(num)
         else:
             num = arg
 
