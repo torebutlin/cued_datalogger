@@ -4,32 +4,32 @@ It uses PyAudio to do so.
 Please check the PyAudio Documentation for more information.
 
 Typical example of using the module:
->>>import myRecorder as mR
->>>recorder = mR.Recorder()
-Channels: 1
-Rate: 44100
-Chunk size: 1024
-Number of chunks: 4
-You are using pyAudio for recording
-Device not found, reverting to default
-Selected device: Line (3- U24XL with SPDIF I/O)
->>>recorder.stream_init()
-stream already started
-Input latency: 2.322e-02
-Output latency: 0.000e+00
-Read Available: -9977
-Write Available: -9976
-True
->>>recorder.record_init()
-Recording function is ready! Use record_start() to start
-True
->>>recorder.record_start()
-stream already started
-Recording Start!
-True
->>>Recording Done! Please flush the data with flush_record_data().
-data = recorder.flush_record_data()
->>>recorder.close()
+    | >>>import myRecorder as mR
+    | >>>recorder = mR.Recorder()
+    | Channels: 1
+    | Rate: 44100
+    | Chunk size: 1024
+    | Number of chunks: 4
+    | You are using pyAudio for recording
+    | Device not found, reverting to default
+    | Selected device: Line (3- U24XL with SPDIF I/O)
+    | >>>recorder.stream_init()
+    | stream already started
+    | Input latency: 2.322e-02
+    | Output latency: 0.000e+00
+    | Read Available: -9977
+    | Write Available: -9976
+    | True
+    | >>>recorder.record_init()
+    | Recording function is ready! Use record_start() to start
+    | True
+    | >>>recorder.record_start()
+    | stream already started
+    | Recording Start!
+    | True
+    | >>>Recording Done! Please flush the data with flush_record_data().
+    | data = recorder.flush_record_data()
+    | >>>recorder.close()
 """
 
 from cued_datalogger.acquisition.RecorderParent import RecorderParent

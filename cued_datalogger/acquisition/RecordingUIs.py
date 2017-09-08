@@ -7,7 +7,7 @@ This module contains the widget classes to the acquisition window.
 However, they are not limited to that window, and can be reused for other
 window, like the analysis window.
 
-Attribute
+Attributes
 ----------
 NI_DRIVERS: bool
     Indicates whether NIDAQmx drivers and pyDAQmx module are installed
