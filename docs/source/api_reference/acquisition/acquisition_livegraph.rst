@@ -1,6 +1,7 @@
 =======================
 Acquisition Live Graphs
 =======================
+.. automodule:: cued_datalogger.acquisition.RecordingGraph
 
 .. autoclass:: cued_datalogger.acquisition.RecordingGraph.LiveGraph
   :members:

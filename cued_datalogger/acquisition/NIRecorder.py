@@ -4,29 +4,29 @@ It uses PyDAQmx to do so, but requires NIDAQmx drivers to function.
 Please check the PyDAQMx and NIDAQmx C API reference for more information.
 
 Typical example of using the module:
->>>import myRecorder as NIR
->>>recorder = NIR.Recorder()
-Channels: 1
-Rate: 30000
-Chunk size: 1000
-Number of chunks: 4
-You are using National Instrument for recording
-Input device name not found, using the first device
-Selected devices: Dev3
->>>recorder.stream_init()
-Channels Name: Dev3/ai0
-True
->>>recorder.record_init()
-Recording function is ready! Use record_start() to start
-True
->>>recorder.record_start()
-stream already started
-Recording Start!
-True
->>>Recording Done! Please flush the data with flush_record_data().
-data = recorder.flush_record_data()
-Data flushed
->>>recorder.close()
+    | >>>import myRecorder as NIR
+    | >>>recorder = NIR.Recorder()
+    | Channels: 1
+    | Rate: 30000
+    | Chunk size: 1000
+    | Number of chunks: 4
+    | You are using National Instrument for recording
+    | Input device name not found, using the first device
+    | Selected devices: Dev3
+    | >>>recorder.stream_init()
+    | Channels Name: Dev3/ai0
+    | True
+    | >>>recorder.record_init()
+    | Recording function is ready! Use record_start() to start
+    | True
+    | >>>recorder.record_start()
+    | stream already started
+    | Recording Start!
+    | True
+    | >>>Recording Done! Please flush the data with flush_record_data().
+    | data = recorder.flush_record_data()
+    | Data flushed
+    | >>>recorder.close()
 """
 from cued_datalogger.acquisition.RecorderParent import RecorderParent
 

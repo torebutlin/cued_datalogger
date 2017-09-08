@@ -1,6 +1,7 @@
 ===================
 Acquisition Widgets
 ===================
+.. automodule:: cued_datalogger.acquisition.RecordingUIs
 
 .. autoclass:: cued_datalogger.acquisition.RecordingUIs.BaseWidget
   :members:

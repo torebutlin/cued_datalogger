@@ -6,7 +6,7 @@ Created on Thu Aug 24 17:35:00 2017
 
 This module contains the live graph classes to the acquisition window.
 
-Attribute
+Attributes
 ----------
 CHANLVL_FACTOR: float
     Not used
