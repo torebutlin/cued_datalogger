@@ -1,7 +1,7 @@
 import sys,traceback
 
 from cued_datalogger.api.numpy_extensions import to_dB
-from cued_datalogger.api.pyqt_widgets import BaseNControl, MatplotlibCanvas
+from cued_datalogger.api.pyqt_extensions import BaseNControl, MatplotlibCanvas
 from cued_datalogger.api.pyqtgraph_extensions import ColorMapPlotWidget
 from cued_datalogger.api.toolbox import Toolbox
 

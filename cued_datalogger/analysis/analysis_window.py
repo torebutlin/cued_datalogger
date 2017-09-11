@@ -315,6 +315,7 @@ class AnalysisWindow(QMainWindow):
         # Set all the widget channels
         for i in range(self.display_tabwidget.count()):
             self.display_tabwidget.widget(i).set_selected_channels(channels)
+        self.sonogram_toolbox.set_selected_channels(channels)
 
 if __name__ == '__main__':
     app = 0

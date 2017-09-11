@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy.signal import ricker, cwt
 
-from cued_datalogger.api.pyqt_widgets import MatplotlibCanvas
+from cued_datalogger.api.pyqt_extensions import MatplotlibCanvas
 
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QSlider, QLabel, QSpinBox, QHBoxLayout, QGridLayout, QComboBox
 

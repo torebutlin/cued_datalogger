@@ -218,6 +218,7 @@ class AcquisitionWindow(QMainWindow):
     #-----------------------EXPERIMENTAL STYLING----------------------------
         #self.main_splitter.setFrameShape(QFrame.Panel)
         #self.main_splitter.setFrameShadow(QFrame.Sunken)
+        """
         self.main_widget.setStyleSheet('''
         .QWidget{
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -250,6 +251,7 @@ class AcquisitionWindow(QMainWindow):
                 border-radius: 4px;
             }
         ''')
+        """
 
     #----------------------SIGNAL CONNECTIONS---------------------------
         self.chantoggle_UI.sigToggleChanged.connect(self.timeplot.toggle_plotline)

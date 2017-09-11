@@ -5,7 +5,7 @@ if __name__ == '__main__':
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph import ImageItem
-from cued_datalogger.api.pyqt_widgets import matplotlib_lookup_table
+from cued_datalogger.api.pyqt_extensions import matplotlib_lookup_table
 from PyQt5.QtWidgets import(QWidget,QMenu,QAction,QActionGroup,QWidgetAction,QGridLayout,
                             QCheckBox,QRadioButton,QLineEdit,QSpinBox,QComboBox,
                             QLabel, QApplication, QVBoxLayout, QHBoxLayout, QPushButton)
