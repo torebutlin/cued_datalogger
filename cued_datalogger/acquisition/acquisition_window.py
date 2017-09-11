@@ -506,7 +506,7 @@ class AcquisitionWindow(QMainWindow):
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'Normal':
             # Send data normally
-            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'TF',[])
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'transfer_function',[])
             self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
             self.save_data(0)
         elif rec_mode == 'TF Avg.':
@@ -542,7 +542,7 @@ class AcquisitionWindow(QMainWindow):
             cross_sum = np.array(self.crossspec_tally).sum(axis = 0)
             for i,chan in enumerate(chans):
                 tf_avg,cor = compute_transfer_function(auto_in_sum,auto_out_sum[:,i],cross_sum[:,i])
-                self.live_chanset.add_channel_dataset(chan,'TF',tf_avg)
+                self.live_chanset.add_channel_dataset(chan,'transfer_function',tf_avg)
                 self.live_chanset.add_channel_dataset(chan,'coherence',cor)
 
             # Update the average count and send the data
