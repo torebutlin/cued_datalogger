@@ -155,15 +155,36 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         self.freqs = np.abs(self.freqs[:self.freqs.size // 2 + 1])
         self.FT = self.FT[:, :self.FT.shape[1] // 2 + 1]
 
-        self.channel.add_dataset("sonogram_frequency", data=self.freqs, units="Hz")
-        self.channel.add_dataset("sonogram_omega", data=self.freqs*2*np.pi, units="rad")
-        self.channel.add_dataset("sonogram_time", data=self.times, units="s")
-        #self.channel.add_dataset("sonogram", data=self.FT, units=None)
-        self.channel.add_dataset("sonogram", data=self.FT, units=None)
+        if not self.channel.is_dataset("sonogram_frequency"):
+            self.channel.add_dataset("sonogram_frequency", data=self.freqs, units="Hz")
+        else:
+            self.channel.set_data("sonogram_frequency", self.freqs)
 
-        # For backwards compatibility (and probably decay rate calculation in the future)
-        self.channel.add_dataset("sonogram_phase", data=np.angle(self.FT), units=None)
-        self.channel.add_dataset("sonogram_step", data=self.window_width // self.window_overlap_fraction, units=None)
+        if not self.channel.is_dataset("sonogram_omega"):
+            self.channel.add_dataset("sonogram_omega", data=self.freqs*2*np.pi, units="rad")
+        else:
+            self.channel.set_data("sonogram_omega", self.freqs*2*np.pi)
+
+        if not self.channel.is_dataset("sonogram_time"):
+            self.channel.add_dataset("sonogram_time", data=self.times, units="s")
+        else:
+            self.channel.set_data("sonogram_time", self.times)
+
+        if not self.channel.is_dataset("sonogram"):
+            self.channel.add_dataset("sonogram", data=self.FT, units=None)
+        else:
+            self.channel.set_data("sonogram", self.FT)
+
+        if not self.channel.is_dataset("sonogram_phase"):
+            self.channel.add_dataset("sonogram_phase", data=np.angle(self.FT), units='rad')
+        else:
+            self.channel.set_data("sonogram_phase", np.angle(self.FT))
+
+        if not self.channel.is_dataset("sonogram_step"):
+            self.channel.add_dataset("sonogram_step", data=self.window_width // self.window_overlap_fraction, units=None)
+        else:
+            self.channel.set_data("sonogram_step", self.window_width // self.window_overlap_fraction)
+
 
     def update_plot(self):
         """Recalculate the sonogram, clear the canvas and replot."""
@@ -335,6 +356,8 @@ class SonogramToolbox(Toolbox):
         else:
             self.channel = selected_channels[0]
 
+        print("Sonogram channel:" + self.channel.name)
+
         if hasattr(self, 'contour_plot'):
             self.contour_plot.set_selected_channels(selected_channels)
 
@@ -369,7 +392,13 @@ if __name__ == '__main__':
 
     toolbox = SonogramToolbox(w)
     displaywidget = SonogramDisplayWidget()
-    displaywidget.update_plot(sig)
+
+    from cued_datalogger.api.channel import Channel
+    displaywidget.channel = Channel()
+    displaywidget.channel.add_dataset("time_series", data=sig)
+    displaywidget.channel.add_dataset("time", data=t)
+
+    displaywidget.update_plot()
 
     hbox.addWidget(toolbox)
     hbox.addWidget(displaywidget)
