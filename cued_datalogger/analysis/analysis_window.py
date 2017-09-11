@@ -188,7 +188,9 @@ class AnalysisWindow(QMainWindow):
 
         self.global_master_toolbox.add_toolbox(self.global_toolbox)
 
-    def update_channelset(self, cs):
+    def update_channelset(self, cs=None):
+        if cs is None:
+            self.cs = cs
         self.cs = cs
         self.channel_select_widget.set_channel_set(self.cs)
         self.channel_select_widget.set_channel_set(self.cs)
@@ -253,11 +255,11 @@ class AnalysisWindow(QMainWindow):
             self.acquisition_window.show()
 
     def receive_data(self, tab_number=0):
-        self.upd()
-        self.plot_time_series(switch_to_tab=False)
-        self.plot_fft(switch_to_tab=False)
-        self.plot_sonogram(switch_to_tab=False)
-        self.circle_fitting(switch_to_tab=False)
+        self.update_channelset(self.cs)
+        self.goto_time_series(switch_to_tab=False)
+        self.goto_frequency_spectrum(switch_to_tab=False)
+        self.goto_sonogram(switch_to_tab=False)
+        self.goto_circle_fit(switch_to_tab=False)
 
         if self.sender() == self.acquisition_window:
             self.display_tabwidget.setCurrentIndex(tab_number)
