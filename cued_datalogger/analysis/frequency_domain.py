@@ -46,11 +46,22 @@ class FrequencyDomainWidget(InteractivePlotWidget):
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted. Sets `self.channels` to
         *selected_channels*."""
-        # If no channel list is given
-        if not selected_channels:
-            self.channels = []
-        else:
-            self.channels = selected_channels
+        self.channels = []
+
+        # Need to check that the dataset exists, then check if there's data in it
+        if selected_channels:
+            for channel in selected_channels:
+                if channel.is_dataset("spectrum"):
+                    if len(channel.data("spectrum")):
+                        self.channels.append(channel)
+
+        
+        
+#        # If no channel list is given
+#        if not selected_channels:
+#            self.channels = []
+#        else:
+#            self.channels = selected_channels
 
         self.update_plot(self.plot_transfer_function)
 

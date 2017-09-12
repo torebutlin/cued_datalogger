@@ -202,11 +202,23 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
 
     def set_selected_channels(self, selected_channels):
         """Update which channel is being plotted."""
+        self.channel = None
+        
+        # Need to check that the dataset exists, then check if there's data in it
+        if selected_channels:
+            for channel in selected_channels:
+                if channel.is_dataset("sonogram"):
+                    if len(channel.data("sonogram")):
+                        self.channel = channel
+                        break
+        
+        
+        
         # If no channel list is given
-        if not selected_channels:
-            self.channel = None
-        else:
-            self.channel = selected_channels[0]
+#        if not selected_channels:
+#            self.channel = None
+#        else:
+#            self.channel = selected_channels[0]
         self.update_plot()
 
 
