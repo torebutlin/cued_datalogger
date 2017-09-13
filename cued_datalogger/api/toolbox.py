@@ -113,8 +113,6 @@ class Toolbox(QWidget):
         self.tabBar.setCurrentIndex(index)
         self.tabPages.setCurrentIndex(index)
 
-        self.tabPages.resize(self.width(), self.height())
-
         if self.tabPages.currentWidget():
             self.tabPages.currentWidget().resize(self.tabPages.size())
 
