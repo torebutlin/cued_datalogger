@@ -3,7 +3,8 @@ from numpy.fft import rfft,fft
 
 from PyQt5.QtWidgets import (QWidget, QApplication, QTabWidget, QComboBox,
                              QHBoxLayout, QMainWindow, QPushButton,
-                             QVBoxLayout, QAction, QMenu)
+                             QVBoxLayout, QAction, QMenu, QSplitter)
+from PyQt5.Qt import QSizePolicy
 
 import sys
 
@@ -92,14 +93,45 @@ class AnalysisWindow(QMainWindow):
 
         self.setWindowTitle('AnalysisWindow')
 
-        #self.new_cs = ChannelSet()
         self.create_test_channelset()
-        self.init_ui()
+        self._init_ui()
 
         self.setFocus()
         self.showMaximized()
 
-    def init_display_tabwidget(self):
+    def _init_ui(self):
+        # Add the drop-down menu
+        self.menubar = self.menuBar()
+        self.menubar.addMenu(ProjectMenu(self))
+
+        # # Create the main widget
+        self.splitter = QSplitter(self)
+        self.splitter.setHandleWidth(5)
+        self.splitter.setChildrenCollapsible(False)
+        self.setCentralWidget(self.splitter)
+
+        # Create the analysis tools tab widget
+        self._init_display_tabwidget()
+
+        # Create the toolbox
+        self._init_toolbox()
+        self.display_tabwidget.currentChanged.connect(self.toolbox.set_toolbox)
+        self.display_tabwidget.setSizePolicy(QSizePolicy.Expanding,
+                                             QSizePolicy.Expanding)
+
+        # Create the global toolbox
+        self._init_global_master_toolbox()
+
+        # Configure
+        self.update_channelset()
+        self.goto_time_series()
+
+        # Add the widgets
+        self.splitter.addWidget(self.toolbox)
+        self.splitter.addWidget(self.display_tabwidget)
+        self.splitter.addWidget(self.global_master_toolbox)
+
+    def _init_display_tabwidget(self):
         """Create the display tabwidget."""
         self.display_tabwidget = QTabWidget(self)
         self.timedomain_widget = TimeDomainWidget()
@@ -113,9 +145,10 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.addTab(self.sonogram_widget, "Sonogram")
         self.display_tabwidget.addTab(self.circle_widget, "Circle Fit")
 
-    def init_toolbox(self):
+    def _init_toolbox(self):
         """Create the master toolbox"""
         self.toolbox = MasterToolbox(self)
+        self.toolbox.sig_collapsed_changed.connect(self._update_splitter)
 
         # # Time toolbox
         self.time_toolbox = TimeToolbox(self.toolbox)
@@ -149,17 +182,18 @@ class AnalysisWindow(QMainWindow):
         self.toolbox.add_toolbox(self.circle_fit_toolbox)
         self.toolbox.set_toolbox(0)
 
-    def init_global_master_toolbox(self):
+    def _init_global_master_toolbox(self):
         self.global_master_toolbox = MasterToolbox()
+        self.global_master_toolbox.sig_collapsed_changed.connect(self._update_splitter)
 
         self.global_toolbox = Toolbox('right', self.global_master_toolbox)
 
         # # Acquisition Window
         self.acquisition_window = None
-        self.dev_configUI = DevConfigUI()
-        self.dev_configUI.config_button.setText('Open AcquisitionWindow')
-        self.dev_configUI.config_button.clicked.connect(self.open_acquisition_window)
-        self.global_toolbox.addTab(self.dev_configUI,'AcquisitionWindow')
+        self.device_config = DevConfigUI()
+        self.device_config.config_button.setText('Open AcquisitionWindow')
+        self.device_config.config_button.clicked.connect(self.open_acquisition_window)
+        self.global_toolbox.addTab(self.device_config, 'Acquisition Window')
 
         # # Channel Selection
         self.channel_select_widget = ChannelSelectWidget(self.global_toolbox)
@@ -178,8 +212,8 @@ class AnalysisWindow(QMainWindow):
 
         # # Import
         self.import_widget = DataImportWidget(self)
-        self.import_widget.add_data_btn.clicked.connect(lambda: self.add_import_data('Extend'))
-        self.import_widget.rep_data_btn.clicked.connect(lambda: self.add_import_data('Replace'))
+        self.import_widget.add_data_btn.clicked.connect(self.extend_channelset)
+        self.import_widget.rep_data_btn.clicked.connect(self.replace_channelset)
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
 
         # # Export
@@ -188,65 +222,24 @@ class AnalysisWindow(QMainWindow):
 
         self.global_master_toolbox.add_toolbox(self.global_toolbox)
 
-    def update_channelset(self, cs=None):
-        if cs is None:
-            self.cs = cs
-        self.cs = cs
-        self.channel_select_widget.set_channel_set(self.cs)
-        self.channel_select_widget.set_channel_set(self.cs)
-        self.channel_metadata_widget.set_channel_set(self.cs)
-        self.export_widget.set_channel_set(self.cs)
+    def _update_splitter(self):
+        # Get the current sizes of everything
+        sizes = self.splitter.sizes()
+        # Adjust the size of the sender to be equal to its size hint
+        for i in range(self.splitter.count()):
+            if self.sender() == self.splitter.widget(i):
+                sizes[i] = self.sender().sizeHint().width()
+        # Set the sizes
+        self.splitter.setSizes(sizes)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStretchFactor(2, 0)
 
-    def init_ui(self):
-        # Add the drop-down menu
-        self.menubar = self.menuBar()
-        self.menubar.addMenu(ProjectMenu(self))
-
-        # # Create the main widget
-        self.main_widget = QWidget(self)
-        self.setCentralWidget(self.main_widget)
-        self.main_layout = QHBoxLayout()
-        self.main_widget.setLayout(self.main_layout)
-
-        # Create the analysis tools tab widget
-        self.init_display_tabwidget()
-
-        # Create the toolbox
-        self.init_toolbox()
-        self.display_tabwidget.currentChanged.connect(self.toolbox.set_toolbox)
-
-        # Create the global toolbox
-        self.init_global_master_toolbox()
-
-        self.update_channelset(self.cs)
-        self.goto_time_series()
-        #self.plot_fft()
-        self.display_tabwidget.setCurrentWidget(self.timedomain_widget)
-
-        # Add the widgets
-        self.main_layout.addWidget(self.toolbox)
-        self.main_layout.addWidget(self.display_tabwidget)
-        self.main_layout.addWidget(self.global_master_toolbox)
-        # Set the stretch factors
-        self.main_layout.setStretchFactor(self.toolbox, 0)
-        self.main_layout.setStretchFactor(self.display_tabwidget, 1)
-        self.main_layout.setStretchFactor(self.global_master_toolbox, 0.5)
-
-    def create_test_channelset(self):
-        self.cs = ChannelSet(5)
-        t = np.arange(0,0.5,1/5000)
-        for i, channel in enumerate(self.cs.channels):
-            self.cs.set_channel_metadata(i,{'sample_rate': 5000})
-            self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
-            self.cs.add_channel_dataset(i,'spectrum', [])
-            channel.name = "Channel {}".format(i)
-        self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]) )
-        self.cs.add_channel_dataset(i,'spectrum', [])
-
+    #---------------------- Acquisition window methods ------------------------
     def open_acquisition_window(self):
         if not self.acquisition_window:
-            recType, configs = self.dev_configUI.read_device_config()
-            if not any([c==None for c in configs]):
+            recType, configs = self.device_config.read_device_config()
+            if not any([c is None for c in configs]):
                 self.acquisition_window = AcquisitionWindow(self, recType, configs)
             else:
                 self.acquisition_window = AcquisitionWindow(self)
@@ -255,7 +248,7 @@ class AnalysisWindow(QMainWindow):
             self.acquisition_window.show()
 
     def receive_data(self, tab_number=0):
-        self.update_channelset(self.cs)
+        self.update_channelset()
         self.goto_time_series(switch_to_tab=False)
         self.goto_frequency_spectrum(switch_to_tab=False)
         self.goto_sonogram(switch_to_tab=False)
@@ -270,6 +263,7 @@ class AnalysisWindow(QMainWindow):
         self.acquisition_window.done.disconnect()
         self.acquisition_window = None
 
+    #---------------------------- Tab methods ---------------------------------
     def goto_time_series(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.timedomain_widget)
@@ -290,7 +284,6 @@ class AnalysisWindow(QMainWindow):
         # TODO: calculate TF function if none is found
         self.freqdomain_widget.calculate_transfer_function()
         self.frequency_toolbox.set_plot_transfer_function()
-        self.freqdomain_widget.set_selected_channels(self.cs.channels)
 
     def goto_sonogram(self, switch_to_tab=True):
         if switch_to_tab:
@@ -302,22 +295,35 @@ class AnalysisWindow(QMainWindow):
             self.display_tabwidget.setCurrentWidget(self.circle_widget)
         self.circle_widget.set_selected_channels(self.channel_select_widget.selected_channels())
 
-    def add_import_data(self, mode):
-        if mode == 'Extend':
-            self.cs.channels.extend(self.import_widget.new_cs.channels)
-        elif mode == 'Replace':
-            self.cs = self.import_widget.new_cs
+    #------------------ ChannelSet methods ------------------------------------
+    def create_test_channelset(self):
+        self.cs = ChannelSet(5)
+        t = np.arange(0,0.5,1/5000)
+        for i, channel in enumerate(self.cs.channels):
+            self.cs.set_channel_metadata(i,{'sample_rate': 5000})
+            self.cs.add_channel_dataset(i, 'time_series', np.sin(t*2*np.pi*100*(i+1)))
+            channel.name = "Channel {}".format(i)
+        self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]))
 
-        self.receive_data()
-        self.import_widget.clear()
+    def extend_channelset(self, cs):
+        self.cs.channels.extend(cs.channels)
+        self.update_channelset()
+
+    def replace_channelset(self, cs):
+        self.cs = cs
+        self.update_channelset()
 
     def set_selected_channels(self, channels):
-        # Set just the current widget's channels
-        #self.display_tabwidget.currentWidget().set_selected_channels(channels)
         # Set all the widget channels
         for i in range(self.display_tabwidget.count()):
             self.display_tabwidget.widget(i).set_selected_channels(channels)
         self.sonogram_toolbox.set_selected_channels(channels)
+
+    def update_channelset(self):
+        self.channel_select_widget.set_channel_set(self.cs)
+        self.channel_metadata_widget.set_channel_set(self.cs)
+        self.export_widget.set_channel_set(self.cs)
+
 
 if __name__ == '__main__':
     app = 0

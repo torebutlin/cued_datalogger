@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QPropertyAnimation
+from PyQt5.QtCore import QPropertyAnimation, pyqtSignal
 from PyQt5.QtWidgets import (QWidget, QTabBar, QSizePolicy, QStackedWidget,
                              QHBoxLayout)
 
@@ -28,60 +28,57 @@ class Toolbox(QWidget):
     collapse_animation : QPropertyAnimation
         The animation that controls how the Toolbox collapses.
     """
+    sig_collapsed_changed = pyqtSignal()
 
     def __init__(self, widget_side='left', parent=None):
         self.parent = parent
+        self.widget_side = widget_side
 
         super().__init__(parent)
 
-        layout = QHBoxLayout(self)
-        layout.setSpacing(0)
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(0)
+        self.setSizePolicy(QSizePolicy.Expanding,
+                           QSizePolicy.Expanding)
 
         # # Create the tab bar
         self.tabBar = QTabBar(self)
 
         self.tabBar.setTabsClosable(False)
         self.tabBar.setMovable(False)
-        self.tabBar.setSizePolicy(QSizePolicy.Expanding,
+        self.tabBar.setSizePolicy(QSizePolicy.Fixed,
                                   QSizePolicy.Expanding)
         # # Create the Stacked widget for the pages
         self.tabPages = QStackedWidget(self)
-        self.tabPages.setSizePolicy(QSizePolicy.Expanding,
-                                    QSizePolicy.Expanding)
 
         # # Link the signals so that changing tab leads to a change of page
         self.tabBar.currentChanged.connect(self.changePage)
 
         # # Add them to the splitter (self)
         # Right side orientation
-        if widget_side == 'right':
+        if self.widget_side == 'right':
             self.tabBar.setShape(QTabBar.RoundedWest)
 
-            layout.addWidget(self.tabBar)
-            layout.addWidget(self.tabPages)
+            self.layout.addWidget(self.tabBar)
+            self.layout.addWidget(self.tabPages)
 
         # Left side orientation
         else:
             self.tabBar.setShape(QTabBar.RoundedEast)
 
-            layout.addWidget(self.tabPages)
-            layout.addWidget(self.tabBar)
+            self.layout.addWidget(self.tabPages)
+            self.layout.addWidget(self.tabBar)
 
-        # # Create the animation
-        self.collapse_animation = QPropertyAnimation(self.tabPages,
-                                                     b'maximumWidth')
-        self.collapse_animation.setDuration(250)
-        self.collapse_animation.setEndValue(0)
-        self.collapse_animation.finished.connect(self.on_animation_finished)
-
+        self.setLayout(self.layout)
         self.collapsed = False
-        self.max_width = 250
+        self.expanded_width = self.sizeHint().width()
 
     def addTab(self, widget, title):
         """Add a new tab, with the page widget *widget* and tab title
         *title*."""
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
+        print(self.size())
 
     def removeTab(self, title):
         """Remove the tab with title *title*."""
@@ -100,45 +97,24 @@ class Toolbox(QWidget):
         else:
             self.collapse()
 
-    def on_animation_finished(self):
-        if self.collapsed:
-            self.tabPages.hide()
-
     def expand(self):
         """Expand the widget so that the pages are visible."""
-        self.collapse_animation.setStartValue(self.max_width)
-
         self.tabPages.show()
-        self.collapse_animation.setDirection(QPropertyAnimation.Backward)
-        self.collapse_animation.start()
+        self.sig_collapsed_changed.emit()
         self.collapsed = False
 
     def collapse(self):
         """Collapse the widget so that only the tab bar is visible."""
-        self.collapse_animation.setStartValue(self.max_width)
-
-        self.collapse_animation.setDirection(QPropertyAnimation.Forward)
-        self.collapse_animation.start()
-        self.collapsed = True
-
-    def fast_collapse(self):
-        """Collapse the widget without the animation."""
         self.tabPages.hide()
-        self.tabPages.setMaximumWidth(0)
+        self.sig_collapsed_changed.emit()
         self.collapsed = True
-
-    def fast_expand(self):
-        """Expand the widget without the animation."""
-        self.tabPages.show()
-        self.tabPages.setMaximumWidth(self.max_width)
-        self.collapsed = False
 
     def changePage(self, index):
         """Set the current page to *index*."""
         self.tabBar.setCurrentIndex(index)
         self.tabPages.setCurrentIndex(index)
 
-        self.tabPages.setMaximumWidth(self.max_width)
+        self.tabPages.resize(self.width(), self.height())
 
         if self.tabPages.currentWidget():
             self.tabPages.currentWidget().resize(self.tabPages.size())
@@ -166,6 +142,8 @@ class MasterToolbox(QStackedWidget):
     Inherited attributes :
         See ``PyQt5.QtWidgets.QStackedWidget`` for inherited attributes.
     """
+    sig_collapsed_changed = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -188,14 +166,14 @@ class MasterToolbox(QStackedWidget):
             if i == toolbox_index:
                 continue
             else:
-                self.widget(i).fast_collapse()
+                self.widget(i).collapse()
                 self.widget(i).hide()
 
         # Collapse / Expand the toolbox
         if old_toolbox_collapsed:
-            self.widget(toolbox_index).fast_collapse()
+            self.widget(toolbox_index).collapse()
         else:
-            self.widget(toolbox_index).fast_expand()
+            self.widget(toolbox_index).expand()
 
         # Set the current toolbox
         self.setCurrentIndex(toolbox_index)
@@ -205,6 +183,7 @@ class MasterToolbox(QStackedWidget):
         # Set the Toolbox's parent
         toolbox.parent = self
         toolbox.setParent(self)
+        toolbox.sig_collapsed_changed.connect(self.sig_collapsed_changed.emit)
 
         # When the Toolbox's tabBar is clicked, collapse the Toolbox
         toolbox.tabBar.tabBarDoubleClicked.connect(self.toggle_collapse)

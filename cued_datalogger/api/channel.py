@@ -691,10 +691,11 @@ class ChannelMetadataWidget(QWidget):
 
         # # Create the tree widget
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
+        self.tree.setHeaderLabels(["Ch", "Name", "Units",
                                    "Comments", "Tags", "Sample rate",
                                    "Calibration factor",
                                    "Transfer function type"])
+        self.tree.header().setResizeMode(3)
         # Connect the signals
         self.tree.itemDoubleClicked.connect(self.edit_item)
         # Add it to the layout
