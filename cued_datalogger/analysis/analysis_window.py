@@ -243,24 +243,21 @@ class AnalysisWindow(QMainWindow):
                 self.acquisition_window = AcquisitionWindow(self, recType, configs)
             else:
                 self.acquisition_window = AcquisitionWindow(self)
-            self.acquisition_window.done.connect(self.close_acquisition_window)
-            self.acquisition_window.dataSaved.connect(self.receive_data)
+            self.acquisition_window.sig_closed.connect(self.close_acquisition_window)
+            self.acquisition_window.sig_transfer_function_data_saved.connect(self.receive_data)
+            self.acquisition_window.sig_time_series_data_saved.connect(self.receive_data)
             self.acquisition_window.show()
 
-    def receive_data(self, tab_number=0):
-        self.update_channelset()
-        self.goto_time_series(switch_to_tab=False)
-        self.goto_frequency_spectrum(switch_to_tab=False)
-        self.goto_sonogram(switch_to_tab=False)
-        self.goto_circle_fit(switch_to_tab=False)
+    def receive_data(self, received_cs):
+        self.replace_channelset(received_cs)
 
-        if self.sender() == self.acquisition_window:
-            self.display_tabwidget.setCurrentIndex(tab_number)
-            if tab_number == 1:
-                self.set_freq_plot_type('Transfer Function')
+        if self.cs.channels[0].is_dataset("transfer_function"):
+            self.goto_transfer_function()
+        else:
+            self.goto_time_series()
 
     def close_acquisition_window(self):
-        self.acquisition_window.done.disconnect()
+        self.acquisition_window.sig_closed.disconnect()
         self.acquisition_window = None
 
     #---------------------------- Tab methods ---------------------------------
@@ -288,8 +285,8 @@ class AnalysisWindow(QMainWindow):
     def goto_sonogram(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.sonogram_widget)
-        self.sonogram_widget.calculate_sonogram()
         self.sonogram_widget.set_selected_channels(self.channel_select_widget.selected_channels())
+        self.sonogram_widget.calculate_sonogram()
 
     def goto_circle_fit(self, switch_to_tab=True):
         if switch_to_tab:

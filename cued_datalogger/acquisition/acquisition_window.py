@@ -86,18 +86,19 @@ class AcquisitionWindow(QMainWindow):
 
     Attributes
     ----------
-    dataSaved: pyqtSignal
-        Emitted when recorded data
-    done: pyqtSignal
-        Emitted when the window is closed
+    sig_time_series_data_saved: pyqtSignal(ChannelSet)
+        Emitted when time series data is recorded
+    sig_transfer_function_data_saved: pyqtSignal(ChannelSet)
+        Emitted when transfer function data is recorded
     playing: bool
         Indicate whether the stream is playing
     rec: Recorder object
          Object which handles the streaming and recording
          See documentation for Recorder classes
     """
-    dataSaved = pyqtSignal(int)
-    done = pyqtSignal()
+    sig_time_series_data_saved = pyqtSignal(object)
+    sig_transfer_function_data_saved = pyqtSignal(object)
+    sig_closed = pyqtSignal()
 
     def __init__(self,parent = None,recType = mR,configs = ['',44100,2,1024,6]):
         """
@@ -312,7 +313,7 @@ class AcquisitionWindow(QMainWindow):
             self.move(pr.topLeft())
             self.move(qr.left()/2,qr.top())
 
-#----------------CHANNEL CONFIGURATION WIDGET---------------------------
+    #----------------CHANNEL CONFIGURATION WIDGET---------------------------
     def display_chan_config(self, arg):
         """
         Displays the channel plot offsets, colours, and signal holding.
@@ -356,7 +357,7 @@ class AcquisitionWindow(QMainWindow):
         self.meta_window = None
         self.update_chan_names()
 
-#----------------------PLOT WIDGETS-----------------------------------
+    #----------------------PLOT WIDGETS-----------------------------------
     # Updates the plots
     def update_line(self):
         """
@@ -394,7 +395,7 @@ class AcquisitionWindow(QMainWindow):
             self.freqplot.update_line(i,x = self.freqdata ,y = psd_data)
             self.levelsplot.set_peaks(i,maxs[i])
 
-#-------------------------STATUS BAR WIDGET--------------------------------
+    #-------------------------STATUS BAR WIDGET--------------------------------
     def toggle_rec(self,stop = None):
         """
         Callback to pause/resume the stream, unless explicitly specified to stop or not
@@ -430,7 +431,7 @@ class AcquisitionWindow(QMainWindow):
 
         self.live_chanset.set_channel_metadata( tuple(range(snapshot.shape[1])),
                                                    {'sample_rate':self.rec.rate})
-        self.save_data()
+        self.save_time_series()
         self.stats_UI.statusbar.showMessage('Snapshot Captured!', 1500)
 
     def default_status(self,msg):
@@ -446,7 +447,7 @@ class AcquisitionWindow(QMainWindow):
                 self.stats_UI.statusbar.showMessage('Stream Paused')
 
 
-#---------------------------RECORDING WIDGET-------------------------------
+    #---------------------------RECORDING WIDGET-------------------------------
     def start_recording(self):
         """
         Callback to start the data recording
@@ -506,9 +507,10 @@ class AcquisitionWindow(QMainWindow):
         rec_mode = self.RecUI.get_recording_mode()
         if rec_mode == 'Normal':
             # Send data normally
+            self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])), 'frequency', [])
             self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'transfer_function',[])
             self.live_chanset.add_channel_dataset(tuple(range(data.shape[1])),'coherence',[])
-            self.save_data(0)
+            self.save_transfer_function()
         elif rec_mode == 'TF Avg.':
             # Compute the auto- and crossspectrum for average transfer function
             # while store them in the tally
@@ -547,7 +549,7 @@ class AcquisitionWindow(QMainWindow):
 
             # Update the average count and send the data
             self.RecUI.update_TFavg_count(len(self.autospec_in_tally))
-            self.save_data(1)
+            self.save_transfer_function()
 
         elif rec_mode == 'TF Grid':
             # TODO: Implement recording for grid transfer function
@@ -595,7 +597,7 @@ class AcquisitionWindow(QMainWindow):
         self.RecUI.cancelbtn.setDisabled(True)
         self.stats_UI.statusbar.clearMessage()
 
-#--------------------------- RESET METHODS-------------------------------------
+    #--------------------------- RESET METHODS-------------------------------------
     def ResetRecording(self):
         """
         Reset the stream to the specified configuration, then
@@ -743,23 +745,25 @@ class AcquisitionWindow(QMainWindow):
             chan_btn = self.chantoggle_UI.chan_btn_group.button(n)
             chan_btn.setText(name)
 
-#----------------------- DATA TRANSFER METHODS -------------------------------
+    #----------------------- DATA TRANSFER METHODS -------------------------------
 
-    def save_data(self, tab_num = 0):
+    def save_time_series(self):
         """
-        Transfer data to parent window
-
-        Parameters
-        ----------
-        tab_num: Tab index to switch to in the parent window (specific for analysis window)
+        Transfer time series data to parent window
         """
-        if self.parent:
-            print('Saving data...')
-            self.parent.cs = copy.copy(self.live_chanset)
-            self.dataSaved.emit(tab_num)
-            print('Data saved!')
+        print('Saving time series...')
+        self.sig_time_series_data_saved.emit(self.live_chanset)
+        print('Time series saved!')
 
-#-------------------------- STREAM METHODS ------------------------------------
+    def save_transfer_function(self):
+        """
+        Transfer transfer function data to parent window
+        """
+        print('Saving transfer function...')
+        self.sig_transfer_function_data_saved.emit(self.live_chanset)
+        print('Transfer function saved!')
+
+    #-------------------------- STREAM METHODS ------------------------------------
     def init_and_check_stream(self):
         """
         Attempts to initialise the stream
@@ -791,9 +795,10 @@ class AcquisitionWindow(QMainWindow):
         if self.plottimer.isActive():
             self.plottimer.stop()
 
-        self.done.emit()
+        self.sig_closed.emit()
         self.rec.close()
-        self.dataSaved.disconnect()
+        self.sig_transfer_function_data_saved.disconnect()
+        self.sig_time_series_data_saved.disconnect()
         event.accept()
         self.deleteLater()
 
