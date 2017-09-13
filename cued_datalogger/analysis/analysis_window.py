@@ -288,6 +288,7 @@ class AnalysisWindow(QMainWindow):
     def goto_sonogram(self, switch_to_tab=True):
         if switch_to_tab:
             self.display_tabwidget.setCurrentWidget(self.sonogram_widget)
+        self.sonogram_widget.calculate_sonogram()
         self.sonogram_widget.set_selected_channels(self.channel_select_widget.selected_channels())
 
     def goto_circle_fit(self, switch_to_tab=True):
