@@ -16,20 +16,21 @@ class TimeDomainWidget(InteractivePlotWidget):
 
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted"""
-        # If no channel list is given
-        if not selected_channels:
-            self.channels = []
-        else:
+        self.channels = []
+
+        if selected_channels:
             self.channels = selected_channels
+
         self.update_plot()
 
     def update_plot(self):
         self.clear()
         for channel in self.channels:
             if channel.is_dataset("time_series"):
-                self.plot(channel.data("time"),
-                          channel.data("time_series"),
-                          pen=channel.colour)
+                if len(channel.data("time_series")):
+                    self.plot(channel.data("time"),
+                              channel.data("time_series"),
+                              pen=channel.colour)
 
 
 class TimeToolbox(Toolbox):

@@ -325,10 +325,13 @@ class CircleFitWidget(QWidget):
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted."""
         self.channels = []
+
+        # Need to check that the dataset exists, then check if there's data in it
         if selected_channels:
             for channel in selected_channels:
                 if channel.is_dataset("transfer_function"):
-                    self.channels.append(channel)
+                    if len(channel.data("transfer_function")):
+                        self.channels.append(channel)
 
         self.results.channels = self.channels
 

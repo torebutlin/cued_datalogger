@@ -46,10 +46,10 @@ class FrequencyDomainWidget(InteractivePlotWidget):
     def set_selected_channels(self, selected_channels):
         """Update which channels are plotted. Sets `self.channels` to
         *selected_channels*."""
-        # If no channel list is given
-        if not selected_channels:
-            self.channels = []
-        else:
+        self.channels = []
+
+        # Need to check that the dataset exists, then check if there's data in it
+        if selected_channels:
             self.channels = selected_channels
 
         self.update_plot(self.plot_transfer_function)
@@ -75,75 +75,80 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         self.clear()
 
         for channel in self.channels:
+            data = None
             # Extract the data
             if self.plot_transfer_function:
                 if channel.is_dataset("transfer_function"):
-                    data = channel.data("transfer_function")
+                    if len(channel.data("transfer_function")):
+                        data = channel.data("transfer_function")
                 else:
                     print("{}: no 'transfer_function' "
                           "dataset.".format(channel.name))
                     continue
             else:
                 if channel.is_dataset("spectrum"):
-                    data = channel.data("spectrum")
+                    if len(channel.data("spectrum")):
+                        data = channel.data("spectrum")
                 else:
                     print("{}: no 'spectrum' "
                           "dataset.".format(channel.name))
                     continue
 
-            # Plot the data
-            if self.current_plot_type == 'linear magnitude':
-                self.plot(channel.data("frequency"),
-                          np.abs(data),
-                          pen=channel.colour)
+            if data is not None:
+                # Plot the data
+                if self.current_plot_type == 'linear magnitude':
+                    self.plot(channel.data("frequency"),
+                              np.abs(data),
+                              pen=channel.colour)
 
-            elif self.current_plot_type == 'log magnitude':
-                self.plot(channel.data("frequency"),
-                          to_dB(np.abs(data)),
-                          pen=channel.colour)
+                elif self.current_plot_type == 'log magnitude':
+                    self.plot(channel.data("frequency"),
+                              to_dB(np.abs(data)),
+                              pen=channel.colour)
 
-            elif self.current_plot_type == 'phase':
-                self.plot(channel.data("frequency"),
-                          np.angle(data, deg=True),
-                          pen=channel.colour)
+                elif self.current_plot_type == 'phase':
+                    self.plot(channel.data("frequency"),
+                              np.angle(data, deg=True),
+                              pen=channel.colour)
 
-            elif self.current_plot_type == 'real part':
-                self.plot(channel.data("frequency"),
-                          np.real(data),
-                          pen=channel.colour)
+                elif self.current_plot_type == 'real part':
+                    self.plot(channel.data("frequency"),
+                              np.real(data),
+                              pen=channel.colour)
 
-            elif self.current_plot_type == 'imaginary part':
-                self.plot(channel.data("frequency"),
-                          np.imag(data),
-                          pen=channel.colour)
+                elif self.current_plot_type == 'imaginary part':
+                    self.plot(channel.data("frequency"),
+                              np.imag(data),
+                              pen=channel.colour)
 
-            elif self.current_plot_type == 'nyquist':
-                self.plot(np.real(data),
-                          np.imag(data),
-                          pen=channel.colour)
+                elif self.current_plot_type == 'nyquist':
+                    self.plot(np.real(data),
+                              np.imag(data),
+                              pen=channel.colour)
 
             if self.plot_transfer_function and self.show_coherence:
                 print("Plotting coherence...")
                 if channel.is_dataset("coherence"):
-                    if self.current_plot_type == 'linear magnitude':
-                        self.plot(channel.data("frequency"),
-                                  np.abs(channel.data("coherence")))
-                    elif self.current_plot_type == 'log magnitude':
-                        self.plot(channel.data("frequency"),
-                                  to_dB(np.abs(channel.data("coherence"))))
-                    elif self.current_plot_type == 'phase':
-                        self.plot(channel.data("frequency"),
-                                  np.angle(channel.data("coherence"), deg=True))
-                    elif self.current_plot_type == 'real part':
-                        self.plot(channel.data("frequency"),
-                                  channel.data("coherence").real)
-                    elif self.current_plot_type == 'imaginary part':
-                        self.plot(channel.data("frequency"),
-                                  channel.data("coherence").imag)
-                    elif self.current_plot_type == 'nyquist':
-                        self.plot(channel.data("coherence").real,
-                                  channel.data("coherence").imag)
-                    print("Done.")
+                    if len(channel.data("coherence")):
+                        if self.current_plot_type == 'linear magnitude':
+                            self.plot(channel.data("frequency"),
+                                      np.abs(channel.data("coherence")))
+                        elif self.current_plot_type == 'log magnitude':
+                            self.plot(channel.data("frequency"),
+                                      to_dB(np.abs(channel.data("coherence"))))
+                        elif self.current_plot_type == 'phase':
+                            self.plot(channel.data("frequency"),
+                                      np.angle(channel.data("coherence"), deg=True))
+                        elif self.current_plot_type == 'real part':
+                            self.plot(channel.data("frequency"),
+                                      channel.data("coherence").real)
+                        elif self.current_plot_type == 'imaginary part':
+                            self.plot(channel.data("frequency"),
+                                      channel.data("coherence").imag)
+                        elif self.current_plot_type == 'nyquist':
+                            self.plot(channel.data("coherence").real,
+                                      channel.data("coherence").imag)
+                        print("Done.")
                 else:
                     print("{}: no 'coherence' dataset".format(channel.name))
 
@@ -152,14 +157,15 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         print("Calculating spectrum...")
         for channel in self.channels:
             if channel.is_dataset("time_series"):
-                time_series = channel.data("time_series")
-                window = np.hanning(time_series.size)
-                spectrum = rfft(time_series * window)
+                if len(channel.data("time_series")):
+                    time_series = channel.data("time_series")
+                    window = np.hanning(time_series.size)
+                    spectrum = rfft(time_series * window)
 
-                if not channel.is_dataset("spectrum"):
-                    channel.add_dataset("spectrum", data=spectrum)
-                else:
-                    channel.set_data("spectrum", spectrum)
+                    if not channel.is_dataset("spectrum"):
+                        channel.add_dataset("spectrum", data=spectrum)
+                    else:
+                        channel.set_data("spectrum", spectrum)
 
             else:
                 print("Skipping {}: no 'time_series' "
@@ -172,6 +178,7 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         """Calculate the transfer function, using the channel object given by
         *input_channel* as the input. If no channel specified, treat the first
         selected channel as input."""
+        print("Calculating transfer function...")
 
         if not input_channel:
             input_channel = self.channels[0]
@@ -190,33 +197,34 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                 pass
 
             if channel.is_dataset("spectrum"):
-                # Get the data
-                output_spectrum = channel.data("spectrum")
+                if len(channel.data("spectrum")):
+                    # Get the data
+                    output_spectrum = channel.data("spectrum")
 
-                # Calculate the auto- and cross- spectra
-                output_auto_spectrum = \
-                    calculate_auto_spectrum(output_spectrum)
+                    # Calculate the auto- and cross- spectra
+                    output_auto_spectrum = \
+                        calculate_auto_spectrum(output_spectrum)
 
-                cross_spectrum = \
-                    calculate_cross_spectrum(input_spectrum,
-                                                  output_spectrum)
+                    cross_spectrum = \
+                        calculate_cross_spectrum(input_spectrum,
+                                                      output_spectrum)
 
-                # Calculate the transfer function
-                transfer_function = output_auto_spectrum / cross_spectrum
-                # Update the channel
-                if not channel.is_dataset("transfer_function"):
-                    channel.add_dataset("transfer_function", data=transfer_function)
-                else:
-                    channel.set_data("transfer_function", transfer_function)
+                    # Calculate the transfer function
+                    transfer_function = output_auto_spectrum / cross_spectrum
+                    # Update the channel
+                    if not channel.is_dataset("transfer_function"):
+                        channel.add_dataset("transfer_function", data=transfer_function)
+                    else:
+                        channel.set_data("transfer_function", transfer_function)
 
-                # Calculate the coherence
-                coherence = (cross_spectrum * cross_spectrum.conj() /
-                             input_auto_spectrum * output_auto_spectrum).real
-                # Update the channel
-                if not channel.is_dataset("coherence"):
-                    channel.add_dataset("coherence", data=coherence)
-                else:
-                    channel.set_data("coherence", coherence)
+                    # Calculate the coherence
+                    coherence = (cross_spectrum * cross_spectrum.conj() /
+                                 input_auto_spectrum * output_auto_spectrum).real
+                    # Update the channel
+                    if not channel.is_dataset("coherence"):
+                        channel.add_dataset("coherence", data=coherence)
+                    else:
+                        channel.set_data("coherence", coherence)
             else:
                 print("Skipping {}: no 'spectrum' "
                       "dataset.".format(channel.name))
@@ -260,6 +268,7 @@ class FrequencyToolbox(Toolbox):
         plot_options_tab_layout.addWidget(QLabel("Plot:"), 0, 0)
         self.current_plot_combobox = QComboBox(self)
         self.current_plot_combobox.addItems(['Frequency spectrum', 'Transfer function'])
+        self.current_plot_combobox.setCurrentIndex(0)
         self.current_plot_combobox.currentIndexChanged[str].connect(self.on_current_plot_changed)
         plot_options_tab_layout.addWidget(self.current_plot_combobox, 1, 0)
 
@@ -325,6 +334,7 @@ class FrequencyToolbox(Toolbox):
         self.current_plot_combobox.setCurrentIndex(1)
 
     def set_plot_spectrum(self):
+        print("Plotting spectrum...")
         self.current_plot_combobox.setCurrentIndex(0)
 
     def on_current_plot_changed(self, current_plot):

@@ -140,52 +140,53 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
 
         for channel in self.channels:
             if channel.is_dataset("time_series"):
-                (frequencies,
-                 times,
-                 spectrum) = scipy.signal.spectrogram(channel.data("time_series"),
-                                                     channel.metadata("sample_rate"),
-                                                     window=scipy.signal.get_window('hann', self.window_width),
-                                                     nperseg=self.window_width,
-                                                     noverlap=self.window_width // self.window_overlap_fraction,
-                                                     return_onesided=False,
-                                                     mode = 'complex')
-                print(spectrum.shape)
-                # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
-                spectrum = spectrum.transpose()
-                # Scipy calculates all the conjugate spectra/frequencies as well -
-                # we only want the positive ones
-                frequencies = np.abs(frequencies[:frequencies.size // 2 + 1])
-                spectrum = spectrum[:, :spectrum.shape[1] // 2 + 1]
+                if len(channel.data("time_series")):
+                    (frequencies,
+                     times,
+                     spectrum) = scipy.signal.spectrogram(channel.data("time_series"),
+                                                         channel.metadata("sample_rate"),
+                                                         window=scipy.signal.get_window('hann', self.window_width),
+                                                         nperseg=self.window_width,
+                                                         noverlap=self.window_width // self.window_overlap_fraction,
+                                                         return_onesided=False,
+                                                         mode = 'complex')
+                    print(spectrum.shape)
+                    # SciPy's spectrogram gives the FT transposed, so we need to transpose it back
+                    spectrum = spectrum.transpose()
+                    # Scipy calculates all the conjugate spectra/frequencies as well -
+                    # we only want the positive ones
+                    frequencies = np.abs(frequencies[:frequencies.size // 2 + 1])
+                    spectrum = spectrum[:, :spectrum.shape[1] // 2 + 1]
 
-                if not channel.is_dataset("sonogram_frequency"):
-                    channel.add_dataset("sonogram_frequency", data=frequencies, units="Hz")
-                else:
-                    channel.set_data("sonogram_frequency", frequencies)
+                    if not channel.is_dataset("sonogram_frequency"):
+                        channel.add_dataset("sonogram_frequency", data=frequencies, units="Hz")
+                    else:
+                        channel.set_data("sonogram_frequency", frequencies)
 
-                if not channel.is_dataset("sonogram_omega"):
-                    channel.add_dataset("sonogram_omega", data=frequencies*2*np.pi, units="rad")
-                else:
-                    channel.set_data("sonogram_omega", frequencies*2*np.pi)
+                    if not channel.is_dataset("sonogram_omega"):
+                        channel.add_dataset("sonogram_omega", data=frequencies*2*np.pi, units="rad")
+                    else:
+                        channel.set_data("sonogram_omega", frequencies*2*np.pi)
 
-                if not channel.is_dataset("sonogram_time"):
-                    channel.add_dataset("sonogram_time", data=times, units="s")
-                else:
-                    channel.set_data("sonogram_time", times)
+                    if not channel.is_dataset("sonogram_time"):
+                        channel.add_dataset("sonogram_time", data=times, units="s")
+                    else:
+                        channel.set_data("sonogram_time", times)
 
-                if not channel.is_dataset("sonogram"):
-                    channel.add_dataset("sonogram", data=spectrum, units=None)
-                else:
-                    channel.set_data("sonogram", spectrum)
+                    if not channel.is_dataset("sonogram"):
+                        channel.add_dataset("sonogram", data=spectrum, units=None)
+                    else:
+                        channel.set_data("sonogram", spectrum)
 
-                if not channel.is_dataset("sonogram_phase"):
-                    channel.add_dataset("sonogram_phase", data=np.angle(spectrum), units='rad')
-                else:
-                    channel.set_data("sonogram_phase", np.angle(spectrum))
+                    if not channel.is_dataset("sonogram_phase"):
+                        channel.add_dataset("sonogram_phase", data=np.angle(spectrum), units='rad')
+                    else:
+                        channel.set_data("sonogram_phase", np.angle(spectrum))
 
-                if not channel.is_dataset("sonogram_step"):
-                    channel.add_dataset("sonogram_step", data=self.window_width // self.window_overlap_fraction, units=None)
-                else:
-                    channel.set_data("sonogram_step", self.window_width // self.window_overlap_fraction)
+                    if not channel.is_dataset("sonogram_step"):
+                        channel.add_dataset("sonogram_step", data=self.window_width // self.window_overlap_fraction, units=None)
+                    else:
+                        channel.set_data("sonogram_step", self.window_width // self.window_overlap_fraction)
 
 
     def update_plot(self):
@@ -194,21 +195,21 @@ class SonogramDisplayWidget(ColorMapPlotWidget):
         if self.channels is not None:
             for channel in self.channels:
                 if channel.is_dataset("sonogram"):
-                    self.plot_colormap(channel.data("sonogram_frequency"),
-                                       channel.data("sonogram_time"),
-                                       to_dB(np.abs(channel.data("sonogram"))),
-                                       num_contours=self.num_contours,
-                                       contour_spacing_dB=self.contour_spacing_dB)
+                    if len(channel.data("sonogram")):
+                        self.plot_colormap(channel.data("sonogram_frequency"),
+                                           channel.data("sonogram_time"),
+                                           to_dB(np.abs(channel.data("sonogram"))),
+                                           num_contours=self.num_contours,
+                                           contour_spacing_dB=self.contour_spacing_dB)
 
     def set_selected_channels(self, selected_channels):
         """Update which channel is being plotted."""
-        # If no channel list is given
-        if not selected_channels:
-            self.channels = []
-        else:
+        self.channels = []
+
+        if selected_channels:
             self.channels = selected_channels
-            self.channels.reverse()
-        self.calculate_sonogram()
+
+        self.channels.reverse()
         self.update_plot()
 
 

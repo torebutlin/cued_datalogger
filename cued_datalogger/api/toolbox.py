@@ -78,7 +78,6 @@ class Toolbox(QWidget):
         *title*."""
         self.tabBar.addTab(title)
         self.tabPages.addWidget(widget)
-        print(self.size())
 
     def removeTab(self, title):
         """Remove the tab with title *title*."""
