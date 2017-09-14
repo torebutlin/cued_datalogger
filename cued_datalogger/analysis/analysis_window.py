@@ -145,6 +145,8 @@ class AnalysisWindow(QMainWindow):
         self.display_tabwidget.addTab(self.sonogram_widget, "Sonogram")
         self.display_tabwidget.addTab(self.circle_widget, "Circle Fit")
 
+        self.display_tabwidget.currentChanged.connect(lambda: self.set_selected_channels(self.channel_select_widget.selected_channels()))
+
     def _init_toolbox(self):
         """Create the master toolbox"""
         self.toolbox = MasterToolbox(self)
@@ -312,10 +314,9 @@ class AnalysisWindow(QMainWindow):
         self.update_channelset()
 
     def set_selected_channels(self, channels):
-        # Set all the widget channels
-        for i in range(self.display_tabwidget.count()):
-            self.display_tabwidget.widget(i).set_selected_channels(channels)
-        self.sonogram_toolbox.set_selected_channels(channels)
+        self.display_tabwidget.currentWidget().set_selected_channels(channels)
+        if self.display_tabwidget.currentWidget() is self.sonogram_widget:
+            self.sonogram_toolbox.set_selected_channels(channels)
 
     def update_channelset(self):
         self.channel_select_widget.set_channel_set(self.cs)
