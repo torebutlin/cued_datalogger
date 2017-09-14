@@ -4,20 +4,20 @@ from cued_datalogger.api.channel import Channel, DataSet, ChannelSet
 import numpy as np
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,QPushButton,QLabel,QTreeWidget,
                              QTreeWidgetItem,QHBoxLayout,QFileDialog)
-from PyQt5.QtCore import  Qt
+from PyQt5.QtCore import  Qt, pyqtSignal
 import pickle
 
 def import_from_mat(file, channel_set=None):
     """
-    A function for importing data and metadata to a ChannelSet from an 
+    A function for importing data and metadata to a ChannelSet from an
     old-style DataLogger ``.mat`` file.
-    
+
     Parameters
     ----------
     file : path_to_file
         The path to the ``.mat`` file to import data from.
     channel_set : ChannelSet
-        The ChannelSet to save the imported data and metadata to. If ``None``, 
+        The ChannelSet to save the imported data and metadata to. If ``None``,
         a new ChannelSet is created and returned.
     """
     if channel_set is None:
@@ -25,7 +25,7 @@ def import_from_mat(file, channel_set=None):
         channel_set = ChannelSet()
     else:
         new_channel_set = False
-    
+
     # Load the matlab file as a dict
     file = sio.loadmat(file)
 
@@ -105,8 +105,8 @@ def import_from_mat(file, channel_set=None):
                                                 "spectrum",
                                                  spectrum[i],
                                                  'Hz')
-            print(channel_set.channels[i].data("frequency"))
-            
+            #print(channel_set.channels[i].data("frequency"))
+
         if i < num_sonogram_datasets:
             channel_set.add_channel_dataset(i,
                                             "sonogram",
@@ -117,16 +117,19 @@ def import_from_mat(file, channel_set=None):
                                             'rad')
     if new_channel_set:
         return channel_set
-            
+
 class DataImportWidget(QWidget):
+    sig_replace_channelset = pyqtSignal(object)
+    sig_extend_channelset = pyqtSignal(object)
+
     def __init__(self,parent):
         super().__init__(parent)
         self.new_cs = ChannelSet()
         self.init_UI()
-        
+
     def init_UI(self):
         layout = QVBoxLayout(self)
-        
+
         self.import_btn = QPushButton('Import Mat Files',self)
         self.import_btn.clicked.connect(self.import_files)
         self.pickle_btn = QPushButton('Import Pickle Files',self)
@@ -134,20 +137,22 @@ class DataImportWidget(QWidget):
         layout.addWidget(self.import_btn)
         layout.addWidget(self.pickle_btn)
         layout.addWidget(QLabel('New ChannelSet Preview',self))
-        
+
         self.tree = QTreeWidget(self)
         self.tree.setHeaderLabels(["Channel Number", "Name", "Units",
                                    "Comments", "Tags", "Sample rate",
                                    "Calibration factor",
                                    "Transfer function type"])
-    
+
         layout.addWidget(self.tree)
-        
+
         self.add_data_btn = QPushButton('Add ChannelSet to existing ChannelSet',self)
+        self.add_data_btn.clicked.connect(self.extend_data)
         self.rep_data_btn = QPushButton('Replace existing ChannelSet',self)
+        self.rep_data_btn.clicked.connect(self.replace_data)
         layout.addWidget(self.add_data_btn)
         layout.addWidget(self.rep_data_btn)
-        
+
     def set_channel_set(self, channel_set):
         print("Setting channel set...")
         self.tree.clear()
@@ -177,11 +182,11 @@ class DataImportWidget(QWidget):
                 dataset_item.setData(1, Qt.DisplayRole, dataset.id_)
                 dataset_item.setData(2, Qt.DisplayRole, dataset.units)
         print("Done.")
-        
+
     def import_files(self):
         # Get a list of URLs from a QFileDialog
         url = QFileDialog.getOpenFileNames(self, "Load transfer function", "addons",
-                                               "MAT Files (*.mat)")[0]        
+                                               "MAT Files (*.mat)")[0]
         try:
             import_from_mat(url[0], self.new_cs)
         except:
@@ -191,31 +196,37 @@ class DataImportWidget(QWidget):
             print(traceback.format_tb(tb))
             print('Load failed.')
             return
-    
+
         self.set_channel_set(self.new_cs)
-    
+
     def load_pickle(self):
         '''
         This is probably a temporary solution to loading data.
         Probably have to write a better way of storing data.
         PLEASE DO NOT OPEN ANY UNTRUSTED PICKLE FILES.
         UNPICKLING A FILE CAN EXECUTE ARBITRARY CODE, WHICH IS DANGEROUS TO YOUR COMPUTER.
-        
+
         '''
         url = QFileDialog.getOpenFileName(self, "Load Channel Set", "addons",
                                                "Pickle Files (*.pickle)")[0]
         with open(url,'rb') as f:
             self.new_cs = pickle.load(f)
         self.set_channel_set(self.new_cs)
-    
+
     def clear(self):
         self.new_cs = ChannelSet()
         self.set_channel_set(self.new_cs)
-        
+
+    def extend_data(self):
+        self.sig_extend_channelset.emit(self.new_cs)
+
+    def replace_data(self):
+        self.sig_replace_channelset.emit(self.new_cs)
+
 if __name__ == '__main__':
     cs = ChannelSet()
-    import_from_mat("//cued-fs/users/general/tab53/ts-home/Documents/owncloud/Documents/urop/labs/4c6/transfer_function_clean.mat",
+    import_from_mat("../../tests/transfer_function_clean.mat",
                     cs)
-        
+
     print(cs.channel_ids(0))
 

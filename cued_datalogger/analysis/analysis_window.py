@@ -214,8 +214,8 @@ class AnalysisWindow(QMainWindow):
 
         # # Import
         self.import_widget = DataImportWidget(self)
-        self.import_widget.add_data_btn.clicked.connect(self.extend_channelset)
-        self.import_widget.rep_data_btn.clicked.connect(self.replace_channelset)
+        self.import_widget.sig_extend_channelset.connect(self.extend_channelset)
+        self.import_widget.sig_replace_channelset.connect(self.replace_channelset)
         self.global_toolbox.addTab(self.import_widget, 'Import Files')
 
         # # Export
@@ -257,6 +257,39 @@ class AnalysisWindow(QMainWindow):
             self.goto_transfer_function()
         else:
             self.goto_time_series()
+
+    def auto_change_tab(self):
+        current_widget = self.display_tabwidget.currentWidget()
+
+        if (current_widget is self.circle_widget
+            and self.cs.channels[0].is_dataset("transfer_function")):
+            # Remain here
+            pass
+        elif (current_widget is self.sonogram_widget
+              and self.cs.channels[0].is_dataset("sonogram")):
+            # Remain here
+            pass
+        elif (current_widget is self.freqdomain_widget
+              and self.cs.channels[0].is_dataset("spectrum")):
+            # Remain here
+            # Switch the plot type
+            self.frequency_toolbox.set_plot_spectrum()
+        elif (current_widget is self.freqdomain_widget
+              and self.cs.channels[0].is_dataset("transfer_function")):
+            # Remain here
+            # Switch the plot type
+            self.frequency_toolbox.set_plot_transfer_function()
+        else:
+            if self.cs.channels[0].is_dataset("transfer_function"):
+                self.display_tabwidget.setCurrentWidget(self.freqdomain_widget)
+                self.frequency_toolbox.set_plot_transfer_function()
+            elif self.cs.channels[0].is_dataset("spectrum"):
+                self.display_tabwidget.setCurrentWidget(self.freqdomain_widget)
+                self.frequency_toolbox.set_plot_spectrum()
+            elif self.cs.channels[0].is_dataset("sonogram"):
+                self.display_tabwidget.setCurrentWidget(self.sonogram_widget)
+            else:
+                self.display_tabwidget.setCurrentWidget(self.timedomain_widget)
 
     def close_acquisition_window(self):
         self.acquisition_window.sig_closed.disconnect()
@@ -306,12 +339,20 @@ class AnalysisWindow(QMainWindow):
         self.cs.add_channel_dataset(i,'time_series', np.sin(t*2*np.pi*100*(i+1))*np.exp(-t/t[-1]))
 
     def extend_channelset(self, cs):
-        self.cs.channels.extend(cs.channels)
-        self.update_channelset()
+        if isinstance(cs, ChannelSet):
+            self.cs.channels.extend(cs.channels)
+            self.update_channelset()
+            self.auto_change_tab()
+        else:
+            print("Failed to extend ChannelSet: {} not a ChannelSet".format(type(cs)))
 
     def replace_channelset(self, cs):
-        self.cs = cs
-        self.update_channelset()
+        if isinstance(cs, ChannelSet):
+            self.cs = cs
+            self.update_channelset()
+            self.auto_change_tab()
+        else:
+            print("Failed to replace ChannelSet: {} not a ChannelSet".format(type(cs)))
 
     def set_selected_channels(self, channels):
         self.display_tabwidget.currentWidget().set_selected_channels(channels)
