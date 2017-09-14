@@ -330,8 +330,7 @@ class CircleFitWidget(QWidget):
         if selected_channels:
             for channel in selected_channels:
                 if channel.is_dataset("transfer_function"):
-                    if len(channel.data("transfer_function")):
-                        self.channels.append(channel)
+                    self.channels.append(channel)
 
         self.results.channels = self.channels
 

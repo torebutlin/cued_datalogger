@@ -27,10 +27,9 @@ class TimeDomainWidget(InteractivePlotWidget):
         self.clear()
         for channel in self.channels:
             if channel.is_dataset("time_series"):
-                if len(channel.data("time_series")):
-                    self.plot(channel.data("time"),
-                              channel.data("time_series"),
-                              pen=channel.colour)
+                self.plot(channel.data("time"),
+                          channel.data("time_series"),
+                          pen=channel.colour)
 
 
 class TimeToolbox(Toolbox):

@@ -48,7 +48,6 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         *selected_channels*."""
         self.channels = []
 
-        # Need to check that the dataset exists, then check if there's data in it
         if selected_channels:
             self.channels = selected_channels
 
@@ -79,16 +78,14 @@ class FrequencyDomainWidget(InteractivePlotWidget):
             # Extract the data
             if self.plot_transfer_function:
                 if channel.is_dataset("transfer_function"):
-                    if len(channel.data("transfer_function")):
-                        data = channel.data("transfer_function")
+                    data = channel.data("transfer_function")
                 else:
                     print("{}: no 'transfer_function' "
                           "dataset.".format(channel.name))
                     continue
             else:
                 if channel.is_dataset("spectrum"):
-                    if len(channel.data("spectrum")):
-                        data = channel.data("spectrum")
+                    data = channel.data("spectrum")
                 else:
                     print("{}: no 'spectrum' "
                           "dataset.".format(channel.name))
@@ -129,26 +126,25 @@ class FrequencyDomainWidget(InteractivePlotWidget):
             if self.plot_transfer_function and self.show_coherence:
                 print("Plotting coherence...")
                 if channel.is_dataset("coherence"):
-                    if len(channel.data("coherence")):
-                        if self.current_plot_type == 'linear magnitude':
-                            self.plot(channel.data("frequency"),
-                                      np.abs(channel.data("coherence")))
-                        elif self.current_plot_type == 'log magnitude':
-                            self.plot(channel.data("frequency"),
-                                      to_dB(np.abs(channel.data("coherence"))))
-                        elif self.current_plot_type == 'phase':
-                            self.plot(channel.data("frequency"),
-                                      np.angle(channel.data("coherence"), deg=True))
-                        elif self.current_plot_type == 'real part':
-                            self.plot(channel.data("frequency"),
-                                      channel.data("coherence").real)
-                        elif self.current_plot_type == 'imaginary part':
-                            self.plot(channel.data("frequency"),
-                                      channel.data("coherence").imag)
-                        elif self.current_plot_type == 'nyquist':
-                            self.plot(channel.data("coherence").real,
-                                      channel.data("coherence").imag)
-                        print("Done.")
+                    if self.current_plot_type == 'linear magnitude':
+                        self.plot(channel.data("frequency"),
+                                  np.abs(channel.data("coherence")))
+                    elif self.current_plot_type == 'log magnitude':
+                        self.plot(channel.data("frequency"),
+                                  to_dB(np.abs(channel.data("coherence"))))
+                    elif self.current_plot_type == 'phase':
+                        self.plot(channel.data("frequency"),
+                                  np.angle(channel.data("coherence"), deg=True))
+                    elif self.current_plot_type == 'real part':
+                        self.plot(channel.data("frequency"),
+                                  channel.data("coherence").real)
+                    elif self.current_plot_type == 'imaginary part':
+                        self.plot(channel.data("frequency"),
+                                  channel.data("coherence").imag)
+                    elif self.current_plot_type == 'nyquist':
+                        self.plot(channel.data("coherence").real,
+                                  channel.data("coherence").imag)
+                    print("Done.")
                 else:
                     print("{}: no 'coherence' dataset".format(channel.name))
 
@@ -157,15 +153,11 @@ class FrequencyDomainWidget(InteractivePlotWidget):
         print("Calculating spectrum...")
         for channel in self.channels:
             if channel.is_dataset("time_series"):
-                if len(channel.data("time_series")):
-                    time_series = channel.data("time_series")
-                    window = np.hanning(time_series.size)
-                    spectrum = rfft(time_series * window)
+                time_series = channel.data("time_series")
+                window = np.hanning(time_series.size)
+                spectrum = rfft(time_series * window)
 
-                    if not channel.is_dataset("spectrum"):
-                        channel.add_dataset("spectrum", data=spectrum)
-                    else:
-                        channel.set_data("spectrum", spectrum)
+                channel.add_dataset("spectrum", data=spectrum)
 
             else:
                 print("Skipping {}: no 'time_series' "
@@ -197,34 +189,27 @@ class FrequencyDomainWidget(InteractivePlotWidget):
                 pass
 
             if channel.is_dataset("spectrum"):
-                if len(channel.data("spectrum")):
-                    # Get the data
-                    output_spectrum = channel.data("spectrum")
+                # Get the data
+                output_spectrum = channel.data("spectrum")
 
-                    # Calculate the auto- and cross- spectra
-                    output_auto_spectrum = \
-                        calculate_auto_spectrum(output_spectrum)
+                # Calculate the auto- and cross- spectra
+                output_auto_spectrum = \
+                    calculate_auto_spectrum(output_spectrum)
 
-                    cross_spectrum = \
-                        calculate_cross_spectrum(input_spectrum,
-                                                      output_spectrum)
+                cross_spectrum = \
+                    calculate_cross_spectrum(input_spectrum,
+                                                  output_spectrum)
 
-                    # Calculate the transfer function
-                    transfer_function = output_auto_spectrum / cross_spectrum
-                    # Update the channel
-                    if not channel.is_dataset("transfer_function"):
-                        channel.add_dataset("transfer_function", data=transfer_function)
-                    else:
-                        channel.set_data("transfer_function", transfer_function)
+                # Calculate the transfer function
+                transfer_function = output_auto_spectrum / cross_spectrum
+                # Update the channel
+                channel.add_dataset("transfer_function", data=transfer_function)
 
-                    # Calculate the coherence
-                    coherence = (cross_spectrum * cross_spectrum.conj() /
-                                 input_auto_spectrum * output_auto_spectrum).real
-                    # Update the channel
-                    if not channel.is_dataset("coherence"):
-                        channel.add_dataset("coherence", data=coherence)
-                    else:
-                        channel.set_data("coherence", coherence)
+                # Calculate the coherence
+                coherence = (cross_spectrum * cross_spectrum.conj() /
+                             input_auto_spectrum * output_auto_spectrum).real
+                channel.add_dataset("coherence", data=coherence)
+
             else:
                 print("Skipping {}: no 'spectrum' "
                       "dataset.".format(channel.name))
