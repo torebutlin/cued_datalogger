@@ -220,7 +220,7 @@ class ChanToggleUI(BaseWidget):
                     self.checkbox_layout.addWidget(chan_btn,current_y,current_x)
                     self.chan_btn_group.addButton(chan_btn,n)
             else:
-                for n in range(old_n_buttons-1,self.rec.new_n_btns-1,-1):
+                for n in range(old_n_buttons-1,new_n_btns-1,-1):
                     chan_btn = self.chan_btn_group.button(n)
                     self.checkbox_layout.removeWidget(chan_btn)
                     self.chan_btn_group.removeButton(chan_btn)
