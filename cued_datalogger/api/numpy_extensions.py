@@ -66,4 +66,5 @@ def sdof_modal_peak(w, wn, zn, an, phi):
 
     """
 #    return an*np.exp(phi) / (wn**2 - w**2 + 2j*zn*wn**2)
-    return an*np.exp(phi) / (wn**2 - w**2 + 2j*zn*wn*w)
+#    return an*np.exp(phi) / (wn**2 - w**2 + 2j*zn*wn*w)
+    return an / (wn**2 - w**2 + 2j*zn*wn*w)

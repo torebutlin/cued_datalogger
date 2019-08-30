@@ -306,8 +306,8 @@ class CircleFitWidget(QWidget):
 #        an = an_real + 1j*an_imag
 #        phi = np.angle(an)
         wn, zn, an_real, an_imag = result.x
-        an = an_real + an_imag
-
+        an = an_real + 1j*an_imag
+        print(an)
         print(wn, np.abs(zn), np.abs(an), np.angle(an))
         return wn, np.abs(zn), np.abs(an), np.angle(an)
 
@@ -317,7 +317,7 @@ class CircleFitWidget(QWidget):
         zn = np.abs(parameters[1])
         an_real = parameters[2]
         an_imag = parameters[3]
-        an = an_real + an_imag
+        an = an_real + 1j*an_imag
         phi = np.angle(an)
 
 #        if an < 0:
